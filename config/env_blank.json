@@ -1,0 +1,7 @@
+{
+  "LOG_LEVEL": "DEBUG",
+  "DB_CACHE_PATH": ["data", "db_cache.db"],
+  "API_BASE_URL": "https://umich.instructure.com/api/v1/",
+  "API_KEY": "",
+  "TERM_ID": 0
+}

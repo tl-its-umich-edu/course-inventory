@@ -1,0 +1,12 @@
+# config
+env.json
+venv
+
+# data
+*.csv
+*.db
+
+# etc
+.vscode
+.DS_Store
+__pycache__
