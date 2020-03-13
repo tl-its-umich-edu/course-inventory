@@ -67,15 +67,15 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
             more_pages = False
 
     course_df = pd.DataFrame(slim_course_dicts)
+    course_df['course_warehouse_id'] = course_df['course_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     logger.debug(course_df.head())
     course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
     logger.info('Course data was written to data/course.csv')
-    course_ids = course_df['course_id'].to_list()
+    course_ids = course_df['course_warehouse_id'].to_list()
     return course_ids
 
 
-def pull_enrollment_and_user_data(course_ids) -> None:
-    udw_course_ids = [(course_id + WAREHOUSE_INCREMENT) for course_id in course_ids]
+def pull_enrollment_and_user_data(udw_course_ids) -> None:
     enrollments_string = ','.join([str(udw_course_id) for udw_course_id in udw_course_ids])
     enrollment_query = f'''
         SELECT e.id AS enrollment_id,
@@ -88,11 +88,12 @@ def pull_enrollment_and_user_data(course_ids) -> None:
         FROM enrollment_dim e
         JOIN role_dim r
             ON e.role_id=r.id
-        WHERE e.id IN ({enrollments_string});
+        WHERE e.course_id IN ({enrollments_string});
     '''
 
     logger.info('Making enrollment_dim query')
     enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
+
     enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
     logger.info('Enrollment data was written to data/enrollment.csv')
 
@@ -118,5 +119,5 @@ def pull_enrollment_and_user_data(course_ids) -> None:
 
 
 if __name__ == "__main__":
-    current_course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
-    pull_enrollment_and_user_data(current_course_ids)
+    current_udw_course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
+    pull_enrollment_and_user_data(current_udw_course_ids)
