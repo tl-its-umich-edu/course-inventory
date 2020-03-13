@@ -12,7 +12,7 @@ Desktop. To run with Docker, do the following:
    docker build -t inventory .
    ```
 1. Run a container using the tagged image, specifying a bind mount to make the output CSVs accessible.
-   ```
+  ```
   docker run --mount type=bind,source={some absolute path to a directory, no trailing slash},target=/data inventory   
   ```
 
