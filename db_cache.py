@@ -1,12 +1,13 @@
 # standard libraries
 import logging, json, os, re
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Dict, Sequence
 
 # third-party libraries
 import pandas as pd
-import requests
 from sqlalchemy import create_engine
+from umich_api.api_utils import ApiUtil
+
 
 # Initializing settings and global variables
 
@@ -20,31 +21,33 @@ except FileNotFoundError:
 
 DB_CACHE_PATH_ELEMS = ENV['DB_CACHE_PATH']
 DB_CACHE_PATH_STR = '/'.join(DB_CACHE_PATH_ELEMS)
-ENGINE = create_engine(f'sqlite:///{DB_CACHE_PATH_STR}')
+CACHE_ENGINE = create_engine(f'sqlite:///{DB_CACHE_PATH_STR}')
+
+API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SECRET'])
+SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 
 
-# Functions - Caching
+# Functions - Requests and Caching
 
 # Create unique request string for WorldCat Search API caching
-def create_unique_request_str(base_url: str, params_dict: Dict[str, str], private_keys=['access_token']) -> str:
+def create_unique_request_str(base_url: str, params_dict: Dict[str, str]) -> str:
     sorted_params = sorted(params_dict.keys())
     fields = []
     for param in sorted_params:
-        if param not in private_keys:
-            value = params_dict[param]
-            if isinstance(value, list):
-                value = f'{",".join(value)}'
-            fields.append('{}-{}'.format(param, value))
+        value = params_dict[param]
+        if isinstance(value, list):
+            value = f'{",".join(value)}'
+        fields.append('{}-{}'.format(param, value))
     return base_url + '?' + '&'.join(fields)
 
 
 # Make the request and cache new data, or retrieves the cached data
-def make_request_using_cache(url: str, params: Dict[str, str]={}) -> Tuple:
+def make_request_using_cache(url: str, params: Dict[str, str] = {}) -> Sequence[Dict]:
     unique_req_url = create_unique_request_str(url, params)
-    logger.info(unique_req_url)
+    logger.debug(f'Unique Request URL: {unique_req_url}')
     cache_df = pd.read_sql(f'''
         SELECT * FROM request WHERE request_url = '{unique_req_url}';
-    ''', ENGINE)
+    ''', CACHE_ENGINE)
 
     if not cache_df.empty:
         logger.debug('Retrieving cached data...')
@@ -52,9 +55,8 @@ def make_request_using_cache(url: str, params: Dict[str, str]={}) -> Tuple:
         return json.loads(record_series['response'])
 
     logger.debug('Making a request for new data...')
-    response = requests.get(url, params)
+    response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
     logger.info('Received response with the following URL: ' + response.url)
-    course_data = json.loads(response.text)
 
     status_code = response.status_code
     if status_code != 200:
@@ -68,11 +70,8 @@ def make_request_using_cache(url: str, params: Dict[str, str]={}) -> Tuple:
         'timestamp': datetime.now().isoformat()
     })
 
-    logger.info(type(response.headers))
+    new_request_df.to_sql('request', CACHE_ENGINE, if_exists='append', index=False)
     response_data = json.loads(response.text)
-    response_headers = response.headers
-
-    new_request_df.to_sql('request', ENGINE, if_exists='append', index=False)
     return response_data
 
 
@@ -80,7 +79,7 @@ def make_request_using_cache(url: str, params: Dict[str, str]={}) -> Tuple:
 
 def init_db() -> None:
     try:
-        conn = ENGINE.connect()
+        conn = CACHE_ENGINE.connect()
         conn.close()
         logger.info(f'Created or connected to {DB_CACHE_PATH_STR} database')
     except:
@@ -88,9 +87,10 @@ def init_db() -> None:
 
 
 def create_table(table_name: str, create_statement: str) -> None:
-    conn = ENGINE.connect()
+    conn = CACHE_ENGINE.connect()
     drop_statement = f'''DROP TABLE IF EXISTS '{table_name}';'''
     conn.execute(drop_statement)
+    logger.info(f'Dropped table {table_name}, if it existed.')
     conn.execute(create_statement)
     logger.info(f'Created table {table_name} in {DB_CACHE_PATH_STR}')
     conn.close()
@@ -113,4 +113,5 @@ def set_up_database() -> None:
 # Main Program
 
 if __name__ == '__main__':
+    logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
     set_up_database()

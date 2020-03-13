@@ -22,8 +22,7 @@ except FileNotFoundError:
 
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
-API_BASE_URL = ENV['API_BASE_URL']
-API_KEY = ENV['API_KEY']
+API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
@@ -48,7 +47,6 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
     url_ending = f'accounts/{account_id}/courses'
     params = {
-        'access_token': API_KEY,
         'with_enrollments': True,
         'enrollment_type': ['student', 'teacher'],
         'enrollment_term_id': term_id,
@@ -60,7 +58,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
     more_pages = True
     while more_pages:
         logger.info(f"Course Page Number: {params['page']}")
-        all_course_data = make_request_using_cache(API_BASE_URL + url_ending, params)
+        all_course_data = make_request_using_cache(f'{API_SCOPE_PREFIX}/{url_ending}', params)
         if len(all_course_data) > 0:
             slim_course_dicts += slim_down_course_data(all_course_data)
             params['page'] += 1
@@ -69,8 +67,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
             more_pages = False
 
     course_df = pd.DataFrame(slim_course_dicts)
-    logger.info(course_df.head())
-    logger.info(len(course_df))
+    logger.debug(course_df.head())
     course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
     logger.info('Course data was written to data/course.csv')
     course_ids = course_df['course_id'].to_list()
@@ -93,7 +90,6 @@ def pull_enrollment_and_user_data(course_ids) -> None:
             ON e.role_id=r.id
         WHERE e.id IN ({enrollments_string});
     '''
-    logger.info(enrollment_query)
 
     logger.info('Making enrollment_dim query')
     enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
