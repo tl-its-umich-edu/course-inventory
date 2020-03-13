@@ -1,10 +1,11 @@
 # standard libraries
 import json, logging, os
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Union
 
 # third-party libraries
 import pandas as pd
 import psycopg2
+from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db_cache import make_request_using_cache
@@ -22,6 +23,8 @@ except FileNotFoundError:
 
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
+API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SECRET'])
+SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
@@ -29,6 +32,21 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 
 # Function(s)
+
+def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Sequence[Dict]:
+    logger.debug('Making a request for data...')
+    response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+    logger.info('Received response with the following URL: ' + response.url)
+
+    status_code = response.status_code
+    if status_code != 200:
+        logger.debug(response.text)
+        logger.warning(f'Received irregular status code: {status_code}')
+        return [{}]
+
+    response_data = json.loads(response.text)
+    return response_data
+
 
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     slim_course_dicts = []
@@ -58,7 +76,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
     more_pages = True
     while more_pages:
         logger.info(f"Course Page Number: {params['page']}")
-        all_course_data = make_request_using_cache(f'{API_SCOPE_PREFIX}/{url_ending}', params)
+        all_course_data = make_request_using_api_utils(f'{API_SCOPE_PREFIX}/{url_ending}', params)
         if len(all_course_data) > 0:
             slim_course_dicts += slim_down_course_data(all_course_data)
             params['page'] += 1
