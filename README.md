@@ -13,7 +13,7 @@ Desktop. To run with Docker, do the following:
    ```
 1. Run a container using the tagged image, specifying a bind mount to make the output CSVs accessible.
   ```
-  docker run --mount type=bind,source={some absolute path to a directory, no trailing slash},target=/data inventory   
+  docker run --mount type=bind,source={some absolute path to an ouptut directory, no trailing slash},target=/app/data inventory   
   ```
 
 #### With a Virtual Environment
