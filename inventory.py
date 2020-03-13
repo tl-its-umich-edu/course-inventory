@@ -95,7 +95,7 @@ def pull_enrollment_and_user_data(udw_course_ids) -> None:
     enrollment_query = f'''
         SELECT e.id AS enrollment_id,
                e.canvas_id AS enrollment_canvas_id,
-               e.user_id as enrollment_user_id,
+               e.user_id AS enrollment_user_id,
                e.course_section_id AS enrollment_course_section_id,
                e.course_id AS enrollment_course_id,
                e.workflow_state AS enrollment_workflow_state,
@@ -128,7 +128,7 @@ def pull_enrollment_and_user_data(udw_course_ids) -> None:
     '''
 
     logger.info('Making user_dim query')
-    user_df = pd.read_sql(user_query, UDW_CONN, params=user_ids)
+    user_df = pd.read_sql(user_query, UDW_CONN)
     user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
     logger.info('User data was written to data/user.csv')
 
