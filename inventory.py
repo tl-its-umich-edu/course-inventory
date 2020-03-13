@@ -7,9 +7,6 @@ import pandas as pd
 import psycopg2
 from umich_api.api_utils import ApiUtil
 
-# local libraries
-from db_cache import make_request_using_cache
-
 
 # Initialize settings and globals
 
