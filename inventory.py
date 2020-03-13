@@ -4,6 +4,7 @@ from typing import Dict, Sequence
 
 # third-party libraries
 import pandas as pd
+import psycopg2
 
 # local libraries
 from db_cache import make_request_using_cache
@@ -24,6 +25,9 @@ logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 API_BASE_URL = ENV['API_BASE_URL']
 API_KEY = ENV['API_KEY']
 
+UDW_CONN = psycopg2.connect(**ENV['UDW'])
+WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
+
 
 # Function(s)
 
@@ -31,11 +35,11 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     slim_course_dicts = []
     for course_dict in course_data:
         slim_course_dict = {
-            'id': course_dict['id'],
-            'name': course_dict['name'],
-            'account_id': course_dict['account_id'],
-            'created_at': course_dict['created_at'],
-            'workflow_state': course_dict['workflow_state']
+            'course_id': course_dict['id'],
+            'course_name': course_dict['name'],
+            'course_account_id': course_dict['account_id'],
+            'course_created_at': course_dict['created_at'],
+            'course_workflow_state': course_dict['workflow_state']
         }
         slim_course_dicts.append(slim_course_dict)
     return slim_course_dicts
@@ -67,12 +71,56 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
     course_df = pd.DataFrame(slim_course_dicts)
     logger.info(course_df.head())
     logger.info(len(course_df))
-    course_df.to_csv(os.path.join('data', 'course.csv'))
-    course_ids = course_df['id'].to_list()
+    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+    logger.info('Course data was written to data/course.csv')
+    course_ids = course_df['course_id'].to_list()
     return course_ids
 
 
+def pull_enrollment_and_user_data(course_ids) -> None:
+    udw_course_ids = [(course_id + WAREHOUSE_INCREMENT) for course_id in course_ids]
+    enrollments_string = ','.join([str(udw_course_id) for udw_course_id in udw_course_ids])
+    enrollment_query = f'''
+        SELECT e.id AS enrollment_id,
+               e.canvas_id AS enrollment_canvas_id,
+               e.user_id as enrollment_user_id,
+               e.course_section_id AS enrollment_course_section_id,
+               e.course_id AS enrollment_course_id,
+               e.workflow_state AS enrollment_workflow_state,
+               r.base_role_type AS role_type
+        FROM enrollment_dim e
+        JOIN role_dim r
+            ON e.role_id=r.id
+        WHERE e.id IN ({enrollments_string});
+    '''
+    logger.info(enrollment_query)
+
+    logger.info('Making enrollment_dim query')
+    enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
+    enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
+    logger.info('Enrollment data was written to data/enrollment.csv')
+
+    user_ids = enrollment_df['enrollment_user_id'].drop_duplicates().to_list()
+    users_string = ','.join([str(user_id) for user_id in user_ids])
+
+    user_query = f'''
+        SELECT u.id AS user_id,
+               u.canvas_id AS user_canvas_id,
+               u.name AS user_name,
+               u.workflow_state AS user_workflow_state,
+               p.unique_name AS pseudonym_uniqname
+        FROM user_dim u
+        JOIN pseudonym_dim p
+            ON u.id=p.user_id
+        WHERE u.id in ({users_string});
+    '''
+
+    logger.info('Making user_dim query')
+    user_df = pd.read_sql(user_query, UDW_CONN, params=user_ids)
+    user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
+    logger.info('User data was written to data/user.csv')
+
+
 if __name__ == "__main__":
-    course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
-    # Use course_ids to find instructor enrollments
-    # Find related accounts by using a different endpoint
+    current_course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
+    pull_enrollment_and_user_data(current_course_ids)
