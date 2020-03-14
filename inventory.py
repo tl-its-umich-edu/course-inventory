@@ -1,5 +1,6 @@
 # standard libraries
 import json, logging, os
+from json.decoder import JSONDecodeError
 from typing import Dict, Sequence, Union
 
 # third-party libraries
@@ -23,6 +24,7 @@ logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SECRET'])
 SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
+MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
@@ -32,17 +34,27 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Sequence[Dict]:
     logger.debug('Making a request for data...')
-    response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
-    logger.info('Received response with the following URL: ' + response.url)
 
-    status_code = response.status_code
-    if status_code != 200:
-        logger.debug(response.text)
-        logger.warning(f'Received irregular status code: {status_code}')
-        return [{}]
+    for i in range(1, MAX_REQ_ATTEMPTS + 1):
+        logger.debug(f'Attempt #{i}')
+        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+        logger.info('Received response with the following URL: ' + response.url)
+        status_code = response.status_code
 
-    response_data = json.loads(response.text)
-    return response_data
+        if status_code != 200:
+            logger.warning(f'Received irregular status code: {status_code}')
+            logger.info('Beginning next_attempt')
+        else:
+            try:
+                response_data = json.loads(response.text)
+                return response_data
+            except JsonDecoderError:
+                logger.warning('JsonDecoderError encountered')
+                logger.info('Beginning next attempt')
+
+    logger.error('The maximum number of reqeust attempts was reached')
+    return [{}]
+
 
 
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
@@ -91,7 +103,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
 
 
 def pull_enrollment_and_user_data(udw_course_ids) -> None:
-    enrollments_string = ','.join([str(udw_course_id) for udw_course_id in udw_course_ids])
+    udw_courses_string = ','.join([str(udw_course_id) for udw_course_id in udw_course_ids])
     enrollment_query = f'''
         SELECT e.id AS enrollment_id,
                e.canvas_id AS enrollment_canvas_id,
@@ -103,7 +115,7 @@ def pull_enrollment_and_user_data(udw_course_ids) -> None:
         FROM enrollment_dim e
         JOIN role_dim r
             ON e.role_id=r.id
-        WHERE e.course_id IN ({enrollments_string});
+        WHERE e.course_id IN ({udw_courses_string});
     '''
 
     logger.info('Making enrollment_dim query')
