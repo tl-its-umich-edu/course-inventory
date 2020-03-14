@@ -56,7 +56,6 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
     return [{}]
 
 
-
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     slim_course_dicts = []
     for course_dict in course_data:
