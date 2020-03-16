@@ -11,7 +11,7 @@ from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db.create_db import DBCreator, MYSQL_ENGINE
-from db.tables import tables
+from db.tables import tables as TABLES
 
 
 # Initialize settings and globals
@@ -35,6 +35,7 @@ UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
+
 
 # Function(s)
 
@@ -188,7 +189,8 @@ def run_course_inventory() -> None:
         logger.info('Enrollment data was written to data/enrollment.csv')
 
     # Reset database
-    db_creator_obj = DBCreator('course_inventory', tables)
+    logger.info('Resetting database')
+    db_creator_obj = DBCreator('course_inventory', TABLES)
     db_creator_obj.set_up_database()
 
     # Insert gathered data
