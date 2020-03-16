@@ -102,12 +102,10 @@ def handle_request_if_failed(response):
         return True
 
 
-def get_course_publish_unpublish_date(df_row: str, publish_or_unpublish_date, next_page_url = None)->str:
+def get_course_publish_date(df_row: str, publish_date, next_page_url = None)->str:
     logger.debug(df_row)
-    if df_row['course_workflow_state'] == 'available':
-        event_type_to_check_for = 'published'
-    if df_row['course_workflow_state'] == 'unpublished':
-        event_type_to_check_for = 'claimed'
+    if df_row['course_workflow_state'] != 'available':
+        return 'null'
 
     course_id= df_row['course_id']
 
@@ -120,34 +118,34 @@ def get_course_publish_unpublish_date(df_row: str, publish_or_unpublish_date, ne
         response = make_audit_logs_api_request(url)
 
     except (Exception) as e:
-        logger.exception('getting sections has erroneous response ' + e.message)
-        return publish_or_unpublish_date
+        logger.exception('getting published date for a course has erroneous response ' + e.message)
+        return publish_date
 
     if not handle_request_if_failed(response):
-        return publish_or_unpublish_date
+        return publish_date
 
     audit_events = json.loads(response.text.encode('utf8'))
     if not audit_events:
-        return publish_or_unpublish_date
+        return publish_date
 
     events = audit_events['events']
 
     for event in events:
-        if event['event_type'] == event_type_to_check_for:
-            publish_or_unpublish_date = event['created_at']
+        if event['event_type'] == 'published':
+            publish_date = event['created_at']
             logger.info(f"Date for Workflow type :{df_row['course_workflow_state']} for course {course_id}")
             break
-    if publish_or_unpublish_date is None:
+    if publish_date is None:
         next_page_url = get_next_page_url(response)
         if next_page_url is not None:
-            get_course_publish_unpublish_date(course_id, publish_or_unpublish_date, next_page_url)
+            get_course_publish_date(course_id, publish_date, next_page_url)
 
-    logger.info(f"For course {course_id} publish_or_unpublish_date: {publish_or_unpublish_date}")
-    if publish_or_unpublish_date is None:
+    logger.info(f"For course {course_id} publish_date: {publish_date}")
+    if publish_date is None:
         logger.info(f"For course {course_id} for workflow type {df_row['course_workflow_state']} don't have any date")
         return 'null'
 
-    return publish_or_unpublish_date
+    return publish_date
 
 
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
@@ -175,7 +173,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
     course_df = pd.DataFrame(slim_course_dicts)
     course_df['course_warehouse_id'] = course_df['course_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     course_date=None
-    course_df['unpub_published_date'] = course_df.apply(lambda x: get_course_publish_unpublish_date(x, course_date), axis=1)
+    course_df['published_date'] = course_df.apply(lambda x: get_course_publish_date(x, course_date), axis=1)
     logger.debug(course_df.head())
     course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
     logger.info('Course data was written to data/course.csv')
