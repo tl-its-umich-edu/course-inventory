@@ -34,6 +34,7 @@ MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
+CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 
 # Function(s)
 
@@ -149,18 +150,18 @@ def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
 def run_course_inventory() -> None:
     start = datetime.now()
 
-    # Gather data
+    # Gather course data
     course_df = gather_course_info_for_account(1, ENV['TERM_ID'])
-    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
-    logger.info('Course data was written to data/course.csv')
 
+    # Gather enrollment data
     udw_course_ids = course_df['warehouse_id'].to_list()
     enrollment_df = pull_enrollment_data_from_udw(udw_course_ids)
 
+    # Gather user data
     udw_user_ids = enrollment_df['user_id'].drop_duplicates().to_list()
     user_df = pull_user_data_from_udw(udw_user_ids)
 
-    # Find and remove nonexistent user ids from enrollment_df
+    # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
     user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
 
@@ -171,17 +172,22 @@ def run_course_inventory() -> None:
             return False
 
     enrollment_df['valid_id'] = enrollment_df['user_id'].map(check_if_valid_user_id)
-    enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
-    enrollment_df = enrollment_df.drop(columns=['valid_id'])
+    enrollment_df = enrollment_df[(enrollment_df['valid_id'])].drop(columns=['valid_id'])
 
-    enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
-    logger.info('Enrollment data was written to data/enrollment.csv')
+    if CREATE_CSVS:
+        # Generate CSV Output
+        course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+        logger.info('Course data was written to data/course.csv')
+        user_df.to_csv(os.path.join('data', 'user_df.csv'), index=False)
+        logger.info('User data was written to data/user.csv')
+        enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
+        logger.info('Enrollment data was written to data/enrollment.csv')
 
-    # Reset DB
+    # Reset database
     db_creator_obj = DBCreator('course_inventory', tables)
     db_creator_obj.set_up_database()
 
-    # Insert collected data
+    # Insert gathered data
     logger.info('Inserting course data')
     course_df.to_sql('course', MYSQL_ENGINE, if_exists='append', index=False)
     logger.info('Inserting user data')

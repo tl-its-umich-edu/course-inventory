@@ -1,6 +1,5 @@
 {
   "LOG_LEVEL": "DEBUG",
-  "DB_CACHE_PATH": ["data", "db_cache.db"],
   "API_BASE_URL": "https://apigw.it.umich.edu",
   "API_SCOPE_PREFIX": "",
   "API_SUBSCRIPTION_NAME": "",
@@ -9,6 +8,7 @@
   "MAX_REQ_ATTEMPTS": 3,
   "TERM_ID": 0,
   "WAREHOUSE_INCREMENT": 0,
+  "CREATE_CSVS": false
   "INVENTORY_MYSQL": {
     "host": "",
     "port": "",
