@@ -31,9 +31,6 @@ conn_str = (
     f":{DB_PARAMS['port']}" +
     f"/{DB_PARAMS['dbname']}?charset=utf8"
 )
-
-logger.info(conn_str)
-
 MYSQL_ENGINE = create_engine(conn_str)
 
 
@@ -41,16 +38,16 @@ MYSQL_ENGINE = create_engine(conn_str)
 
 class DBCreator:
 
-    def __init__(self, db_name: str, table_dicts: Sequence[Dict[str, str]]):
+    def __init__(self, db_name: str, table_dicts: Sequence[Dict[str, str]]) -> None:
         self.conn = None
         self.db_name = db_name
         self.tables = table_dicts
 
-    def set_up(self):
+    def set_up(self) -> None:
         logger.debug('set_up')
         self.conn = MYSQL_ENGINE.connect()
 
-    def tear_down(self):
+    def tear_down(self) -> None:
         logger.debug('tear_down')
         self.conn.close()
 
