@@ -163,6 +163,7 @@ def run_course_inventory() -> None:
 
     # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
+    logger.info('Looking for rows with nonexistent user ids in enrollment data')
     user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
 
     def check_if_valid_user_id(id: int) -> bool:
