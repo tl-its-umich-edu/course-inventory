@@ -9,6 +9,8 @@
   "MAX_REQ_ATTEMPTS": 3,
   "TERM_ID": 0,
   "WAREHOUSE_INCREMENT": 0,
+  "/* This is for testing pagination by giving a lower value": "*/",
+  "PER_PAGE_COUNT": 100,
   "UDW": {
     "host": "",
     "port": "",
