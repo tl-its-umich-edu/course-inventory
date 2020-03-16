@@ -58,7 +58,7 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
                 logger.warning('JSONDecodeError encountered')
                 logger.info('Beginning next attempt')
 
-    logger.error('The maximum number of reqeust attempts was reached')
+    logger.error('The maximum number of request attempts was reached')
     return [{}]
 
 
@@ -147,6 +147,13 @@ def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     return user_df
 
 
+def check_if_valid_user_id(id: int, user_ids) -> bool:
+    if id in user_ids:
+        return True
+    else:
+        return False
+
+
 def run_course_inventory() -> None:
     start = datetime.now()
 
@@ -164,15 +171,11 @@ def run_course_inventory() -> None:
     # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
     logger.info('Looking for rows with nonexistent user ids in enrollment data')
-    user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
+    valid_user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
 
-    def check_if_valid_user_id(id: int) -> bool:
-        if id in user_ids:
-            return True
-        else:
-            return False
-
-    enrollment_df['valid_id'] = enrollment_df['user_id'].map(check_if_valid_user_id)
+    enrollment_df['valid_id'] = enrollment_df['user_id'].map(
+        lambda x: check_if_valid_user_id(x, valid_user_ids)
+    )
     enrollment_df = enrollment_df[(enrollment_df['valid_id'])].drop(columns=['valid_id'])
 
     if CREATE_CSVS:
