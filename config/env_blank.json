@@ -8,7 +8,7 @@
   "MAX_REQ_ATTEMPTS": 3,
   "TERM_ID": 0,
   "WAREHOUSE_INCREMENT": 0,
-  "CREATE_CSVS": false
+  "CREATE_CSVS": false,
   "INVENTORY_MYSQL": {
     "host": "",
     "port": "",
