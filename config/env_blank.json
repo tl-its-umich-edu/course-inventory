@@ -9,6 +9,13 @@
   "MAX_REQ_ATTEMPTS": 3,
   "TERM_ID": 0,
   "WAREHOUSE_INCREMENT": 0,
+  "INVENTORY_MYSQL": {
+    "host": "",
+    "port": "",
+    "dbname": "course_inventory",
+    "user": "",
+    "password": ""
+  },
   "UDW": {
     "host": "",
     "port": "",

@@ -1,5 +1,6 @@
 # standard libraries
 import json, logging, os
+from datetime import datetime
 from json.decoder import JSONDecodeError
 from typing import Dict, Sequence, Union
 
@@ -7,6 +8,10 @@ from typing import Dict, Sequence, Union
 import pandas as pd
 import psycopg2
 from umich_api.api_utils import ApiUtil
+
+# local libraries
+from db.create_db import DBCreator, MYSQL_ENGINE
+from db.tables import tables
 
 
 # Initialize settings and globals
@@ -60,17 +65,17 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     slim_course_dicts = []
     for course_dict in course_data:
         slim_course_dict = {
-            'course_id': course_dict['id'],
-            'course_name': course_dict['name'],
-            'course_account_id': course_dict['account_id'],
-            'course_created_at': course_dict['created_at'],
-            'course_workflow_state': course_dict['workflow_state']
+            'canvas_id': course_dict['id'],
+            'name': course_dict['name'],
+            'account_id': course_dict['account_id'],
+            'created_at': course_dict['created_at'],
+            'workflow_state': course_dict['workflow_state']
         }
         slim_course_dicts.append(slim_course_dict)
     return slim_course_dicts
 
 
-def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
+def gather_course_info_for_account(account_id: int, term_id: int) -> pd.DataFrame:
     url_ending = f'accounts/{account_id}/courses'
     params = {
         'with_enrollments': True,
@@ -93,57 +98,100 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
             more_pages = False
 
     course_df = pd.DataFrame(slim_course_dicts)
-    course_df['course_warehouse_id'] = course_df['course_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
+    course_df['warehouse_id'] = course_df['canvas_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     logger.debug(course_df.head())
-    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
-    logger.info('Course data was written to data/course.csv')
-    course_ids = course_df['course_warehouse_id'].to_list()
-    return course_ids
+    return course_df
 
 
-def pull_enrollment_and_user_data(udw_course_ids) -> None:
-    udw_courses_string = ','.join([str(udw_course_id) for udw_course_id in udw_course_ids])
+def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
+    courses_string = ','.join([str(course_id) for course_id in course_ids])
     enrollment_query = f'''
-        SELECT e.id AS enrollment_id,
-               e.canvas_id AS enrollment_canvas_id,
-               e.user_id AS enrollment_user_id,
-               e.course_section_id AS enrollment_course_section_id,
-               e.course_id AS enrollment_course_id,
-               e.workflow_state AS enrollment_workflow_state,
+        SELECT e.id AS warehouse_id,
+               e.canvas_id AS canvas_id,
+               e.course_id AS course_id,
+               e.course_section_id AS course_section_id,
+               e.user_id AS user_id,
+               e.workflow_state AS workflow_state,
                r.base_role_type AS role_type
         FROM enrollment_dim e
         JOIN role_dim r
             ON e.role_id=r.id
-        WHERE e.course_id IN ({udw_courses_string});
+        WHERE e.course_id IN ({courses_string});
     '''
 
     logger.info('Making enrollment_dim query')
     enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
+    logger.debug(enrollment_df.head())
+    return enrollment_df
 
-    enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
-    logger.info('Enrollment data was written to data/enrollment.csv')
 
-    user_ids = enrollment_df['enrollment_user_id'].drop_duplicates().to_list()
+def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     users_string = ','.join([str(user_id) for user_id in user_ids])
-
     user_query = f'''
-        SELECT u.id AS user_id,
-               u.canvas_id AS user_canvas_id,
-               u.name AS user_name,
-               u.workflow_state AS user_workflow_state,
-               p.unique_name AS pseudonym_uniqname
+        SELECT u.id AS warehouse_id,
+               u.canvas_id AS canvas_id,
+               u.name AS name,
+               p.unique_name AS uniqname,
+               u.workflow_state AS workflow_state
         FROM user_dim u
         JOIN pseudonym_dim p
             ON u.id=p.user_id
         WHERE u.id in ({users_string});
     '''
-
     logger.info('Making user_dim query')
     user_df = pd.read_sql(user_query, UDW_CONN)
-    user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
-    logger.info('User data was written to data/user.csv')
+    # Found that the IDs are not necessarily unique, so dropping duplicates
+    user_df = user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
+    logger.debug(user_df.head())
+    return user_df
+
+
+def run_course_inventory() -> None:
+    start = datetime.now()
+
+    # Gather data
+    course_df = gather_course_info_for_account(1, ENV['TERM_ID'])
+    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+    logger.info('Course data was written to data/course.csv')
+
+    udw_course_ids = course_df['warehouse_id'].to_list()
+    enrollment_df = pull_enrollment_data_from_udw(udw_course_ids)
+
+    udw_user_ids = enrollment_df['user_id'].drop_duplicates().to_list()
+    user_df = pull_user_data_from_udw(udw_user_ids)
+
+    # Find and remove nonexistent user ids from enrollment_df
+    # This can take a few minutes
+    user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
+
+    def check_if_valid_user_id(id: int) -> bool:
+        if id in user_ids:
+            return True
+        else:
+            return False
+
+    enrollment_df['valid_id'] = enrollment_df['user_id'].map(check_if_valid_user_id)
+    enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
+    enrollment_df = enrollment_df.drop(columns=['valid_id'])
+
+    enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
+    logger.info('Enrollment data was written to data/enrollment.csv')
+
+    # Reset DB
+    db_creator_obj = DBCreator('course_inventory', tables)
+    db_creator_obj.set_up_database()
+
+    # Insert collected data
+    logger.info('Inserting course data')
+    course_df.to_sql('course', MYSQL_ENGINE, if_exists='append', index=False)
+    logger.info('Inserting user data')
+    user_df.to_sql('user', MYSQL_ENGINE, if_exists='append', index=False)
+    logger.info('Inserting enrollment data')
+    enrollment_df.to_sql('enrollment', MYSQL_ENGINE, if_exists='append', index=False)
+
+    delta = datetime.now() - start
+    logger.info(f'Duration of run: {delta.total_seconds()}')
 
 
 if __name__ == "__main__":
-    current_udw_course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
-    pull_enrollment_and_user_data(current_udw_course_ids)
+    run_course_inventory()
