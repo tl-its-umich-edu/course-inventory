@@ -174,21 +174,28 @@ def run_course_inventory() -> None:
     # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
     logger.info('Looking for rows with nonexistent user ids in enrollment data')
-    valid_user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
+    valid_user_ids = user_df['warehouse_id'].to_list()
     enrollment_df['valid_id'] = enrollment_df['user_id'].map(
         lambda x: check_if_valid_user_id(x, valid_user_ids)
     )
     enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
     enrollment_df = enrollment_df.drop(columns=['valid_id'])
 
+    num_course_records = len(course_df)
+    num_user_records = len(user_df)
+    num_enrollment_records = len(enrollment_df)
+
     if CREATE_CSVS:
         # Generate CSV Output
+        logger.info(f'Writing {num_course_records} course records to CSV')
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
-        logger.info('Course data was written to data/course.csv')
-        user_df.to_csv(os.path.join('data', 'user_df.csv'), index=False)
-        logger.info('User data was written to data/user.csv')
+        logger.info('Wrote data to data/course.csv')
+        logger.info(f'Writing {num_user_records} user records to CSV')
+        user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
+        logger.info('Wrote data to data/user.csv')
+        logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
-        logger.info('Enrollment data was written to data/enrollment.csv')
+        logger.info('Wrote data to data/enrollment.csv')
 
     # Reset database
     logger.info('Resetting database')
@@ -196,12 +203,15 @@ def run_course_inventory() -> None:
     db_creator_obj.set_up_database()
 
     # Insert gathered data
-    logger.info('Inserting course data')
+    logger.info(f'Inserting {num_course_records} course records to DB')
     course_df.to_sql('course', MYSQL_ENGINE, if_exists='append', index=False)
-    logger.info('Inserting user data')
+    logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
+    logger.info(f'Inserting {num_user_records} user records to DB')
     user_df.to_sql('user', MYSQL_ENGINE, if_exists='append', index=False)
-    logger.info('Inserting enrollment data')
+    logger.info(f'Inserted data into user table in {db_creator_obj.db_name}')
+    logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
     enrollment_df.to_sql('enrollment', MYSQL_ENGINE, if_exists='append', index=False)
+    logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
 
     delta = datetime.now() - start
     logger.info(f'Duration of run: {delta.total_seconds()}')
