@@ -10,7 +10,8 @@ import psycopg2
 from umich_api.api_utils import ApiUtil
 
 # local libraries
-from db.create_db import DBCreator, MYSQL_ENGINE
+from create_db import MYSQL_ENGINE
+from db.db_creator import DBCreator
 from db.tables import tables as TABLES
 
 
