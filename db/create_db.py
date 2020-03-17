@@ -21,7 +21,7 @@ try:
 except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
 
-DB_PARAMS = ENV['INVENTORY_MYSQL']
+DB_PARAMS = ENV['INVENTORY_DB']
 
 conn_str = (
     'mysql' +

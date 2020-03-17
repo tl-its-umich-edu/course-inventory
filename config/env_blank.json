@@ -10,7 +10,7 @@
   "MAX_REQ_ATTEMPTS": 3,
   "WAREHOUSE_INCREMENT": 0,
   "CREATE_CSVS": false,
-  "INVENTORY_MYSQL": {
+  "INVENTORY_DB": {
     "host": "",
     "port": "",
     "dbname": "course_inventory",
