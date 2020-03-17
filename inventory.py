@@ -121,7 +121,8 @@ def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
         FROM enrollment_dim e
         JOIN role_dim r
             ON e.role_id=r.id
-        WHERE e.course_id IN ({courses_string});
+        WHERE e.course_id IN ({courses_string})
+            AND e.workflow_state='active';
     '''
     logger.info('Making enrollment_dim query')
     enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
@@ -150,7 +151,7 @@ def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     return user_df
 
 
-def check_if_valid_user_id(id: int, user_ids) -> bool:
+def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
     if id in user_ids:
         return True
     else:
