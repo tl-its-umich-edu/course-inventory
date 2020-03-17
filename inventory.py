@@ -39,6 +39,7 @@ UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
+INVENTORY_DB = ENV['INVENTORY_DB']
 
 
 # Function(s)
@@ -201,7 +202,7 @@ def run_course_inventory() -> None:
 
     # Empty tables in database
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator('course_inventory', MYSQL_ENGINE, TABLES)
+    db_creator_obj = DBCreator(INVENTORY_DB['dbname'], MYSQL_ENGINE, TABLES)
     db_creator_obj.set_up()
     db_creator_obj.drop_records()
     db_creator_obj.tear_down()

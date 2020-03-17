@@ -36,5 +36,5 @@ MYSQL_ENGINE = create_engine(conn_str)
 
 if __name__ == '__main__':
     logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
-    db_creator_obj = DBCreator('course_inventory', MYSQL_ENGINE, TABLES)
+    db_creator_obj = DBCreator(DB_PARAMS['dbname'], MYSQL_ENGINE, TABLES)
     db_creator_obj.set_up_database()
