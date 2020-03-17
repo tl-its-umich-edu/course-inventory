@@ -53,7 +53,7 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
                 logger.warning('JSONDecodeError encountered')
                 logger.info('Beginning next attempt')
 
-    logger.error('The maximum number of reqeust attempts was reached')
+    logger.error('The maximum number of request attempts was reached')
     return response
 
 
