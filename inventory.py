@@ -33,10 +33,7 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 # Function(s)
 
-def make_audit_logs_api_request(url, params=None):
-    logger.info(f"make_audit_logs_api_request url: {url}")
-    response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
-    return response
+
 
 
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Sequence[Dict]:
@@ -76,23 +73,11 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
         slim_course_dicts.append(slim_course_dict)
     return slim_course_dicts
 
-def get_next_page_url(response):
-    """
-    get the next page url from the Http response headers
-    :param response:
-    :type response: requests
-    :return: next_page_url
-    :rtype: str
-    """
-    logging.debug(get_next_page_url.__name__ + '() called')
 
-    if not response.links:
-        logging.debug('The api call do not have Link headers')
-        return None
-
-    for page in response.links:
-        if 'next' in page:
-            return response.links['next']['url']
+def make_audit_logs_api_request(url, params=None):
+    logger.info(f"make_audit_logs_api_request url: {url}")
+    response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+    return response
 
 
 def handle_request_if_failed(response):
@@ -105,47 +90,47 @@ def handle_request_if_failed(response):
 def get_course_publish_date(df_row: str, publish_date, next_page_url = None)->str:
     logger.debug(df_row)
     if df_row['course_workflow_state'] != 'available':
-        return 'null'
+        return None
 
-    course_id= df_row['course_id']
-
-    if next_page_url is not None:
-        url = next_page_url
-    else:
-        url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
+    course_id = df_row['course_id']
+    url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
 
     try:
-        response = make_audit_logs_api_request(url)
+        if next_page_url is not None:
+            response = make_audit_logs_api_request(url, next_page_url)
+        else:
+            response = make_audit_logs_api_request(url)
 
-    except (Exception) as e:
+    except Exception as e:
         logger.exception('getting published date for a course has erroneous response ' + e.message)
-        return publish_date
+        return None
 
     if not handle_request_if_failed(response):
-        return publish_date
+        return None
 
     audit_events = json.loads(response.text.encode('utf8'))
     if not audit_events:
-        return publish_date
+        return None
 
     events = audit_events['events']
 
     for event in events:
         if event['event_type'] == 'published':
-            publish_date = event['created_at']
-            logger.info(f"Date for Workflow type :{df_row['course_workflow_state']} for course {course_id}")
+            publish_date.append(event['created_at'])
+            logger.info(f"Date for Workflow type {df_row['course_workflow_state']} for course {course_id}")
             break
-    if publish_date is None:
-        next_page_url = get_next_page_url(response)
+    if len(publish_date) == 0:
+        next_page_url = API_UTIL.get_next_page(response)
         if next_page_url is not None:
-            get_course_publish_date(course_id, publish_date, next_page_url)
+            logger.info("Get date from next page")
+            get_course_publish_date(df_row, publish_date, next_page_url)
 
     logger.info(f"For course {course_id} publish_date: {publish_date}")
-    if publish_date is None:
+    if len(publish_date) == 0:
         logger.info(f"For course {course_id} for workflow type {df_row['course_workflow_state']} don't have any date")
-        return 'null'
+        return None
 
-    return publish_date
+    return publish_date[0]
 
 
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
@@ -172,10 +157,8 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[in
 
     course_df = pd.DataFrame(slim_course_dicts)
     course_df['course_warehouse_id'] = course_df['course_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
-    course_date=None
-    course_df['published_date'] = course_df.apply(lambda x: get_course_publish_date(x, course_date), axis=1)
+    course_df['published_date'] = course_df.apply(lambda x: get_course_publish_date(x, []), axis=1)
     logger.debug(course_df.head())
-    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
     logger.info('Course data was written to data/course.csv')
     course_ids = course_df['course_warehouse_id'].to_list()
     return course_ids
