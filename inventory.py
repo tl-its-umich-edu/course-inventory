@@ -198,10 +198,12 @@ def run_course_inventory() -> None:
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
 
-    # Reset database
-    logger.info('Resetting database')
+    # Empty tables in database
+    logger.info('Emptying tables in DB')
     db_creator_obj = DBCreator('course_inventory', TABLES)
-    db_creator_obj.set_up_database()
+    db_creator_obj.set_up()
+    db_creator_obj.drop_records()
+    db_creator_obj.tear_down()
 
     # Insert gathered data
     logger.info(f'Inserting {num_course_records} course records to DB')

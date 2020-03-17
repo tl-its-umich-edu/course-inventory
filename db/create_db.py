@@ -59,10 +59,20 @@ class DBCreator:
         self.conn.execute(drop_statement)
         self.conn.execute('SET FOREIGN_KEY_CHECKS=1;')
 
+    def drop_records(self) -> None:
+        logger.debug('drop_records')
+        self.conn.execute('SET FOREIGN_KEY_CHECKS=0;')
+        for table_dict in self.tables:
+            table_name = table_dict['name']
+            logger.debug(f'Table Name: {table_name}')
+            self.conn.execute(f'DELETE FROM {table_name};')
+            logger.info(f'Dropped records in {table_name} in {self.db_name}')
+        self.conn.execute('SET FOREIGN_KEY_CHECKS=1;')
+
     def create_tables(self) -> None:
         logger.debug('create_tables')
         for table_dict in self.tables:
-            table_name = table_dict["name"]
+            table_name = table_dict['name']
             logger.debug(f'Table Name: {table_name}')
             self.conn.execute(table_dict['statement'])
             logger.info(f'Created table {table_name} in {self.db_name}')
