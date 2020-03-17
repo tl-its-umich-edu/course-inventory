@@ -120,7 +120,6 @@ def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
             ON e.role_id=r.id
         WHERE e.course_id IN ({courses_string});
     '''
-
     logger.info('Making enrollment_dim query')
     enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
     logger.debug(enrollment_df.head())
@@ -173,11 +172,11 @@ def run_course_inventory() -> None:
     # This can take a few minutes
     logger.info('Looking for rows with nonexistent user ids in enrollment data')
     valid_user_ids = user_df['warehouse_id'].drop_duplicates().to_list()
-
     enrollment_df['valid_id'] = enrollment_df['user_id'].map(
         lambda x: check_if_valid_user_id(x, valid_user_ids)
     )
-    enrollment_df = enrollment_df[(enrollment_df['valid_id'])].drop(columns=['valid_id'])
+    enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
+    enrollment_df = enrollment_df.drop(columns=['valid_id'])
 
     if CREATE_CSVS:
         # Generate CSV Output
