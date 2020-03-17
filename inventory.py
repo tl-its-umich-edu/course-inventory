@@ -200,7 +200,7 @@ def run_course_inventory() -> None:
 
     # Empty tables in database
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator('course_inventory', TABLES)
+    db_creator_obj = DBCreator('course_inventory', MYSQL_ENGINE, TABLES)
     db_creator_obj.set_up()
     db_creator_obj.drop_records()
     db_creator_obj.tear_down()
