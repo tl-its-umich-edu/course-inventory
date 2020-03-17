@@ -26,6 +26,9 @@ except FileNotFoundError:
 
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
+ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
+TERM_ID = ENV['CANVAS_TERM_ID']
+
 API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SECRET'])
 SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
@@ -158,7 +161,7 @@ def run_course_inventory() -> None:
     start = datetime.now()
 
     # Gather course data
-    course_df = gather_course_info_for_account(1, ENV['TERM_ID'])
+    course_df = gather_course_info_for_account(ACCOUNT_ID, TERM_ID)
 
     # Gather enrollment data
     udw_course_ids = course_df['warehouse_id'].to_list()
