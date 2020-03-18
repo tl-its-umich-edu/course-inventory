@@ -6,6 +6,7 @@ from typing import Dict, Sequence, Union
 # third-party libraries
 import pandas as pd
 import psycopg2
+from requests import Response
 from umich_api.api_utils import ApiUtil
 
 
@@ -32,7 +33,7 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 # Function(s)
 
-def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Sequence[Dict]:
+def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
@@ -47,13 +48,13 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
         else:
             try:
                 response_data = json.loads(response.text)
-                return response_data
+                return response
             except JSONDecodeError:
                 logger.warning('JSONDecodeError encountered')
                 logger.info('Beginning next attempt')
 
-    logger.error('The maximum number of reqeust attempts was reached')
-    return [{}]
+    logger.error('The maximum number of request attempts was reached')
+    return response
 
 
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
@@ -71,23 +72,30 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
 
 
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
-    url_ending = f'accounts/{account_id}/courses'
+    url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
     params = {
         'with_enrollments': True,
         'enrollment_type': ['student', 'teacher'],
         'enrollment_term_id': term_id,
-        'per_page': 100,
-        'page': 1
+        'per_page': 100
     }
 
-    slim_course_dicts = []
+    # Make first course request
+    page_num = 1
+    logger.info(f'Course Page Number: {page_num}')
+    response = make_request_using_api_utils(url_ending_with_scope, params)
+    all_course_data = json.loads(response.text)
+    slim_course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
+
     while more_pages:
-        logger.info(f"Course Page Number: {params['page']}")
-        all_course_data = make_request_using_api_utils(f'{API_SCOPE_PREFIX}/{url_ending}', params)
-        if len(all_course_data) > 0:
+        next_params = API_UTIL.get_next_page(response)
+        if next_params:
+            page_num += 1
+            logger.info(f'Course Page Number: {page_num}')
+            response = make_request_using_api_utils(url_ending_with_scope, next_params)
+            all_course_data = json.loads(response.text)
             slim_course_dicts += slim_down_course_data(all_course_data)
-            params['page'] += 1
         else:
             logger.info('No more pages!')
             more_pages = False
