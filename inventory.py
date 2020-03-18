@@ -7,6 +7,7 @@ import time
 # third-party libraries
 import pandas as pd
 import psycopg2
+import requests
 from requests import Response
 from umich_api.api_utils import ApiUtil
 
@@ -14,6 +15,7 @@ from umich_api.api_utils import ApiUtil
 from db.db_creator import DBCreator
 from canvas.published_date import FetchPublishedDate
 
+from gql_queries import queries as QUERIES
 
 # Initialize settings and globals
 
@@ -54,7 +56,14 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
         logger.debug(f'Attempt #{i}')
-        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+        if method:
+            response = requests.request(method=method, url=url, json=params)
+        else:
+            response = requests.get(url=url, params=params)
+        # if method:
+        #     response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params, method=method)
+        # else:
+        #     response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
         logger.info('Received response with the following URL: ' + response.url)
         status_code = response.status_code
 
@@ -74,44 +83,50 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
 
 
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
+    course_dicts = course_data['data']['term']['coursesConnection']['nodes']
+
     slim_course_dicts = []
-    for course_dict in course_data:
+    for course_dict in course_dicts:
         slim_course_dict = {
-            'canvas_id': course_dict['id'],
-            'name': course_dict['name'],
-            'account_id': course_dict['account_id'],
-            'created_at': course_dict['created_at'],
-            'workflow_state': course_dict['workflow_state']
+            'course_id': int(course_dict['_id']),
+            'course_name': course_dict['name'],
+            'course_account_id': course_dict['account']['_id'],
+            'course_created_at': course_dict['createdAt'],
+            'course_workflow_state': course_dict['state']
         }
         slim_course_dicts.append(slim_course_dict)
     return slim_course_dicts
 
 
-def gather_course_info_for_account(account_id: int, term_id: int) -> pd.DataFrame:
-    url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
+def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
+    start = datetime.now()
+    url_ending_with_scope = f'{API_SCOPE_PREFIX}/api/graphql'
+    url_ending = 'https://umich.instructure.com/api/graphql'
     params = {
-        'with_enrollments': True,
-        'enrollment_type': ['student', 'teacher'],
-        'enrollment_term_id': term_id,
-        'per_page': 100
+        'access_token': ACCESS_TOKEN,
+        'query': QUERIES['coursesQuery'],
+        'variables': {
+            'termID': ENV['TERM_ID'],
+            'pageSize': 100,
+            'pageCursor': ''
+        }
     }
 
-    # Make first course request
-    page_num = 1
-    logger.info(f'Course Page Number: {page_num}')
-    response = make_request_using_api_utils(url_ending_with_scope, params)
-    all_course_data = json.loads(response.text)
-    slim_course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
+    page_num = 1
+    slim_course_dicts = []
 
     while more_pages:
-        next_params = API_UTIL.get_next_page(response)
-        if next_params:
+        logger.info(f'Course Page Number: {page_num}')
+        response = make_request_using_api_utils(url_ending, params, method='POST')
+        all_course_data = json.loads(response.text)
+        slim_course_dicts += slim_down_course_data(all_course_data)
+        page_info_dict = all_course_data['data']['term']['coursesConnection']['pageInfo']
+
+        if page_info_dict['hasNextPage']:
             page_num += 1
-            logger.info(f'Course Page Number: {page_num}')
-            response = make_request_using_api_utils(url_ending_with_scope, next_params)
-            all_course_data = json.loads(response.text)
-            slim_course_dicts += slim_down_course_data(all_course_data)
+            page_cursor = page_info_dict['endCursor']
+            params['variables']['pageCursor'] = page_cursor
         else:
             logger.info('No more pages!')
             more_pages = False
@@ -119,7 +134,13 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> pd.DataFram
     course_df = pd.DataFrame(slim_course_dicts)
     course_df['warehouse_id'] = course_df['canvas_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     logger.debug(course_df.head())
-    return course_df
+    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+    logger.info('Course data was written to data/course.csv')
+    course_ids = course_df['course_warehouse_id'].to_list()
+
+    delta = datetime.now() - start
+    logger.info(delta.total_seconds())
+    return course_ids
 
 
 def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
