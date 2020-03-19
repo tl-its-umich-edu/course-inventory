@@ -1,6 +1,8 @@
-## course-inventory
+# course-inventory
 
-The course-inventory application is designed to gather current-term Canvas LMS system data about courses, enrollments, and users in order to inform leadership at the University of Michigan about the status of the utilization of Canvas courses. Currently, the application collects data from the Canvas API and the Unizin Data Warehouse and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports.
+The course-inventory application is designed to gather current-term Canvas LMS system data about courses, enrollments, and users in order to inform leadership at the University of Michigan about the status of the utilization of Canvas courses. Currently, the application collects data from the Canvas API and the Unizin Data Warehouse and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports and visualizations.
+
+## Development
 
 ### Configuration
 
@@ -40,27 +42,9 @@ To configure the application before installation and usage (see the next section
 
 ### Installation & Usage
 
-#### With Docker
+#### Docker is coming!
 
-You can run the application without installing the dependencies manually by leveraging the `Dockerfile` and Docker 
-Desktop. To run with Docker, do the following:
-
-1. Build an image.
-    ```
-    docker build -t inventory .
-    ```
-
-2. Run a container using the tagged image, specifying a bind mount to make the output CSVs accessible.
-    ```
-    docker run --mount \
-        type=bind,\
-        source={some absolute path to an ouptut directory, no trailing slash},\
-        target=/app/data \
-        inventory   
-    ```
-
-3. We still need to determine and document a way to use Docker to populate a database, either in a specified host or in a separate Docker container.
-
+A `docker-compose.yml` file -- that will let you run and test the MySQL database population -- is in the works! For now, please use `virtualenv` (see below).
 
 #### With a Virtual Environment
 
@@ -90,8 +74,7 @@ You can also set up the application using `virtualenv` by doing the following:
 #### OpenShift Deployment
 
 Deploying the application as a job using OpenShift and Jenkins involves several steps, which are beyond the scope of
-this README. However, it seems appropriate to explain some configuration assumed by the `Dockerfile` and unique to this
-application.
+this README. However, a few details about how the job is configurd are provided below.
 
 * The `env.json` file described in the **Configuration** section above needs to be made available to 
   running course-inventory containers via an OpenShift ConfigMap, a type of Resource. A volume containing the ConfigMap 
@@ -106,7 +89,7 @@ application.
   ```
   - env:
       - name: ENV_FILE
-        value: /configuration/secrets/env_test.json
+        value: /config/secrets/env_test.json
   ```
 
 ### Resources
