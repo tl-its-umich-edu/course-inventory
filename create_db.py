@@ -14,7 +14,7 @@ from db.tables import tables as TABLES
 logger = logging.getLogger(__name__)
 
 try:
-    config_path = os.getenv("ENV_PATh", os.path.join('config', 'secrets', 'env.json'))
+    config_path = os.getenv("ENV_PATH", os.path.join('config', 'secrets', 'env.json'))
     with open(config_path) as env_file:
         ENV = json.loads(env_file.read())
 except FileNotFoundError:
