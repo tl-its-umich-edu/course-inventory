@@ -5,6 +5,7 @@ venv
 # data
 *.csv
 *.db
+.data
 
 # etc
 .DS_Store

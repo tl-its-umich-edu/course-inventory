@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:5.7
+    restart: on-failure
+    environment:
+      - MYSQL_HOST=course_inventory_mysql
+      - MYSQL_DATABASE=course_inventory_local
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_PORT=3306
+    entrypoint: ['docker-entrypoint.sh', '--default-authentication-plugin=mysql_native_password']
+    ports:
+      - "4444:3306"
+    volumes:
+      - ./.data/mysql:/var/lib/mysql:delegated
+    container_name: course_inventory_mysql
+  job:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    depends_on:
+      - mysql
+    volumes:
+      - ${HOME}/secrets:/app/config/secrets
+      - ${HOME}/data/inventory:/app/data
+    container_name: inventory
