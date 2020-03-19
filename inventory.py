@@ -7,6 +7,12 @@ from typing import Dict, Sequence, Union
 import pandas as pd
 import psycopg2
 from umich_api.api_utils import ApiUtil
+from timeit import default_timer as timer
+from canvasapis import GroupsForSections
+import time
+from queue import Queue
+from threading import Thread
+import sys
 
 
 # Initialize settings and globals
@@ -26,10 +32,14 @@ SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 PER_PAGE_COUNT = ENV['PER_PAGE_COUNT']
+CANVAS_TOKEN = ENV['CANVAS_TOKEN']
+CANVAS_URL = ENV['CANVAS_URL']
+NO_OF_THREADS = ENV['NO_OF_THREADS']
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
+published_course_date = {}
 
 # Function(s)
 
@@ -132,36 +142,150 @@ def get_course_publish_date(df_row: str, publish_date, next_page_url = None)->st
 
     return publish_date[0]
 
+def do_published_date_work(q):
+    logger.info("Do worker subject")
+    while True:
+        course_id = q.get()
+        logger.info(f"course data to be fetched {course_id}")
+        resp = get_course_publish_date_short(course_id)
+        response_parsing(resp, course_id)
+        q.task_done()
+
+
+def response_parsing(response, course_id):
+    logger.info("Response parsing")
+    start_time = time.time()
+    logger.info(f"PUBLISHED_DATE_SIZE: {len(published_course_date)}")
+    publish_date = False
+    if not handle_request_if_failed(response):
+        published_course_date.update({course_id:response.status_code})
+        return
+
+    audit_events = json.loads(response.text.encode('utf8'))
+    if not audit_events:
+        published_course_date.update({course_id:"no_data_sent"})
+        return
+
+    events = audit_events['events']
+
+    for event in events:
+        if event['event_type'] == 'published':
+            published_course_date.update({course_id: event['created_at']})
+            publish_date = True
+            logger.info(f"Published Date {event['created_at']} for course {course_id}")
+            break
+
+    if not publish_date :
+        published_course_date.update({course_id:"Nothing"})
+        logger.info(f"For course {course_id} don't seems to  have a date")
+    seconds = time.time() - start_time
+    strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
+    logger.info(f"For Parsing the published date for course {course_id} API call took: {strftime}")
+
+
+def get_course_publish_date_short(course_id)->str:
+    logger.debug(f"Getting Published date API call for course {course_id}")
+    start_time = time.time()
+
+    url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
+
+    try:
+        response = make_audit_logs_api_request(url)
+
+    except Exception as e:
+        logger.exception('getting published date for a course has erroneous response ' + e.message)
+        return None
+
+    seconds = time.time() - start_time
+    strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
+    logger.info(f"For course {course_id} API call took: {strftime}")
+    return response
+
+
+def get_course_publish_date_direct_canvas(course_id, api_int)->str:
+    logger.debug(f"Getting Published date API call for course {course_id}")
+    start_time = time.time()
+    publish_date = None
+
+    url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
+
+    try:
+        response = api_int.get_course_audit_logs(course_id)
+
+    except Exception as e:
+        logger.exception('getting published date for a course has erroneous response ' + e.message)
+        return None
+
+    if not handle_request_if_failed(response):
+        return None
+    try:
+        audit_events = json.loads(response.text.encode('utf8'))
+    except JSONDecodeError as e:
+        logger.error(f"Json response Decoding failed due {e.msg}")
+        return None
+
+    if not audit_events:
+        return None
+
+    events = audit_events['events']
+
+    for event in events:
+        if event['event_type'] == 'published':
+            publish_date = event['created_at']
+            logger.info(f"Published Date {publish_date} for course {course_id}")
+            break
+
+    if publish_date is None:
+        logger.info(f"For course {course_id} don't seems to  have a date")
+        return None
+    seconds = time.time() - start_time
+    strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
+    logger.info(f"For course {course_id} API call took: {strftime}")
+    return publish_date
+
 
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
-    url_ending = f'accounts/{account_id}/courses'
-    params = {
-        'with_enrollments': True,
-        'enrollment_type': ['student', 'teacher'],
-        'enrollment_term_id': term_id,
-        'per_page': 100,
-        'page': 1
-    }
-
-    slim_course_dicts = []
-    more_pages = True
-    while more_pages:
-        logger.info(f"Course Page Number: {params['page']}")
-        all_course_data = make_request_using_api_utils(f'{API_SCOPE_PREFIX}/{url_ending}', params)
-        if len(all_course_data) > 0:
-            slim_course_dicts += slim_down_course_data(all_course_data)
-            params['page'] += 1
-        else:
-            logger.info('No more pages!')
-            more_pages = False
-
-    course_df = pd.DataFrame(slim_course_dicts)
+    # logger.info("gather_course_info_for_account")
+    # url_ending = f'accounts/{account_id}/courses'
+    # params = {
+    #     'with_enrollments': True,
+    #     'enrollment_type': ['student', 'teacher'],
+    #     'enrollment_term_id': term_id,
+    #     'per_page': 100,
+    #     'page': 1
+    # }
+    #
+    # slim_course_dicts = []
+    # more_pages = True
+    # while more_pages:
+    #     logger.info(f"Course Page Number: {params['page']}")
+    #     all_course_data = make_request_using_api_utils(f'{API_SCOPE_PREFIX}/{url_ending}', params)
+    #     if len(all_course_data) > 0:
+    #         slim_course_dicts += slim_down_course_data(all_course_data)
+    #         params['page'] += 1
+    #     else:
+    #         logger.info('No more pages!')
+    #         more_pages = False
+    #
+    # course_df = pd.DataFrame(slim_course_dicts)
+    course_df = pd.read_csv("course_full.csv")
     course_df['course_warehouse_id'] = course_df['course_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
-    course_df['published_date'] = course_df.apply(lambda x: get_course_publish_date(x, []), axis=1)
+    # course_avail_df= course_df.loc[course_df.course_workflow_state =='available'].copy()
+    start_time = time.time()
+    # api_ins = GroupsForSections(CANVAS_TOKEN, CANVAS_URL)
+    # course_avail_df['published_date'] = course_avail_df['course_id'].map(lambda x: get_course_publish_date_short(x))
+    # course_avail_df['published_date'] = course_avail_df['course_id'].map(lambda x: get_course_publish_date_direct_canvas(x,api_ins))
+    # course_avail_df= course_avail_df.drop(['course_name','course_account_id','course_created_at','course_workflow_state','course_warehouse_id'],axis=1)
+    # df = pd.merge(course_df, course_avail_df, on='course_id', how='left')
+    # seconds = time.time() - start_time
+    # strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
+    # logger.info(f"Time Taken for Fetching {course_avail_df.shape[0]} published courses published date: {strftime}")
+    # course_df['published_date'] = course_df.apply(lambda x: get_course_publish_date(x, []), axis=1)
     logger.debug(course_df.head())
-    logger.info('Course data was written to data/course.csv')
-    course_ids = course_df['course_warehouse_id'].to_list()
-    return course_ids
+    # df.to_csv('course_api_direct.csv', index=False)
+    # logger.info('Course data was written to data/course.csv')
+    # course_ids = course_df['course_warehouse_id'].to_list()
+    return course_df
 
 
 def pull_enrollment_and_user_data(udw_course_ids) -> None:
@@ -208,5 +332,28 @@ def pull_enrollment_and_user_data(udw_course_ids) -> None:
 
 
 if __name__ == "__main__":
-    current_udw_course_ids = gather_course_info_for_account(1, ENV['TERM_ID'])
-    pull_enrollment_and_user_data(current_udw_course_ids)
+    q = Queue(maxsize=0)
+    start_time = time.time()
+    for i in range(NO_OF_THREADS):
+        worker = Thread(target=do_published_date_work, args=(q,))
+        worker.daemon = True
+        worker.start()
+    course_df = gather_course_info_for_account(1, ENV['TERM_ID'])
+    course_avail_df= course_df.loc[course_df.course_workflow_state =='available'].copy()
+    course_ids = course_df['course_id'].to_list()
+    try:
+        for course_id in course_ids:
+            q.put(course_id)
+        q.join()
+    except KeyboardInterrupt:
+        sys.exit(1)
+    logger.info(f"Final Course_date {published_course_date}")
+    df1 = pd.DataFrame(published_course_date.items(), columns=['course_id','published_date'])
+    df = pd.merge(course_df, df1, on='course_id', how='left')
+    df.to_csv('course_threads.csv', index=False)
+    seconds = time.time() - start_time
+    strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
+    print(f"Time Taken for Fetching: {strftime}")
+    print("Ending of the process")
+    # course_ids = course_df['course_warehouse_id'].to_list()
+    # pull_enrollment_and_user_data(current_udw_course_ids)
