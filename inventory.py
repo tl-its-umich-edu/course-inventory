@@ -7,8 +7,6 @@ from typing import Dict, Sequence, Union
 import pandas as pd
 import psycopg2
 from umich_api.api_utils import ApiUtil
-from timeit import default_timer as timer
-from canvasapis import GroupsForSections
 import time
 from queue import Queue
 from threading import Thread
@@ -32,8 +30,6 @@ SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 PER_PAGE_COUNT = ENV['PER_PAGE_COUNT']
-CANVAS_TOKEN = ENV['CANVAS_TOKEN']
-CANVAS_URL = ENV['CANVAS_URL']
 NO_OF_THREADS = ENV['NO_OF_THREADS']
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
@@ -200,49 +196,6 @@ def get_course_publish_date_short(course_id)->str:
     strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
     logger.info(f"For course {course_id} API call took: {strftime}")
     return response
-
-
-def get_course_publish_date_direct_canvas(course_id, api_int)->str:
-    logger.debug(f"Getting Published date API call for course {course_id}")
-    start_time = time.time()
-    publish_date = None
-
-    url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
-
-    try:
-        response = api_int.get_course_audit_logs(course_id)
-
-    except Exception as e:
-        logger.exception('getting published date for a course has erroneous response ' + e.message)
-        return None
-
-    if not handle_request_if_failed(response):
-        return None
-    try:
-        audit_events = json.loads(response.text.encode('utf8'))
-    except JSONDecodeError as e:
-        logger.error(f"Json response Decoding failed due {e.msg}")
-        return None
-
-    if not audit_events:
-        return None
-
-    events = audit_events['events']
-
-    for event in events:
-        if event['event_type'] == 'published':
-            publish_date = event['created_at']
-            logger.info(f"Published Date {publish_date} for course {course_id}")
-            break
-
-    if publish_date is None:
-        logger.info(f"For course {course_id} don't seems to  have a date")
-        return None
-    seconds = time.time() - start_time
-    strftime = time.strftime("%H:%M:%S", time.gmtime(seconds))
-    logger.info(f"For course {course_id} API call took: {strftime}")
-    return publish_date
-
 
 def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
     # logger.info("gather_course_info_for_account")
