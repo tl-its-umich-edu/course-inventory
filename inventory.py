@@ -244,7 +244,7 @@ if __name__ == "__main__":
         worker.start()
     course_df = gather_course_info_for_account(1, ENV['TERM_ID'])
     course_avail_df= course_df.loc[course_df.course_workflow_state =='available'].copy()
-    course_ids = course_df['course_id'].to_list()
+    course_ids = course_avail_df['course_id'].to_list()
     try:
         for course_id in course_ids:
             q.put(course_id)
