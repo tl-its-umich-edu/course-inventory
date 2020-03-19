@@ -39,9 +39,6 @@ published_course_date = {}
 
 # Function(s)
 
-
-
-
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Sequence[Dict]:
     logger.debug('Making a request for data...')
 
@@ -91,52 +88,6 @@ def handle_request_if_failed(response):
         return False
     else:
         return True
-
-
-def get_course_publish_date(df_row: str, publish_date, next_page_url = None)->str:
-    logger.debug(df_row)
-    if df_row['course_workflow_state'] != 'available':
-        return None
-
-    course_id = df_row['course_id']
-    url = f"{API_SCOPE_PREFIX}/audit/course/courses/{course_id}?per_page={PER_PAGE_COUNT}"
-
-    try:
-        if next_page_url is not None:
-            response = make_audit_logs_api_request(url, next_page_url)
-        else:
-            response = make_audit_logs_api_request(url)
-
-    except Exception as e:
-        logger.exception('getting published date for a course has erroneous response ' + e.message)
-        return None
-
-    if not handle_request_if_failed(response):
-        return None
-
-    audit_events = json.loads(response.text.encode('utf8'))
-    if not audit_events:
-        return None
-
-    events = audit_events['events']
-
-    for event in events:
-        if event['event_type'] == 'published':
-            publish_date.append(event['created_at'])
-            logger.info(f"Date for Workflow type {df_row['course_workflow_state']} for course {course_id}")
-            break
-    if len(publish_date) == 0:
-        next_page_url = API_UTIL.get_next_page(response)
-        if next_page_url is not None:
-            logger.info("Get date from next page")
-            get_course_publish_date(df_row, publish_date, next_page_url)
-
-    logger.info(f"For course {course_id} publish_date: {publish_date}")
-    if len(publish_date) == 0:
-        logger.info(f"For course {course_id} for workflow type {df_row['course_workflow_state']} don't have any date")
-        return None
-
-    return publish_date[0]
 
 def do_published_date_work(q):
     logger.info("Do worker subject")
