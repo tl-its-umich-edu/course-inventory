@@ -1,6 +1,9 @@
 # Environment file
 env.json
 
+# Data files
+total_*.csv
+
 #https://raw.githubusercontent.com/github/gitignore/master/Python.gitignore
 # Byte-compiled / optimized / DLL files
 __pycache__/

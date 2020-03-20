@@ -57,7 +57,7 @@ headers = {
 # 1 call a second
 @sleep_and_retry
 @limits(calls=60, period=60)
-def run_report(param_attribute, headers, json_attribute_name, page_token):
+def run_report(param_attribute, headers, json_attribute_name, page_token=False):
 
     url = ENV[f'ZOOM_{param_attribute}_URL']
     params = ENV[f'ZOOM_{param_attribute}_PARAMS']
@@ -115,10 +115,8 @@ def run_report(param_attribute, headers, json_attribute_name, page_token):
 
 
 # run users report
-#run_report('USERS', headers, 'users', page_token=False)
-
+run_report('USERS', headers, 'users', page_token=False)
 # run meetings report
 run_report('MEETINGS', headers, 'meetings', page_token=True)
-
 # run webinars report
 run_report('WEBINARS', headers, 'webinars', page_token=True)
