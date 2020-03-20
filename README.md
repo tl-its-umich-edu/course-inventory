@@ -26,8 +26,8 @@ To configure the application before installation and usage (see the next section
 
 1. Clone and navigate into the repository.
     ```
-    https://github.com/tl-its-umich-edu/course-inventory.git  # HTTPS
-    git@github.com:tl-its-umich-edu/course-inventory.git      # SSH
+    git clone https://github.com/tl-its-umich-edu/course-inventory.git  # HTTPS
+    git clone git@github.com:tl-its-umich-edu/course-inventory.git      # SSH
     
     cd course-inventory
     ```
