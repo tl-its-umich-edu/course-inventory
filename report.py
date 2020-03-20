@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Functions
 def get_total_page_count(url:str, headers: Dict[str, Union[str, int]] = {}):
+  logger.info("get_total_page_count")
   # get the total page count
   total_page_count = 1
   response = requests.request("GET", f"{url}", headers=headers, data = {})
@@ -26,7 +27,10 @@ def get_total_page_count(url:str, headers: Dict[str, Union[str, int]] = {}):
   else:
       try:
         results = json.loads(response.text.encode('utf8'))
+        logger.info(results)
         total_page_count = results['page_count']
+
+        logger.info(f"url ={url} page count={total_page_count}")
       except JSONDecodeError:
         logger.warning('JSONDecodeError encountered')
         logger.info('No page at all!')
@@ -53,14 +57,12 @@ headers = {
 
 
 def run_report(param_attribute, headers, json_attribute_name):
-
   url = ENV[f'ZOOM_{param_attribute}_URL']
   params = ENV[f'ZOOM_{param_attribute}_PARAMS']
 
   # construct param string
   f = furl.furl('')
   f.args = params
-  print(f.url)
 
   # get total page count
   total_page_count = get_total_page_count(f"{url}{f.url}", headers)
@@ -73,7 +75,6 @@ def run_report(param_attribute, headers, json_attribute_name):
       # construct param string
       f = furl.furl('')
       f.args = params
-      print(f.url)
       
       response = requests.request("GET", f"{url}{f.url}", headers=headers, data = payload)
       status_code = response.status_code
@@ -90,6 +91,7 @@ def run_report(param_attribute, headers, json_attribute_name):
             logger.info(f'data frame size {len(total_df)}')
             # go retrieve next page
             params['page_number'] +=1
+            params['next_page_token'] = results['next_page_token']
           except JSONDecodeError:
               logger.warning('JSONDecodeError encountered')
               logger.info('No more pages!')
@@ -99,7 +101,7 @@ def run_report(param_attribute, headers, json_attribute_name):
   total_df.to_csv(output_file_name)
 
 # run users report
-run_report('USERS', headers, 'users')
+run_report('USERS', users_params, headers, 'users')
 
 # run meetings report
 run_report('MEETINGS', headers, 'meetings')
