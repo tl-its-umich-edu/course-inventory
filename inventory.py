@@ -19,7 +19,8 @@ from db.db_creator import DBCreator
 logger = logging.getLogger(__name__)
 
 try:
-    with open(os.path.join('config', 'env.json')) as env_file:
+    config_path = os.getenv("ENV_PATH", os.path.join('config', 'secrets', 'env.json'))
+    with open(config_path) as env_file:
         ENV = json.loads(env_file.read())
 except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
