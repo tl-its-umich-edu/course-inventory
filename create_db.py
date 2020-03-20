@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 
 # local libraries
 from db.db_creator import DBCreator
-from db.tables import tables as TABLES
 
 
 # Initializing settings and global variables
@@ -21,20 +20,10 @@ except FileNotFoundError:
 
 DB_PARAMS = ENV['INVENTORY_DB']
 
-conn_str = (
-    'mysql' +
-    f"://{DB_PARAMS['user']}" +
-    f":{DB_PARAMS['password']}" +
-    f"@{DB_PARAMS['host']}" +
-    f":{DB_PARAMS['port']}" +
-    f"/{DB_PARAMS['dbname']}?charset=utf8"
-)
-MYSQL_ENGINE = create_engine(conn_str)
-
 
 # Main Program
 
 if __name__ == '__main__':
     logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
-    db_creator_obj = DBCreator(DB_PARAMS['dbname'], MYSQL_ENGINE, TABLES)
+    db_creator_obj = DBCreator(DB_PARAMS)
     db_creator_obj.set_up_database()

@@ -11,9 +11,7 @@ from requests import Response
 from umich_api.api_utils import ApiUtil
 
 # local libraries
-from create_db import MYSQL_ENGINE
 from db.db_creator import DBCreator
-from db.tables import tables as TABLES
 
 
 # Initialize settings and globals
@@ -208,22 +206,24 @@ def run_course_inventory() -> None:
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
 
-    # Empty tables in database
+    # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator(INVENTORY_DB['dbname'], MYSQL_ENGINE, TABLES)
+    db_creator_obj = DBCreator(INVENTORY_DB)
     db_creator_obj.set_up()
-    db_creator_obj.drop_records()
+    if len(db_creator_obj.get_table_names()) > 0:
+        db_creator_obj.drop_records()
+    db_creator_obj.migrate()
     db_creator_obj.tear_down()
 
     # Insert gathered data
     logger.info(f'Inserting {num_course_records} course records to DB')
-    course_df.to_sql('course', MYSQL_ENGINE, if_exists='append', index=False)
+    course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
     logger.info(f'Inserting {num_user_records} user records to DB')
-    user_df.to_sql('user', MYSQL_ENGINE, if_exists='append', index=False)
+    user_df.to_sql('user', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into user table in {db_creator_obj.db_name}')
     logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
-    enrollment_df.to_sql('enrollment', MYSQL_ENGINE, if_exists='append', index=False)
+    enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
 
     delta = datetime.now() - start
