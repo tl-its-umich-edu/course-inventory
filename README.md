@@ -1,6 +1,8 @@
 # course-inventory
 
-The course-inventory application is designed to gather current-term Canvas LMS system data about courses, enrollments, and users in order to inform leadership at the University of Michigan about the status of the utilization of Canvas courses. Currently, the application collects data from the Canvas API and the Unizin Data Warehouse and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports and visualizations.
+## Overview
+
+The course-inventory application is designed to gather current-term Canvas LMS data about courses, enrollments, and users in order to inform leadership at the University of Michigan about the status and utilization of Canvas courses. Currently, the application collects data from the Canvas API and the Unizin Data Warehouse and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports and visualizations.
 
 ## Development
 
