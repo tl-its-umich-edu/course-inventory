@@ -1,10 +1,13 @@
 # course-inventory
 
+
 ## Overview
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, enrollments, and users in order to inform leadership at the University of Michigan about the status and utilization of Canvas courses. Currently, the application collects data from the Canvas API and the Unizin Data Warehouse and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports and visualizations.
 
+
 ## Development
+
 
 ### Pre-requisities
 
@@ -15,6 +18,7 @@ The sections below provide instructions for configuring, installing, using, and 
    * [OpenShift CLI](https://docs.openshift.com/enterprise/3.1/cli_reference/get_started_cli.html)
 
 While performing any of the actions described below, use a terminal, text editor, or file utility as necessary. Some sample command-line instructions are provided for some steps.
+
 
 ### Configuration
 
@@ -53,11 +57,14 @@ To configure the application before installation and usage (see the next section
     `INVENTORY_DB` | An object containing the necessary credential information for connecting to a MySQL database, where output data will be inserted.
     `UDW` | An object containing the necessary credential information for connecting to the Unizin Data Warehouse, where data will be pulled from.
 
+
 ### Installation & Usage
+
 
 #### Docker is coming!
 
 A `docker-compose.yml` file -- that will let you run and test the MySQL database population -- is in the works! For now, please use `virtualenv` (see below).
+
 
 #### With a Virtual Environment
 
@@ -84,6 +91,7 @@ You can also set up the application using `virtualenv` by doing the following:
     python inventory.py
     ```
 
+
 #### OpenShift Deployment
 
 Deploying the application as a job using OpenShift and Jenkins involves several steps, which are beyond the scope of
@@ -105,6 +113,7 @@ this README. However, a few details about how the job is configurd are provided 
         value: /config/secrets/env_test.json
   ```
 
+
 ### Database Management and Schema Changes
 
 Currently, the database is version-controlled and managed using the [`yoyo-migrations` Python library](https://ollycope.com/software/yoyo/latest/). The migration files are located in the `db/migrations` directory.
@@ -116,6 +125,7 @@ To make changes to the database schema, perform the follow steps in order.
 2. Within the file, import the `step` function from `yoyo`, and then for each desired schema change, pass a SQL string to `step`. Multiple step invocations can be enclosed in a list and assigned to a `steps` variable. Place each `step` in the order it should be applied.
 
 Refer to the first migration, `0001.init_inventory_db.py`, if an example is needed.
+
 
 ## Other Resources
 
