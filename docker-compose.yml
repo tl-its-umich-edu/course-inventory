@@ -5,12 +5,12 @@ services:
     image: mysql:5.7
     restart: on-failure
     environment:
-      - MYSQL_HOST=inventory_mysql
-      - MYSQL_DATABASE=inventory_local
       - MYSQL_ROOT_PASSWORD=inventory_root_password
+      - MYSQL_HOST=inventory_mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=inventory_local
       - MYSQL_USER=inventory_test_user
       - MYSQL_PASSWORD=inventory_test_password
-      - MYSQL_PORT=3306
     entrypoint: ['docker-entrypoint.sh', '--default-authentication-plugin=mysql_native_password']
     ports:
       - "4444:3306"
