@@ -5,18 +5,18 @@ services:
     image: mysql:5.7
     restart: on-failure
     environment:
-      - MYSQL_ROOT_PASSWORD=inventory_root_password
-      - MYSQL_HOST=inventory_mysql
+      - MYSQL_ROOT_PASSWORD=ci_root_pw
+      - MYSQL_HOST=course_inventory_mysql
       - MYSQL_PORT=3306
-      - MYSQL_DATABASE=inventory_local
-      - MYSQL_USER=inventory_test_user
-      - MYSQL_PASSWORD=inventory_test_password
+      - MYSQL_DATABASE=course_inventory_local
+      - MYSQL_USER=ci_user
+      - MYSQL_PASSWORD=ci_pw
     entrypoint: ['docker-entrypoint.sh', '--default-authentication-plugin=mysql_native_password']
     ports:
       - "4444:3306"
     volumes:
       - ./.data/mysql:/var/lib/mysql:delegated
-    container_name: inventory_mysql
+    container_name: course_inventory_mysql
   job:
     build:
         context: .
@@ -24,6 +24,6 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ${HOME}/secrets/inventory:/app/config/secrets
-      - ${HOME}/data/inventory:/app/data
-    container_name: inventory
+      - ${HOME}/secrets/course-inventory:/app/config/secrets
+      - ${HOME}/data/course-inventory:/app/data
+    container_name: course_inventory
