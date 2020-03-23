@@ -1,9 +1,9 @@
 # standard libraries
 import json, logging, os
-from datetime import datetime
 from json.decoder import JSONDecodeError
 from typing import Dict, Sequence, Union
 import time
+from logging.handlers import RotatingFileHandler
 
 # third-party libraries
 import pandas as pd
@@ -28,7 +28,10 @@ try:
 except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
 
-logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
+logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'),
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    handlers=[RotatingFileHandler('debug.log', mode='w', maxBytes=10485760,backupCount=5),
+                              logging.StreamHandler()])
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
 TERM_ID = ENV['CANVAS_TERM_ID']
@@ -39,6 +42,7 @@ API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 CANVAS_TOKEN = ENV['CANVAS_TOKEN']
 CANVAS_URL = ENV['CANVAS_URL']
+PUBLISHED_DATE_WORKERS = ENV.get('PUBLISHED_DATE_WORKERS',8)
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
@@ -51,6 +55,7 @@ published_course_next_page_list = []
 
 
 # Function(s)
+
 
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
@@ -174,6 +179,7 @@ def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
     else:
         return False
 
+
 def get_next_page_url(response):
     """
     get the next page url from the Http response headers
@@ -192,7 +198,7 @@ def get_next_page_url(response):
         if 'next' in page:
             url_ = results['next']['url']
             published_course_next_page_list.append(url_)
-            logger.info(f"Pagination list: {published_course_next_page_list}")
+            logger.info(f"Pagination size {len(published_course_next_page_list)} for published_at date")
             break
 
 
@@ -209,15 +215,17 @@ def published_date_resp_parsing(response):
     status = response.result().status_code
     published_date_found = False
     if status != 200:
-        logger.info(f"Response not successful with status code {status}")
+        logger.info(f"Response not successful with status code {status} due to {response.result().text}")
         return
 
     try:
         audit_events = json.loads(response.result().text)
     except JSONDecodeError as e:
         logger.info(f"Error in parsing the response {e.message}")
+        return
 
     if not audit_events:
+        logger.info(f"Response for fetching published date is empty {audit_events}")
         return
 
     events = audit_events['events']
@@ -234,13 +242,13 @@ def published_date_resp_parsing(response):
 
     seconds = time.time() - start_time
     str_time = time.strftime("%H:%M:%S", time.gmtime(seconds))
-    logger.info(f"Parsing the published date took {str_time} ")
+    logger.debug(f"Parsing the published date took {str_time} ")
     return
 
 
 def get_published_course_date(course_ids, next_page_links=None):
     logger.info("Starting of get_published_course_date call")
-    with FuturesSession() as session:
+    with FuturesSession(max_workers=PUBLISHED_DATE_WORKERS) as session:
         headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + CANVAS_TOKEN}
         if next_page_links is not None:
             logger.info("Going through Next page URL set")
@@ -250,7 +258,7 @@ def get_published_course_date(course_ids, next_page_links=None):
                 published_course_next_page_list.remove(next_page_link)
                 responses.append(response)
         else:
-            logger.info("Initial Round of Fetching course publised date")
+            logger.info("Initial Round of Fetching course published date")
             responses = [
                 session.get(f'{CANVAS_URL}/api/v1/audit/course/courses/{course_id}?per_page=100', headers=headers)
                 for course_id in course_ids]
@@ -259,7 +267,8 @@ def get_published_course_date(course_ids, next_page_links=None):
             published_date_resp_parsing(response)
 
     if len(published_course_next_page_list) != 0:
-        logger.info(f"Pagination list: {published_course_next_page_list}")
+        logger.info(f"""Pagination size {len(published_course_next_page_list)} with published_at date items 
+                         {published_course_next_page_list}""")
         get_published_course_date(course_ids, published_course_next_page_list)
 
 
@@ -268,11 +277,15 @@ def run_course_inventory() -> None:
 
     # Gather course data
     course_df = gather_course_info_for_account(ACCOUNT_ID, TERM_ID)
-    course_available_df= course_df.loc[course_df.workflow_state =='available'].copy()
+    course_available_df= course_df.loc[course_df.workflow_state == 'available'].copy()
     course_available_ids = course_available_df['canvas_id'].to_list()
     get_published_course_date(course_available_ids)
-    df1 = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_date'])
+    df1 = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
     course_complete_df = pd.merge(course_df, df1, on='canvas_id', how='left')
+    course_complete_df['created_at'] = pd.to_datetime(course_complete_df['created_at'], format="%Y-%m-%dT%H:%M:%SZ",
+                                                      errors='coerce')
+    course_complete_df['published_at'] = pd.to_datetime(course_complete_df['published_at'], format="%Y-%m-%dT%H:%M:%SZ",
+                                                        errors='coerce')
 
     # Gather enrollment data
     udw_course_ids = course_complete_df['warehouse_id'].to_list()

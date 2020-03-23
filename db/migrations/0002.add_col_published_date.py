@@ -5,4 +5,4 @@ from yoyo import step
 
 __depends__ = {'0001.init_inventory_db'}
 
-step("ALTER TABLE course ADD column published_date VARCHAR(25) AFTER created_at")
+step("ALTER TABLE course ADD column published_at DATETIME NULL AFTER created_at")

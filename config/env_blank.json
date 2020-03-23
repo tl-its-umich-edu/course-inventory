@@ -12,6 +12,7 @@
   "MAX_REQ_ATTEMPTS": 3,
   "WAREHOUSE_INCREMENT": 0,
   "CREATE_CSVS": false,
+  "PUBLISHED_DATE_WORKERS": 8,
   "INVENTORY_DB": {
     "host": "",
     "port": "",
