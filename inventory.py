@@ -5,8 +5,8 @@ from typing import Dict, Sequence, Union
 import time
 
 # third-party libraries
+import psycopg2, pytz
 import pandas as pd
-import psycopg2
 from requests import Response
 from umich_api.api_utils import ApiUtil
 
@@ -240,7 +240,7 @@ def run_course_inventory() -> None:
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator(INVENTORY_DB)
+    db_creator_obj = DBCreator(INVENTORY_DB, ['job_run'])
     db_creator_obj.set_up()
     if len(db_creator_obj.get_table_names()) > 0:
         db_creator_obj.drop_records()
@@ -257,6 +257,13 @@ def run_course_inventory() -> None:
     logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
+
+    # Add record to job_run table
+    utc_now = time.gmtime(time.time())
+    now_mysql_datetime = time.strftime('%Y-%m-%d %H:%M:%S', utc_now)
+    job_run_df = pd.DataFrame({'timestamp': [now_mysql_datetime]})
+    job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
+    logger.info(f'Inserted job_run record with UTC timestamp of {now_mysql_datetime}')
 
     delta = time.time() - start
     str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
