@@ -103,6 +103,8 @@ mysql --user=inventory_test_user --password=inventory_test_password
 
 Use `^C` to stop the running MySQL container, or -- if you used the detached flag `-d` with `docker-compose up` -- use `docker-compose down`.
 
+Data in the MySQL database will persist after the container is stopped, as MySQL data is stored in a volume that is mapped to a `.data/` directory in the project. To completely reset the database, delete the `.data` directory.
+
 
 #### With a Virtual Environment
 
