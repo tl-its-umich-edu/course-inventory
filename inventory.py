@@ -39,7 +39,7 @@ API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
 CANVAS_TOKEN = ENV['CANVAS_TOKEN']
 CANVAS_URL = ENV['CANVAS_URL']
-PUBLISHED_DATE_WORKERS = ENV.get('PUBLISHED_DATE_WORKERS',8)
+NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
@@ -245,7 +245,7 @@ def published_date_resp_parsing(response):
 
 def get_published_course_date(course_ids, next_page_links=None):
     logger.info("Starting of get_published_course_date call")
-    with FuturesSession(max_workers=PUBLISHED_DATE_WORKERS) as session:
+    with FuturesSession(max_workers=NUM_ASYNC_WORKERS) as session:
         headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + CANVAS_TOKEN}
         if next_page_links is not None:
             logger.info("Going through Next page URL set")
