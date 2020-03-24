@@ -3,7 +3,6 @@ import json, logging, os
 from json.decoder import JSONDecodeError
 from typing import Dict, Sequence, Union
 import time
-from logging.handlers import RotatingFileHandler
 
 # third-party libraries
 import pandas as pd
@@ -29,9 +28,7 @@ except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
 
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'),
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    handlers=[RotatingFileHandler('debug.log', mode='w', maxBytes=10485760,backupCount=5),
-                              logging.StreamHandler()])
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
 TERM_ID = ENV['CANVAS_TERM_ID']
