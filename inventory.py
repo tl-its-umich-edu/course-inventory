@@ -189,12 +189,10 @@ def get_next_page_url(response):
         logging.debug('The api call do not have Link headers')
         return None
 
-    for page in results:
-        if 'next' in page:
-            url_ = results['next']['url']
-            published_course_next_page_list.append(url_)
-            logger.info(f"Pagination size {len(published_course_next_page_list)} for published_at date")
-            break
+    if 'next' in results:
+        url_ = results['next']['url']
+        published_course_next_page_list.append(url_)
+        logger.info(f"Pagination size {len(published_course_next_page_list)} for published_at date")
 
 
 def published_date_resp_parsing(response):
