@@ -67,6 +67,8 @@ class FetchPublishedDate:
 
         events = audit_events['events']
 
+        # audit logs sends event data in descending order
+        # https://canvas.instructure.com/doc/api/course_audit_log.html
         for event in events:
             if event['event_type'] == 'published':
                 course_id = event['links']['course']

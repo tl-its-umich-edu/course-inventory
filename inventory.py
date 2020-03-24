@@ -9,12 +9,10 @@ import pandas as pd
 import psycopg2
 from requests import Response
 from umich_api.api_utils import ApiUtil
-from published_date.published_date import FetchPublishedDate
-
-
 
 # local libraries
 from db.db_creator import DBCreator
+from canvas.published_date import FetchPublishedDate
 
 
 # Initialize settings and globals
