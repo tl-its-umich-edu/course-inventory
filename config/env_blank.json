@@ -2,7 +2,7 @@
   "LOG_LEVEL": "DEBUG",
   "CANVAS_ACCOUNT_ID": 1,
   "CANVAS_TERM_ID": 164,
-  "CANVAS_TOKEN":"",
+  "CANVAS_TOKEN": "",
   "CANVAS_URL": "",
   "API_BASE_URL": "https://apigw.it.umich.edu",
   "API_SCOPE_PREFIX": "",

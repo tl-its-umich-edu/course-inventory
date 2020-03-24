@@ -49,8 +49,6 @@ INVENTORY_DB = ENV['INVENTORY_DB']
 published_course_date = {}
 published_course_next_page_list = []
 
-
-
 # Function(s)
 
 
@@ -274,18 +272,20 @@ def run_course_inventory() -> None:
 
     # Gather course data
     course_df = gather_course_info_for_account(ACCOUNT_ID, TERM_ID)
-    course_available_df= course_df.loc[course_df.workflow_state == 'available'].copy()
+    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
     course_available_ids = course_available_df['canvas_id'].to_list()
     get_published_course_date(course_available_ids)
-    df1 = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
-    course_complete_df = pd.merge(course_df, df1, on='canvas_id', how='left')
-    course_complete_df['created_at'] = pd.to_datetime(course_complete_df['created_at'], format="%Y-%m-%dT%H:%M:%SZ",
-                                                      errors='coerce')
-    course_complete_df['published_at'] = pd.to_datetime(course_complete_df['published_at'], format="%Y-%m-%dT%H:%M:%SZ",
-                                                        errors='coerce')
+    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
+    course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+    course_df['created_at'] = pd.to_datetime(course_df['created_at'],
+                                             format="%Y-%m-%dT%H:%M:%SZ",
+                                             errors='coerce')
+    course_df['published_at'] = pd.to_datetime(course_df['published_at'],
+                                               format="%Y-%m-%dT%H:%M:%SZ",
+                                               errors='coerce')
 
     # Gather enrollment data
-    udw_course_ids = course_complete_df['warehouse_id'].to_list()
+    udw_course_ids = course_df['warehouse_id'].to_list()
     enrollment_df = pull_enrollment_data_from_udw(udw_course_ids)
 
     # Gather user data
@@ -302,14 +302,14 @@ def run_course_inventory() -> None:
     enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
     enrollment_df = enrollment_df.drop(columns=['valid_id'])
 
-    num_course_records = len(course_complete_df)
+    num_course_records = len(course_df)
     num_user_records = len(user_df)
     num_enrollment_records = len(enrollment_df)
 
     if CREATE_CSVS:
         # Generate CSV Output
         logger.info(f'Writing {num_course_records} course records to CSV')
-        course_complete_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+        course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
         logger.info(f'Writing {num_user_records} user records to CSV')
         user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
@@ -329,7 +329,7 @@ def run_course_inventory() -> None:
 
     # Insert gathered data
     logger.info(f'Inserting {num_course_records} course records to DB')
-    course_complete_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
+    course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
     logger.info(f'Inserting {num_user_records} user records to DB')
     user_df.to_sql('user', db_creator_obj.engine, if_exists='append', index=False)
