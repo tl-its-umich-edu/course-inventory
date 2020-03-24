@@ -184,6 +184,8 @@ def run_course_inventory() -> None:
     published_course_date = published_dates.get_published_course_date(course_available_ids)
     course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
     course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+    logger.info("*** Checking for courses available and no published date ***")
+    logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
                                              format="%Y-%m-%dT%H:%M:%SZ",
                                              errors='coerce')
