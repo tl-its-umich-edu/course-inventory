@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 class FetchPublishedDate:
 
-    def __init__(self, canvas_url, canvas_token, workers, canvas_ids):
+    def __init__(self, canvas_url, canvas_token, num_workers, canvas_ids):
         self.canvas_url = canvas_url,
         self.canvas_token = canvas_token,
         self.canvas_ids = canvas_ids
-        self.workers = workers
+        self.num_workers = num_workers
         self.published_course_date = {}
         self.published_course_next_page_list = []
 
@@ -84,7 +84,7 @@ class FetchPublishedDate:
 
     def get_published_course_date(self,course_ids, next_page_links=None):
         logger.info("Starting of get_published_course_date call")
-        with FuturesSession(max_workers=self.workers) as session:
+        with FuturesSession(max_workers=self.num_workers) as session:
             headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token[0]}
             if next_page_links is not None:
                 logger.info("Going through Next page URL set")
