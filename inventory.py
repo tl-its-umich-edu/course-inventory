@@ -1,8 +1,8 @@
 # standard libraries
 import json, logging, os
-from datetime import datetime
 from json.decoder import JSONDecodeError
 from typing import Dict, Sequence, Union
+import time
 
 # third-party libraries
 import pandas as pd
@@ -12,6 +12,7 @@ from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db.db_creator import DBCreator
+from canvas.published_date import FetchPublishedDate
 
 
 # Initialize settings and globals
@@ -25,7 +26,8 @@ try:
 except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
 
-logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
+logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'),
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
 TERM_ID = ENV['CANVAS_TERM_ID']
@@ -34,6 +36,9 @@ API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SE
 SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
 API_SCOPE_PREFIX = ENV['API_SCOPE_PREFIX']
 MAX_REQ_ATTEMPTS = ENV['MAX_REQ_ATTEMPTS']
+CANVAS_TOKEN = ENV['CANVAS_TOKEN']
+CANVAS_URL = ENV['CANVAS_URL']
+NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 
 UDW_CONN = psycopg2.connect(**ENV['UDW'])
 WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
@@ -41,8 +46,8 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
 
-
 # Function(s)
+
 
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
@@ -168,10 +173,25 @@ def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
 
 
 def run_course_inventory() -> None:
-    start = datetime.now()
+    start = time.time()
 
     # Gather course data
     course_df = gather_course_info_for_account(ACCOUNT_ID, TERM_ID)
+    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
+    course_available_ids = course_available_df['canvas_id'].to_list()
+    logger.info("**** Fetching the Published date ***")
+    published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS, course_available_ids)
+    published_course_date = published_dates.get_published_course_date(course_available_ids)
+    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
+    course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+    logger.info("*** Checking for courses available and no published date ***")
+    logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
+    course_df['created_at'] = pd.to_datetime(course_df['created_at'],
+                                             format="%Y-%m-%dT%H:%M:%SZ",
+                                             errors='coerce')
+    course_df['published_at'] = pd.to_datetime(course_df['published_at'],
+                                               format="%Y-%m-%dT%H:%M:%SZ",
+                                               errors='coerce')
 
     # Gather enrollment data
     udw_course_ids = course_df['warehouse_id'].to_list()
@@ -227,8 +247,9 @@ def run_course_inventory() -> None:
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
 
-    delta = datetime.now() - start
-    logger.info(f'Duration of run: {delta.total_seconds()}')
+    delta = time.time() - start
+    str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
+    logger.info(f'Duration of run: {str_time}')
 
 
 if __name__ == "__main__":
