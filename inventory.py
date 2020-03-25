@@ -144,12 +144,22 @@ def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
     return enrollment_df
 
 
+def process_sis_id(id: str) -> Union[int, None]:
+    try:
+        sis_id = int(id)
+    except ValueError:
+        logger.debug(f'Invalid sis_id found: {id}')
+        sis_id = None
+    return sis_id
+
+
 def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     users_string = ','.join([str(user_id) for user_id in user_ids])
     user_query = f'''
         SELECT u.id AS warehouse_id,
                u.canvas_id AS canvas_id,
                u.name AS name,
+               p.sis_user_id AS sis_id,
                p.unique_name AS uniqname,
                u.workflow_state AS workflow_state
         FROM user_dim u
@@ -160,6 +170,7 @@ def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     logger.info('Making user_dim query')
     user_df = pd.read_sql(user_query, UDW_CONN)
     # Found that the IDs are not necessarily unique, so dropping duplicates
+    user_df['sis_id'] = user_df['sis_id'].map(process_sis_id, na_action='ignore')
     user_df = user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
     logger.debug(user_df.head())
     return user_df
