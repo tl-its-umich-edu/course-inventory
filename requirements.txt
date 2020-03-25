@@ -1,2 +1,4 @@
 furl==2.1.0
 ratelimit==2.2.1
+canvasapi
+beautifulsoup4
