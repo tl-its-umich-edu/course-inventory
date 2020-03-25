@@ -144,14 +144,13 @@ def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
     return enrollment_df
 
 
-def process_um_id(id: Union[str, None]) -> Union[int, None]:
-    if id is not None:
-        try:
-            um_id = int(id)
-            return um_id
-        except ValueError:
-            logger.debug(f'Invalid um_id found: {id}')
-    return None
+def process_um_id(id: str) -> Union[int, None]:
+    try:
+        um_id = int(id)
+    except ValueError:
+        logger.debug(f'Invalid um_id found: {id}')
+        um_id = None
+    return um_id
 
 
 def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
@@ -171,7 +170,7 @@ def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     logger.info('Making user_dim query')
     user_df = pd.read_sql(user_query, UDW_CONN)
     # Found that the IDs are not necessarily unique, so dropping duplicates
-    user_df['um_id'] = user_df['um_id'].map(process_um_id)
+    user_df['um_id'] = user_df['um_id'].map(process_um_id, na_action='ignore')
     user_df = user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
     logger.debug(user_df.head())
     return user_df
