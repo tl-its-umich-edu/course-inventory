@@ -45,7 +45,7 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
-APPEND_TABLES_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
+APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
 
 # Function(s)
 
@@ -241,7 +241,7 @@ def run_course_inventory() -> None:
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLES_NAMES)
+    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
     db_creator_obj.set_up_database()
 
     # Insert gathered data

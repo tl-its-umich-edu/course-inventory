@@ -20,12 +20,12 @@ except FileNotFoundError:
     logger.error('Configuration file could not be found; please add env.json to the config directory.')
 
 DB_PARAMS = ENV['INVENTORY_DB']
-APPEND_TABLES_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
+APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
 
 
 # Main Program
 
 if __name__ == '__main__':
     logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
-    db_creator_obj = DBCreator(DB_PARAMS, APPEND_TABLES_NAMES)
+    db_creator_obj = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
     db_creator_obj.set_up_database()
