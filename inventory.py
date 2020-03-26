@@ -5,7 +5,7 @@ from typing import Dict, Sequence, Union
 import time
 
 # third-party libraries
-import psycopg2, pytz
+import psycopg2
 import pandas as pd
 from requests import Response
 from umich_api.api_utils import ApiUtil
@@ -105,7 +105,7 @@ def gather_course_info_for_account(account_id: int, term_id: int) -> pd.DataFram
     slim_course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
 
-    while more_pages:
+    while more_pages and page_num < 5:
         next_params = API_UTIL.get_next_page(response)
         if next_params:
             page_num += 1
