@@ -17,7 +17,7 @@ class DBCreator:
     def __init__(
         self,
         db_params: Dict[str, str],
-        protected_table_names: Sequence[str] = []
+        append_table_names: Sequence[str] = []
     ) -> None:
 
         self.db_name = db_params['dbname']
@@ -31,7 +31,7 @@ class DBCreator:
             f"/{db_params['dbname']}?charset=utf8"
         )
         self.engine = create_engine(self.conn_str)
-        self.protected_table_names = protected_table_names
+        self.append_table_names = append_table_names
 
     def set_up(self) -> None:
         logger.debug('set_up')
@@ -56,7 +56,7 @@ class DBCreator:
         logger.debug('drop_records')
         self.conn.execute('SET FOREIGN_KEY_CHECKS=0;')
         for table_name in self.get_table_names():
-            if 'yoyo' not in table_name and table_name not in self.protected_table_names:
+            if 'yoyo' not in table_name and table_name not in self.append_table_names:
                 logger.debug(f'Table Name: {table_name}')
                 self.conn.execute(f'DELETE FROM {table_name};')
                 logger.info(f'Dropped records in {table_name} in {self.db_name}')

@@ -13,6 +13,13 @@
   "WAREHOUSE_INCREMENT": 0,
   "CREATE_CSVS": false,
   "NUM_ASYNC_WORKERS": 8,
+  "UDW": {
+    "host": "",
+    "port": "",
+    "dbname": "",
+    "user": "",
+    "password": ""
+  },
   "INVENTORY_DB": {
     "host": "",
     "port": "",
@@ -20,11 +27,5 @@
     "user": "",
     "password": ""
   },
-  "UDW": {
-    "host": "",
-    "port": "",
-    "dbname": "",
-    "user": "",
-    "password": ""
-  }
+  "APPEND_TABLE_NAMES": ["job_run"]
 }
