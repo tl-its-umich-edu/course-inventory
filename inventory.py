@@ -225,8 +225,8 @@ def run_course_inventory() -> None:
 
     # Gather canvasdatadate from unizin_metadata
     udw_meta_df = pd.read_sql('SELECT * FROM unizin_metadata um;', UDW_CONN)
-    udw_update_datetime_str = pd.to_datetime(udw_meta_df.iloc[1, 1], format='')
-    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S%f%z')
+    udw_update_datetime_str = udw_meta_df.iloc[1, 1]
+    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
     num_course_records = len(course_df)
