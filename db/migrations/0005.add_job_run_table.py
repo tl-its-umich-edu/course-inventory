@@ -1,5 +1,5 @@
 #
-# file: migrations/0004.add_sis_id.py
+# file: migrations/0005.add_job_run_table.py
 #
 from yoyo import step
 
