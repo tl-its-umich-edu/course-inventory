@@ -9,7 +9,8 @@ step('''
     CREATE TABLE IF NOT EXISTS job_run
     (
         id INTEGER NOT NULL UNIQUE AUTO_INCREMENT,
-        timestamp DATETIME NOT NULL,
+        finished_at DATETIME NOT NULL,
+        unizin_data_updated_at DATETIME NOT NULL,
         PRIMARY KEY (id)
     )
     ENGINE=InnoDB

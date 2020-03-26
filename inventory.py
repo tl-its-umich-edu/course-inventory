@@ -223,6 +223,12 @@ def run_course_inventory() -> None:
     enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
     enrollment_df = enrollment_df.drop(columns=['valid_id'])
 
+    # Gather canvasdatadate from unizin_metadata
+    udw_meta_df = pd.read_sql('SELECT * FROM unizin_metadata um;', UDW_CONN)
+    udw_update_datetime_str = pd.to_datetime(udw_meta_df.iloc[1, 1], format='')
+    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S%f%z')
+    logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
+
     num_course_records = len(course_df)
     num_user_records = len(user_df)
     num_enrollment_records = len(enrollment_df)
@@ -256,11 +262,13 @@ def run_course_inventory() -> None:
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
 
     # Add record to job_run table
-    utc_now = time.gmtime(time.time())
-    now_mysql_datetime = time.strftime('%Y-%m-%d %H:%M:%S', utc_now)
-    job_run_df = pd.DataFrame({'timestamp': [now_mysql_datetime]})
+    now_mysql_datetime = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
+    job_run_df = pd.DataFrame({
+        'finished_at': [now_mysql_datetime],
+        'unizin_data_updated_at': [udw_update_datetime]
+    })
     job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
-    logger.info(f'Inserted job_run record with UTC timestamp of {now_mysql_datetime}')
+    logger.info(f'Inserted job_run record with finished_at value of {now_mysql_datetime}')
 
     delta = time.time() - start
     str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
