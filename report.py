@@ -5,15 +5,18 @@ import logging
 import os
 from json.decoder import JSONDecodeError
 from typing import Dict, Union
-from ratelimit import limits, sleep_and_retry
 
 # third-party libraries
 import pandas as pd
 import furl
+import time
 
 # Initialize settings and globals
 
 logger = logging.getLogger(__name__)
+
+# Default time to sleep when hitting a 429 limit
+DEFAULT_SLEEP_TIME = 10
 
 
 # Functions
@@ -53,10 +56,7 @@ headers = {
   "Authorization": f"Bearer {ENV['ZOOM_TOKEN']}"
 }
 
-# https://marketplace.zoom.us/docs/api-reference/rate-limits
-# 1 call a second
-@sleep_and_retry
-@limits(calls=60, period=60)
+
 def run_report(param_attribute, headers, json_attribute_name, page_token=False):
 
     url = ENV[f'ZOOM_{param_attribute}_URL']
@@ -85,6 +85,22 @@ def run_report(param_attribute, headers, json_attribute_name, page_token=False):
         response = requests.request(
             "GET", f"{url}{f.url}", headers=headers, data=payload)
         status_code = response.status_code
+        # Rate limited, wait a few seconds
+        if status_code == 429:
+            # This is what the header should be
+            retry_after = response.headers.get("Retry-After")
+            sleep_time = DEFAULT_SLEEP_TIME
+            if retry_after and retry_after.isdigit():
+                logger.warning(f"Received status 429, need to wait for {retry_after}")
+                sleep_time = retry_after
+            else:
+                logger.warning("No Retry-After header, setting sleep loop for 5 seconds")
+            while status_code == 429:
+                time.sleep(sleep_time)
+                response = requests.request(
+                    "GET", f"{url}{f.url}", headers=headers, data=payload)
+                status_code = response.status_code
+
         if status_code != 200:
             logger.warning(f'Received irregular status code: {status_code}')
             logger.info('No more pages!')
