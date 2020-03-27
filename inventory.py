@@ -1,8 +1,7 @@
 # standard libraries
-import json, logging, os
+import json, logging, os, time
 from json.decoder import JSONDecodeError
-from typing import Dict, Sequence, Union
-import time
+from typing import Dict, Sequence, Tuple, Union
 
 # third-party libraries
 import pandas as pd
@@ -14,8 +13,8 @@ from umich_api.api_utils import ApiUtil
 # local libraries
 from db.db_creator import DBCreator
 from canvas.published_date import FetchPublishedDate
+from queries import queries as QUERIES
 
-from gql_queries import queries as QUERIES
 
 # Initialize settings and globals
 
@@ -48,27 +47,32 @@ WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
 
+
 # Function(s)
 
+def make_request_using_lib(
+    url: str,
+    params: Dict[str, Union[str, int]] = {},
+    method: str = 'GET',
+    lib_name: str = 'requests'
+) -> Response:
 
-def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
         logger.debug(f'Attempt #{i}')
-        if method:
+        if lib_name == 'requests':
             response = requests.request(method=method, url=url, json=params)
+        elif lib_name == 'umich_api':
+            response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params, method=method)
         else:
-            response = requests.get(url=url, params=params)
-        # if method:
-        #     response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params, method=method)
-        # else:
-        #     response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
-        logger.info('Received response with the following URL: ' + response.url)
+            logger.error('lib_name provided was invalid!')
+        logger.debug('Received response with the following URL: ' + response.url)
         status_code = response.status_code
 
         if status_code != 200:
             logger.warning(f'Received irregular status code: {status_code}')
+            logger.debug(response.text)
             logger.info('Beginning next_attempt')
         else:
             try:
@@ -82,87 +86,202 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
     return response
 
 
-def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
-    course_dicts = course_data['data']['term']['coursesConnection']['nodes']
+# Functions - Course
 
-    slim_course_dicts = []
-    for course_dict in course_dicts:
-        slim_course_dict = {
-            'course_id': int(course_dict['_id']),
-            'course_name': course_dict['name'],
-            'course_account_id': course_dict['account']['_id'],
-            'course_created_at': course_dict['createdAt'],
-            'course_workflow_state': course_dict['state']
-        }
-        slim_course_dicts.append(slim_course_dict)
-    return slim_course_dicts
+def create_course_record(course_dict: Dict) -> Dict:
+    flat_course_dict = {
+        'canvas_id': int(course_dict['_id']),
+        'name': course_dict['name'],
+        'account_id': course_dict['account']['_id'],
+        'created_at': course_dict['createdAt'],
+        'workflow_state': course_dict['state']
+    }
+    return flat_course_dict
 
 
-def gather_course_info_for_account(account_id: int, term_id: int) -> Sequence[int]:
-    start = datetime.now()
-    url_ending_with_scope = f'{API_SCOPE_PREFIX}/api/graphql'
-    url_ending = 'https://umich.instructure.com/api/graphql'
+def gather_course_data_with_graphql(account_id: int, term_id: int) -> Sequence[int]:
+    logger.info('* gather_course_data_with_graphql')
+    start = time.time()
+
+    complete_url = CANVAS_URL + '/api/graphql'
+    courses_query = QUERIES['courses']
     params = {
-        'access_token': ACCESS_TOKEN,
-        'query': QUERIES['coursesQuery'],
+        'access_token': CANVAS_TOKEN,
+        'query': courses_query,
         'variables': {
-            'termID': ENV['TERM_ID'],
-            'pageSize': 100,
-            'pageCursor': ''
+            "termID": ENV['CANVAS_TERM_ID'],
+            "coursePageSize": 50,
+            "coursePageCursor": "",
         }
     }
 
-    more_pages = True
-    page_num = 1
-    slim_course_dicts = []
+    more_course_pages = True
+    course_page_num = 0
+    course_records = []
 
-    while more_pages:
-        logger.info(f'Course Page Number: {page_num}')
-        response = make_request_using_api_utils(url_ending, params, method='POST')
-        all_course_data = json.loads(response.text)
-        slim_course_dicts += slim_down_course_data(all_course_data)
-        page_info_dict = all_course_data['data']['term']['coursesConnection']['pageInfo']
+    while more_course_pages and course_page_num < 1:
+        logger.info(f'Number of course records: {len(course_records)}')
+        course_page_num += 1
+        logger.info(f'Course page number: {course_page_num}')
+        response = make_request_using_lib(
+            complete_url,
+            params,
+            method='POST',
+            lib_name='requests'
+        )
+        data = json.loads(response.text)
 
-        if page_info_dict['hasNextPage']:
-            page_num += 1
-            page_cursor = page_info_dict['endCursor']
-            params['variables']['pageCursor'] = page_cursor
+        courses_connection = data['data']['term']['coursesConnection']
+        course_page_info = courses_connection['pageInfo']
+
+        # Create course records
+        for node in courses_connection['nodes']:
+            course_record = create_course_record(node)
+            logger.debug(course_record)
+            course_records.append(course_record)
+
+        # Check for next course page
+        if course_page_info['hasNextPage']:
+            course_page_cursor = course_page_info['endCursor']
+            params['variables']['coursePageCursor'] = course_page_cursor
         else:
             logger.info('No more pages!')
-            more_pages = False
+            more_course_pages = False
 
-    course_df = pd.DataFrame(slim_course_dicts)
+    course_df = pd.DataFrame(course_records)
     course_df['warehouse_id'] = course_df['canvas_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     logger.debug(course_df.head())
-    course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
-    logger.info('Course data was written to data/course.csv')
-    course_ids = course_df['course_warehouse_id'].to_list()
 
-    delta = datetime.now() - start
-    logger.info(delta.total_seconds())
-    return course_ids
+    delta = time.time() - start
+    logger.info(delta)
+    return course_df
 
 
-def pull_enrollment_data_from_udw(course_ids) -> pd.DataFrame:
-    courses_string = ','.join([str(course_id) for course_id in course_ids])
-    enrollment_query = f'''
-        SELECT e.id AS warehouse_id,
-               e.canvas_id AS canvas_id,
-               e.course_id AS course_id,
-               e.course_section_id AS course_section_id,
-               e.user_id AS user_id,
-               e.workflow_state AS workflow_state,
-               r.base_role_type AS role_type
-        FROM enrollment_dim e
-        JOIN role_dim r
-            ON e.role_id=r.id
-        WHERE e.course_id IN ({courses_string})
-            AND e.workflow_state='active';
+# Functions - Enrollment
+
+def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
+    flat_enroll_dict = {
+        'canvas_id': int(enroll_dict['_id']),
+        'user_id': enroll_dict['user']['_id'],
+        'course_section_id': enroll_dict['section']['_id'],
+        'workflow_state': enroll_dict['state']
+    }
+
+    user_data = enroll_dict['user']
+    flat_user_dict = {
+        'canvas_id': int(user_data['_id']),
+        'name': user_data['name'],
+        'email': user_data['email']
+    }
+    
+    section_data = enroll_dict['section']
+    flat_section_dict = {
+        'canvas_id': int(section_data['_id']),
+        'name': section_data['name'],
+        'created_at': section_data['createdAt'],
+        'updated_at': section_data['updatedAt']
+    }
+    return (flat_enroll_dict, flat_user_dict, flat_section_dict)
+
+
+def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.DataFrame, ...]:
+    logger.info('* gather_enrollment_data_with_grapqhl')
+    start = time.time()
+
+    complete_url = CANVAS_URL + '/api/graphql'
+    course_enrollments_query = QUERIES['course_enrollments']
+    params = {
+        'access_token': CANVAS_TOKEN,
+        'query': course_enrollments_query,
+        'variables': {
+            "courseID": None,
+            "enrollmentPageSize": 100,
+            "enrollmentPageCursor": "",
+        }
+    }
+
+    enrollment_records = []
+    user_records = []
+    section_records = []
+
+    course_num = 0
+    for course_id in course_ids:
+        course_num += 1
+        params['variables']['courseID'] = course_id
+
+        logger.info(f'Enrollment records: {len(enrollment_records)}')
+        logger.info(f'Course number {course_num}: {course_id}')
+
+        more_enroll_pages = True
+        enroll_page_num = 0
+        while more_enroll_pages:
+            enroll_page_num += 1
+            logger.debug(f'Enrollment Page Number: {enroll_page_num}')
+
+            response = make_request_using_lib(
+                complete_url,
+                params,
+                method='POST',
+                lib_name='requests'
+            )
+            data = json.loads(response.text)
+
+            response_course_id = data['data']['course']['_id']
+            if course_id != int(response_course_id):
+                logger.warning("course ID does not match query!!")
+                logger.warning(f"{course_id} != {response_course_id}")
+
+            enrollments_connection = data['data']['course']['enrollmentsConnection']
+            enrollment_dicts = enrollments_connection['nodes']
+            enrollment_page_info = enrollments_connection['pageInfo']
+
+            for enrollment_dict in enrollment_dicts:
+                enrollment_record, user_record, section_record = unnest_enrollments(enrollment_dict)
+                enrollment_records.append(enrollment_record)
+                user_records.append(user_record)
+                section_records.append(section_record)
+
+            if not enrollment_page_info['hasNextPage']:
+                logger.info('There was only one enrollment page!')
+                more_enroll_pages = False
+                params['variables']['enrollmentPageCursor'] = ""
+            else:
+                enroll_page_cursor = enrollment_page_info['endCursor']
+                params['variables']['enrollmentPageCursor'] = enroll_page_cursor
+
+    enrollment_df = pd.DataFrame(enrollment_records)
+    user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
+    section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'])
+
+    increment_to_warehouse = (lambda x: x + WAREHOUSE_INCREMENT)
+
+    enrollment_df['warehouse_id'] = enrollment_df['canvas_id'].map(increment_to_warehouse)
+    user_df['warehouse_id'] = user_df['canvas_id'].map(increment_to_warehouse)
+    section_df['warehouse_id'] = section_df['canvas_id'].map(increment_to_warehouse)
+
+    return (enrollment_df, user_df, section_df)
+
+
+def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
+    users_string = ','.join([str(user_id) for user_id in user_ids])
+    user_query = f'''
+        SELECT u.id AS warehouse_id,
+               u.canvas_id AS canvas_id,
+               p.sis_user_id AS sis_id,
+               p.unique_name AS uniqname,
+        FROM user_dim u
+        JOIN pseudonym_dim p
+            ON u.id=p.user_id
+        WHERE u.id in ({users_string});
     '''
-    logger.info('Making enrollment_dim query')
-    enrollment_df = pd.read_sql(enrollment_query, UDW_CONN)
-    logger.debug(enrollment_df.head())
-    return enrollment_df
+    logger.info('Making user_dim query')
+    udw_user_df = pd.read_sql(user_query, UDW_CONN)
+    udw_user_df['sis_id'] = udw_user_df['sis_id'].map(process_sis_id, na_action='ignore')
+    # Found that the IDs are not necessarily unique, so dropping duplicates
+    udw_user_df = udw_user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
+    logger.debug(udw_user_df.head())
+    uwd_user_df = udw_user_df.drop(['canvas_id'])
+    return udw_user_df
 
 
 def process_sis_id(id: str) -> Union[int, None]:
@@ -172,29 +291,6 @@ def process_sis_id(id: str) -> Union[int, None]:
         logger.debug(f'Invalid sis_id found: {id}')
         sis_id = None
     return sis_id
-
-
-def pull_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
-    users_string = ','.join([str(user_id) for user_id in user_ids])
-    user_query = f'''
-        SELECT u.id AS warehouse_id,
-               u.canvas_id AS canvas_id,
-               u.name AS name,
-               p.sis_user_id AS sis_id,
-               p.unique_name AS uniqname,
-               u.workflow_state AS workflow_state
-        FROM user_dim u
-        JOIN pseudonym_dim p
-            ON u.id=p.user_id
-        WHERE u.id in ({users_string});
-    '''
-    logger.info('Making user_dim query')
-    user_df = pd.read_sql(user_query, UDW_CONN)
-    # Found that the IDs are not necessarily unique, so dropping duplicates
-    user_df['sis_id'] = user_df['sis_id'].map(process_sis_id, na_action='ignore')
-    user_df = user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
-    logger.debug(user_df.head())
-    return user_df
 
 
 def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
@@ -208,10 +304,11 @@ def run_course_inventory() -> None:
     start = time.time()
 
     # Gather course data
-    course_df = gather_course_info_for_account(ACCOUNT_ID, TERM_ID)
+    course_df = gather_course_data_with_graphql(ACCOUNT_ID, TERM_ID)
+
+    logger.info("*** Fetching the published date ***")
     course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
     course_available_ids = course_available_df['canvas_id'].to_list()
-    logger.info("**** Fetching the Published date ***")
     published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS, course_available_ids)
     published_course_date = published_dates.get_published_course_date(course_available_ids)
     course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
@@ -225,26 +322,30 @@ def run_course_inventory() -> None:
                                                format="%Y-%m-%dT%H:%M:%SZ",
                                                errors='coerce')
 
-    # Gather enrollment data
-    udw_course_ids = course_df['warehouse_id'].to_list()
-    enrollment_df = pull_enrollment_data_from_udw(udw_course_ids)
+    # Gather enrollment, user, and section data
+    course_ids = course_df['canvas_id'].to_list()
+    enrollment_df, user_df, section_df = gather_enrollment_data_with_graphql(course_ids)
 
-    # Gather user data
-    udw_user_ids = enrollment_df['user_id'].drop_duplicates().to_list()
-    user_df = pull_user_data_from_udw(udw_user_ids)
+    # Pull SIS user data from Unizin Data Warehouse
+    udw_user_ids = user_df['warehouse_id'].to_list()
+    sis_user_df = pull_sis_user_data_from_udw(udw_user_ids)
+    user_df = pd.merge(user_df, sis_user_df, on='warehouse_id', how='left')
 
     # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
     logger.info('Looking for rows with nonexistent user ids in enrollment data')
     valid_user_ids = user_df['warehouse_id'].to_list()
+    pre_check_enroll_count = len(enrollment_df)
     enrollment_df['valid_id'] = enrollment_df['user_id'].map(
         lambda x: check_if_valid_user_id(x, valid_user_ids)
     )
     enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
     enrollment_df = enrollment_df.drop(columns=['valid_id'])
+    logger.info(f'{pre_check_enroll_count - len(enrollment_df)} enrollments were dropped')
 
     num_course_records = len(course_df)
     num_user_records = len(user_df)
+    num_section_records = len(section_df)
     num_enrollment_records = len(enrollment_df)
 
     if CREATE_CSVS:
@@ -252,12 +353,19 @@ def run_course_inventory() -> None:
         logger.info(f'Writing {num_course_records} course records to CSV')
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
+
         logger.info(f'Writing {num_user_records} user records to CSV')
         user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
         logger.info('Wrote data to data/user.csv')
+
+        logger.info(f'Writing {num_section_records} section records to CSV')
+        section_df.to_csv(os.path.join('data', 'section.csv'), index=False)
+        logger.info('Wrote data to data/section.csv')
+
         logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
+
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
@@ -272,9 +380,13 @@ def run_course_inventory() -> None:
     logger.info(f'Inserting {num_course_records} course records to DB')
     course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
+
     logger.info(f'Inserting {num_user_records} user records to DB')
     user_df.to_sql('user', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into user table in {db_creator_obj.db_name}')
+
+    logger.info('Will be inserting section data here!!!')
+
     logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
