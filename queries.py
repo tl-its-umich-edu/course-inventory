@@ -53,6 +53,9 @@ course_enrollments_query = '''
                         email
                         createdAt
                     }
+                    course {
+                        _id
+                    }
                 }
                 pageInfo {
                     endCursor
