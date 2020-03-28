@@ -88,72 +88,83 @@ def make_request_using_lib(
 
 # Functions - Course
 
-def create_course_record(course_dict: Dict) -> Dict:
-    flat_course_dict = {
-        'canvas_id': int(course_dict['_id']),
-        'name': course_dict['name'],
-        'account_id': course_dict['account']['_id'],
-        'created_at': course_dict['createdAt'],
-        'workflow_state': course_dict['state']
-    }
-    return flat_course_dict
-
-
-def gather_course_data_with_graphql(account_id: int, term_id: int) -> Sequence[int]:
-    logger.info('* gather_course_data_with_graphql')
-    start = time.time()
-
-    complete_url = CANVAS_URL + '/api/graphql'
-    courses_query = QUERIES['courses']
-    params = {
-        'access_token': CANVAS_TOKEN,
-        'query': courses_query,
-        'variables': {
-            "termID": ENV['CANVAS_TERM_ID'],
-            "coursePageSize": 50,
-            "coursePageCursor": "",
+def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
+    slim_course_dicts = []
+    for course_dict in course_data:
+        slim_course_dict = {
+            'canvas_id': course_dict['id'],
+            'name': course_dict['name'],
+            'account_id': course_dict['account_id'],
+            'created_at': course_dict['created_at'],
+            'workflow_state': course_dict['workflow_state']
         }
+        if 'total_students' in course_dict.keys():
+            slim_course_dict['total_students'] = int(course_dict['total_students'])
+        else:
+            logger.info('Total students not found, setting to zero')
+            slim_course_dict['total_students'] = 0
+            logger.info(course_dict['total_students'])
+        slim_course_dicts.append(slim_course_dict)
+    return slim_course_dicts
+
+
+def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
+    logger.info('* gather_course_data_from_api')
+    url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
+    params = {
+        'with_enrollments': True,
+        'enrollment_type': ['student', 'teacher'],
+        'enrollment_term_id': term_id,
+        'per_page': 100,
+        'include': ['total_students']
     }
 
-    more_course_pages = True
-    course_page_num = 0
-    course_records = []
+    # Make first course request
+    page_num = 1
+    logger.info(f'Course Page Number: {page_num}')
+    response = make_request_using_lib(
+        url_ending_with_scope,
+        params,
+        method='GET',
+        lib_name='umich_api'
+    )
+    all_course_data = json.loads(response.text)
+    slim_course_dicts = slim_down_course_data(all_course_data)
+    more_pages = True
 
-    while more_course_pages and course_page_num < 1:
-        logger.info(f'Number of course records: {len(course_records)}')
-        course_page_num += 1
-        logger.info(f'Course page number: {course_page_num}')
-        response = make_request_using_lib(
-            complete_url,
-            params,
-            method='POST',
-            lib_name='requests'
-        )
-        data = json.loads(response.text)
-
-        courses_connection = data['data']['term']['coursesConnection']
-        course_page_info = courses_connection['pageInfo']
-
-        # Create course records
-        for node in courses_connection['nodes']:
-            course_record = create_course_record(node)
-            logger.debug(course_record)
-            course_records.append(course_record)
-
-        # Check for next course page
-        if course_page_info['hasNextPage']:
-            course_page_cursor = course_page_info['endCursor']
-            params['variables']['coursePageCursor'] = course_page_cursor
+    while more_pages:
+        next_params = API_UTIL.get_next_page(response)
+        if next_params:
+            page_num += 1
+            logger.info(f'Course Page Number: {page_num}')
+            response = make_request_using_lib(
+                url_ending_with_scope,
+                next_params,
+                method='GET',
+                lib_name='umich_api'
+            )
+            all_course_data = json.loads(response.text)
+            slim_course_dicts += slim_down_course_data(all_course_data)
         else:
             logger.info('No more pages!')
-            more_course_pages = False
+            more_pages = False
 
-    course_df = pd.DataFrame(course_records)
+    num_slim_course_dicts = len(slim_course_dicts)
+    logger.info(f'Total course records: {num_slim_course_dicts}')
+    slim_course_dicts_with_students = []
+    for slim_course_dict in slim_course_dicts:
+        if slim_course_dict['total_students'] > 0:
+            slim_course_dicts_with_students.append(slim_course_dict)
+    num_slim_course_dicts_with_students = len(slim_course_dicts_with_students)
+
+    logger.info(f'Course records with students: {num_slim_course_dicts_with_students}')
+    logger.info(f'Dropped {num_slim_course_dicts - num_slim_course_dicts_with_students} records')
+
+    course_df = pd.DataFrame(slim_course_dicts_with_students)
     course_df['warehouse_id'] = course_df['canvas_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
+    course_df.to_csv(os.path.join('data', 'course_with_total_students.csv'), index=False)
+    course_df = course_df.drop(['total_students'], axis='columns')
     logger.debug(course_df.head())
-
-    delta = time.time() - start
-    logger.info(delta)
     return course_df
 
 
@@ -162,18 +173,19 @@ def gather_course_data_with_graphql(account_id: int, term_id: int) -> Sequence[i
 def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
     flat_enroll_dict = {
         'canvas_id': int(enroll_dict['_id']),
-        'user_id': enroll_dict['user']['_id'],
-        'course_section_id': enroll_dict['section']['_id'],
+        'user_id': int(enroll_dict['user']['_id']),
+        'course_id': int(enroll_dict['course']['_id']),
+        'course_section_id': int(enroll_dict['section']['_id']),
+        'role_type': enroll_dict['type'],
         'workflow_state': enroll_dict['state']
     }
 
     user_data = enroll_dict['user']
     flat_user_dict = {
         'canvas_id': int(user_data['_id']),
-        'name': user_data['name'],
-        'email': user_data['email']
+        'name': user_data['name']
     }
-    
+
     section_data = enroll_dict['section']
     flat_section_dict = {
         'canvas_id': int(section_data['_id']),
@@ -185,7 +197,7 @@ def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
 
 
 def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.DataFrame, ...]:
-    logger.info('* gather_enrollment_data_with_grapqhl')
+    logger.info('* gather_enrollment_data_with_graphql')
     start = time.time()
 
     complete_url = CANVAS_URL + '/api/graphql'
@@ -195,7 +207,7 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
         'query': course_enrollments_query,
         'variables': {
             "courseID": None,
-            "enrollmentPageSize": 100,
+            "enrollmentPageSize": 75,
             "enrollmentPageCursor": "",
         }
     }
@@ -216,7 +228,7 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
         enroll_page_num = 0
         while more_enroll_pages:
             enroll_page_num += 1
-            logger.debug(f'Enrollment Page Number: {enroll_page_num}')
+            logger.info(f'Enrollment Page Number: {enroll_page_num}')
 
             response = make_request_using_lib(
                 complete_url,
@@ -256,9 +268,14 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
     increment_to_warehouse = (lambda x: x + WAREHOUSE_INCREMENT)
 
     enrollment_df['warehouse_id'] = enrollment_df['canvas_id'].map(increment_to_warehouse)
+    enrollment_df['user_id'] = enrollment_df['user_id'].map(increment_to_warehouse)
+    enrollment_df['course_id'] = enrollment_df['course_id'].map(increment_to_warehouse)
+    enrollment_df['course_section_id'] = enrollment_df['course_section_id'].map(increment_to_warehouse)
     user_df['warehouse_id'] = user_df['canvas_id'].map(increment_to_warehouse)
     section_df['warehouse_id'] = section_df['canvas_id'].map(increment_to_warehouse)
 
+    delta = time.time() - start
+    logger.info(delta)
     return (enrollment_df, user_df, section_df)
 
 
@@ -268,7 +285,7 @@ def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
         SELECT u.id AS warehouse_id,
                u.canvas_id AS canvas_id,
                p.sis_user_id AS sis_id,
-               p.unique_name AS uniqname,
+               p.unique_name AS uniqname
         FROM user_dim u
         JOIN pseudonym_dim p
             ON u.id=p.user_id
@@ -280,7 +297,7 @@ def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     # Found that the IDs are not necessarily unique, so dropping duplicates
     udw_user_df = udw_user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
     logger.debug(udw_user_df.head())
-    uwd_user_df = udw_user_df.drop(['canvas_id'])
+    udw_user_df = udw_user_df.drop(columns=['canvas_id'])
     return udw_user_df
 
 
@@ -304,7 +321,7 @@ def run_course_inventory() -> None:
     start = time.time()
 
     # Gather course data
-    course_df = gather_course_data_with_graphql(ACCOUNT_ID, TERM_ID)
+    course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_ID)
 
     logger.info("*** Fetching the published date ***")
     course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
@@ -333,15 +350,16 @@ def run_course_inventory() -> None:
 
     # Find and remove rows with nonexistent user ids from enrollment_df
     # This can take a few minutes
-    logger.info('Looking for rows with nonexistent user ids in enrollment data')
-    valid_user_ids = user_df['warehouse_id'].to_list()
-    pre_check_enroll_count = len(enrollment_df)
-    enrollment_df['valid_id'] = enrollment_df['user_id'].map(
-        lambda x: check_if_valid_user_id(x, valid_user_ids)
-    )
-    enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
-    enrollment_df = enrollment_df.drop(columns=['valid_id'])
-    logger.info(f'{pre_check_enroll_count - len(enrollment_df)} enrollments were dropped')
+    # Need to determine if we can remove this
+    # logger.info('Looking for rows with nonexistent user ids in enrollment data')
+    # valid_user_ids = user_df['warehouse_id'].to_list()
+    # pre_check_enroll_count = len(enrollment_df)
+    # enrollment_df['valid_id'] = enrollment_df['user_id'].map(
+    #     lambda x: check_if_valid_user_id(x, valid_user_ids)
+    # )
+    # enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
+    # enrollment_df = enrollment_df.drop(columns=['valid_id'])
+    # logger.info(f'{pre_check_enroll_count - len(enrollment_df)} enrollments were dropped')
 
     num_course_records = len(course_df)
     num_user_records = len(user_df)
@@ -365,7 +383,6 @@ def run_course_inventory() -> None:
         logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
-
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
