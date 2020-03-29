@@ -1,7 +1,14 @@
 courses_query = '''
-    query coursesQuery($termID: ID!, $coursePageSize: Int, $coursePageCursor: String!) {
+    query coursesQuery(
+        $termID: ID!,
+        $coursePageSize: Int,
+        $coursePageCursor: String!
+    ) {
         term(id: $termID) {
-            coursesConnection(first: $coursePageSize, after: $coursePageCursor) {
+            coursesConnection(
+                first: $coursePageSize, 
+                after: $coursePageCursor
+            ) {
                 nodes {
                     _id
                     name
