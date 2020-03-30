@@ -41,9 +41,6 @@ CANVAS_TOKEN = ENV['CANVAS_TOKEN']
 CANVAS_URL = ENV['CANVAS_URL']
 NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 
-UDW_CONN = psycopg2.connect(**ENV['UDW'])
-WAREHOUSE_INCREMENT = ENV['WAREHOUSE_INCREMENT']
-
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
 
@@ -161,7 +158,6 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     logger.info(f'Dropped {num_slim_course_dicts - num_slim_course_dicts_with_students} records')
 
     course_df = pd.DataFrame(slim_course_dicts_with_students)
-    course_df['warehouse_id'] = course_df['canvas_id'].map(lambda x: x + WAREHOUSE_INCREMENT)
     course_df.to_csv(os.path.join('data', 'course_with_total_students.csv'), index=False)
     course_df = course_df.drop(['total_students'], axis='columns')
     logger.debug(course_df.head())
@@ -263,39 +259,30 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
     user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
     section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'])
 
-    increment_to_warehouse = (lambda x: x + WAREHOUSE_INCREMENT)
-
-    enrollment_df['warehouse_id'] = enrollment_df['canvas_id'].map(increment_to_warehouse)
-    enrollment_df['user_id'] = enrollment_df['user_id'].map(increment_to_warehouse)
-    enrollment_df['course_id'] = enrollment_df['course_id'].map(increment_to_warehouse)
-    enrollment_df['course_section_id'] = enrollment_df['course_section_id'].map(increment_to_warehouse)
-    user_df['warehouse_id'] = user_df['canvas_id'].map(increment_to_warehouse)
-    section_df['warehouse_id'] = section_df['canvas_id'].map(increment_to_warehouse)
-
     delta = time.time() - start
     logger.info(delta)
     return (enrollment_df, user_df, section_df)
 
 
 def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
+    udw_conn = psycopg2.connect(**ENV['UDW'])
     users_string = ','.join([str(user_id) for user_id in user_ids])
     user_query = f'''
-        SELECT u.id AS warehouse_id,
-               u.canvas_id AS canvas_id,
+        SELECT u.canvas_id AS canvas_id,
                p.sis_user_id AS sis_id,
                p.unique_name AS uniqname
         FROM user_dim u
         JOIN pseudonym_dim p
             ON u.id=p.user_id
-        WHERE u.id in ({users_string});
+        WHERE u.canvas_id in ({users_string});
     '''
     logger.info('Making user_dim query')
-    udw_user_df = pd.read_sql(user_query, UDW_CONN)
+    udw_user_df = pd.read_sql(user_query, udw_conn)
     udw_user_df['sis_id'] = udw_user_df['sis_id'].map(process_sis_id, na_action='ignore')
     # Found that the IDs are not necessarily unique, so dropping duplicates
-    udw_user_df = udw_user_df.drop_duplicates(subset=['warehouse_id', 'canvas_id'])
+    udw_user_df = udw_user_df.drop_duplicates(subset=['canvas_id'])
     logger.debug(udw_user_df.head())
-    udw_user_df = udw_user_df.drop(columns=['canvas_id'])
+    udw_conn.close()
     return udw_user_df
 
 
@@ -342,9 +329,9 @@ def run_course_inventory() -> None:
     enrollment_df, user_df, section_df = gather_enrollment_data_with_graphql(course_ids)
 
     # Pull SIS user data from Unizin Data Warehouse
-    udw_user_ids = user_df['warehouse_id'].to_list()
+    udw_user_ids = user_df['canvas_id'].to_list()
     sis_user_df = pull_sis_user_data_from_udw(udw_user_ids)
-    user_df = pd.merge(user_df, sis_user_df, on='warehouse_id', how='left')
+    user_df = pd.merge(user_df, sis_user_df, on='canvas_id', how='left')
 
     # Produce output
     num_course_records = len(course_df)

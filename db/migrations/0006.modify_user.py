@@ -3,7 +3,7 @@
 #
 from yoyo import step
 
-__depends__ = {'0004.add_sis_id'}
+__depends__ = {'0005.change_pks_to_canvas_id'}
 
 steps = [
     step(
