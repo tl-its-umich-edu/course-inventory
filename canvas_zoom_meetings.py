@@ -1,6 +1,7 @@
 # Script to get all sites where Zoom is visible and retrieve the meetings to generate a report
 
 import json
+import yaml
 import re
 import os
 import sys
@@ -16,11 +17,11 @@ import pandas as pd
 
 # read configurations
 try:
-    with open(os.path.join('config', 'env.json')) as env_file:
-        ENV = json.loads(env_file.read())
+    with open(os.path.join('config', 'env.yaml')) as env_file:
+        ENV = yaml.load(env_file.read())
 except FileNotFoundError:
     sys.exit(
-        'Configuration file could not be found; please add env.json to the config directory.')
+        'Configuration file could not be found; please add env.yaml to the config directory.')
 
 LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
 logging.basicConfig(level=LOG_LEVEL)
