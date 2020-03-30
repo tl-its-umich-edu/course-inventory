@@ -1,4 +1,0 @@
-canvasapi
-beautifulsoup4
-dateparser
-pyyaml
