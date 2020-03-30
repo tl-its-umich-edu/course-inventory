@@ -1,0 +1,139 @@
+# Script to get all sites where Zoom is visible and retrieve the meetings to generate a report
+
+import json
+import yaml
+import re
+import os
+import sys
+import requests
+import logging
+import http.client
+from datetime import datetime
+
+from canvasapi import Canvas
+from bs4 import BeautifulSoup as bs
+
+import pandas as pd
+
+# read configurations
+try:
+    with open(os.path.join('config', 'env.yaml')) as env_file:
+        ENV = yaml.load(env_file.read())
+except FileNotFoundError:
+    sys.exit(
+        'Configuration file could not be found; please add env.yaml to the config directory.')
+
+LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
+logging.basicConfig(level=LOG_LEVEL)
+
+# These two lines enable debugging at httplib level (requests->urllib3->http.client)
+# You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+# The only thing missing will be the response.body which is not logged.
+if LOG_LEVEL == logging.DEBUG:
+    http.client.HTTPConnection.debuglevel = 1
+
+# You must initialize logging, otherwise you'll not see debug output.
+logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger(__name__)
+logger.setLevel(LOG_LEVEL)
+
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(LOG_LEVEL)
+requests_log.propagate = True
+# Global variable to access Canvas
+CANVAS = Canvas(ENV.get("CANVAS_API_URL"), ENV.get("CANVAS_API_KEY"))
+
+
+def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
+    zoom_courses = []
+    zoom_courses_meetings = []
+
+    account = CANVAS.get_account(canvas_account)
+    # Canvas has a limit of 100 per page on this API
+    per_page = 100
+    # Get all published courses from the defined enrollment term
+    courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
+    course_count = 0
+    for course in courses:
+        course_count += 1
+        # TODO: In the future get the total count from the Paginated object
+        # Needs API support https://github.com/ucfopen/canvasapi/issues/114
+        logger.info(f"Fetching course #{course_count} for {course}")
+        # Get tabs and look for zoom
+        tabs = course.get_tabs()
+        for tab in tabs:
+            # Hidden only included if true
+            if (tab.label == "Zoom" and not hasattr(tab, "hidden")):
+                logger.info("Found a course with zoom as %s", tab.id)
+                r = CANVAS._Canvas__requester.request("GET", _url=tab.url)
+                external_url = r.json().get("url")
+                r = requests.get(external_url)
+                # Parse out the form from the response
+                soup = bs(r.text, 'html.parser')
+                # Get the form and parse out all of the inputs
+                form = soup.find('form')
+                if not form:
+                    logger.info("Could not find a form to launch this zoom page, skipping")
+                    break
+
+                fields = form.findAll('input')
+                formdata = dict((field.get('name'), field.get('value')) for field in fields)
+
+                # Get the URL to post back to
+                posturl = form.get('action')
+
+                # Start up the zoom session
+                zoom_s = requests.Session()
+                # Initiate the LTI launch to Zoom in a session
+                r = zoom_s.post(url=posturl, data=formdata)
+
+                # Get the XSRF Token
+                pattern = re.search('"X-XSRF-TOKEN".* value:"(.*)"', r.text)
+
+                zoom_courses.append({
+                    'account_id': course.account_id, 'course_id': course.id, 'course_name': course.name
+                })
+
+                if pattern:
+                    zoom_s.headers.update({
+                        'X-XSRF-TOKEN': pattern.group(1)
+                    })
+                # Get tab 1 (Previous Meetings)
+                    data = {'page': 1,
+                            'total': 0,
+                            'storage_timezone': 'America/Montreal',
+                            'client_timezone': 'America/Detroit'}
+                    r = zoom_s.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
+                    zoom_json = json.loads(r.text)
+
+                    for meeting in zoom_json["result"]["list"]:
+                        zoom_courses_meetings.append({
+                            'course_id': course.id,
+                            'meeting_id': meeting['meetingId'],
+                            'meeting_number': meeting['meetingNumber'],
+                            'host_id': meeting['hostId'],
+                            'topic': meeting['topic'],
+                            'join_url': meeting['joinUrl'],
+                            'start_time': meeting['startTime'],
+                            'status': meeting['status'],
+                            'timezone': meeting['timezone']
+                        })
+    return (zoom_courses, zoom_courses_meetings)
+
+
+start_time = datetime.now()
+logger.info(f"Script started at {start_time}")
+
+(zoom_courses, zoom_courses_meetings) = zoom_course_report(ENV.get("CANVAS_ACCOUNT", 1), ENV.get("CANVAS_TERM", 1), True)
+
+zoom_courses_df = pd.DataFrame(zoom_courses)
+zoom_courses_df.index.name = "id"
+zoom_courses_meetings_df = pd.DataFrame(zoom_courses_meetings)
+zoom_courses_meetings_df.index.name = "id"
+
+zoom_courses_df.to_csv("zoom_courses.csv")
+zoom_courses_meetings_df.to_csv("zoom_courses_meetings.csv")
+
+end_time = datetime.now()
+logger.info(f"Script finished at {start_time}")
+print('Duration: {}'.format(end_time - start_time))
