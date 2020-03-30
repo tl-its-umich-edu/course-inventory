@@ -1,37 +1,3 @@
-courses_query = '''
-    query coursesQuery(
-        $termID: ID!,
-        $coursePageSize: Int,
-        $coursePageCursor: String!
-    ) {
-        term(id: $termID) {
-            coursesConnection(
-                first: $coursePageSize, 
-                after: $coursePageCursor
-            ) {
-                nodes {
-                    _id
-                    name
-                    state
-                    createdAt
-                    account {
-                        _id
-                        name
-                    }
-                    term {
-                        _id
-                        name
-                    }
-                }
-                pageInfo {
-                    endCursor
-                    hasNextPage
-                }
-            }
-        }
-    }
-'''
-
 course_enrollments_query = '''
     query courseEnrollmentsQuery (
         $courseID: ID!,
@@ -72,6 +38,5 @@ course_enrollments_query = '''
 '''
 
 queries = {
-    'courses': courses_query,
     'course_enrollments': course_enrollments_query
 }
