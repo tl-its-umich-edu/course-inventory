@@ -346,19 +346,7 @@ def run_course_inventory() -> None:
     sis_user_df = pull_sis_user_data_from_udw(udw_user_ids)
     user_df = pd.merge(user_df, sis_user_df, on='warehouse_id', how='left')
 
-    # Find and remove rows with nonexistent user ids from enrollment_df
-    # This can take a few minutes
-    # Need to determine if we can remove this
-    # logger.info('Looking for rows with nonexistent user ids in enrollment data')
-    # valid_user_ids = user_df['warehouse_id'].to_list()
-    # pre_check_enroll_count = len(enrollment_df)
-    # enrollment_df['valid_id'] = enrollment_df['user_id'].map(
-    #     lambda x: check_if_valid_user_id(x, valid_user_ids)
-    # )
-    # enrollment_df = enrollment_df[(enrollment_df['valid_id'])]
-    # enrollment_df = enrollment_df.drop(columns=['valid_id'])
-    # logger.info(f'{pre_check_enroll_count - len(enrollment_df)} enrollments were dropped')
-
+    # Produce output
     num_course_records = len(course_df)
     num_user_records = len(user_df)
     num_section_records = len(section_df)
