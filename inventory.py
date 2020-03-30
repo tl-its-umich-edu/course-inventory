@@ -13,7 +13,7 @@ from umich_api.api_utils import ApiUtil
 # local libraries
 from db.db_creator import DBCreator
 from canvas.published_date import FetchPublishedDate
-from queries import queries as QUERIES
+from gql_queries import queries as QUERIES
 
 
 # Initialize settings and globals
