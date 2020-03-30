@@ -21,7 +21,7 @@ try:
         ENV = yaml.load(env_file.read())
 except FileNotFoundError:
     sys.exit(
-        'Configuration file could not be found; please add env.yaml to the config directory.')
+        'Configuration file could not be found; please add env.json to the config directory.')
 
 LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
 logging.basicConfig(level=LOG_LEVEL)
@@ -33,7 +33,6 @@ if LOG_LEVEL == logging.DEBUG:
     http.client.HTTPConnection.debuglevel = 1
 
 # You must initialize logging, otherwise you'll not see debug output.
-logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 

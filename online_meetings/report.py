@@ -23,7 +23,7 @@ try:
         ENV = yaml.load(env_file.read())
 except FileNotFoundError:
     logger.error(
-        'Configuration file could not be found; please add env.json to the config directory.')
+        'Configuration file could not be found; please add env.yaml to the config directory.')
 
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
@@ -147,7 +147,7 @@ def zoom_loop(url: str, headers: dict, json_attribute_name: str,
                     logger.info("No more tokens and not paged!")
                     break
             except json.JSONDecodeError:
-                logger.exception('YAMLError encountered')
+                logger.exception('JSONDecodeError encountered')
                 logger.info('No more pages!')
                 break
     return total_list
