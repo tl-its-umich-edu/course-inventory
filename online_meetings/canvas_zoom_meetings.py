@@ -17,7 +17,7 @@ import pandas as pd
 
 # read configurations
 try:
-    with open(os.path.join('config', 'env.yaml')) as env_file:
+    with open(os.path.join('../config', 'env.json')) as env_file:
         ENV = yaml.load(env_file.read())
 except FileNotFoundError:
     sys.exit(
@@ -41,7 +41,7 @@ requests_log = logging.getLogger("requests.packages.urllib3")
 requests_log.setLevel(LOG_LEVEL)
 requests_log.propagate = True
 # Global variable to access Canvas
-CANVAS = Canvas(ENV.get("CANVAS_API_URL"), ENV.get("CANVAS_API_KEY"))
+CANVAS = Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
 
 
 def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
@@ -124,7 +124,7 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
 start_time = datetime.now()
 logger.info(f"Script started at {start_time}")
 
-(zoom_courses, zoom_courses_meetings) = zoom_course_report(ENV.get("CANVAS_ACCOUNT", 1), ENV.get("CANVAS_TERM", 1), True)
+(zoom_courses, zoom_courses_meetings) = zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 1), True)
 
 zoom_courses_df = pd.DataFrame(zoom_courses)
 zoom_courses_df.index.name = "id"

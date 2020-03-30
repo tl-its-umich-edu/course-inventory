@@ -26,5 +26,9 @@
     "dbname": "",
     "user": "",
     "password": ""
-  }
+  },
+  "ZOOM_TOKEN": "<ADD THIS TOKEN>",
+  "ZOOM_BASE_URL": "<ADD zoom.us URL>",
+  "ZOOM_EARLIEST_FROM": "2020-03-01"
+}
 }

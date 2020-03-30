@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # read configurations
 try:
-    with open(os.path.join('config', 'env.yaml')) as env_file:
+    with open(os.path.join('../config', 'env.json')) as env_file:
         ENV = yaml.load(env_file.read())
 except FileNotFoundError:
     logger.error(
