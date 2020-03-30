@@ -190,8 +190,6 @@ def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
     flat_section_dict = {
         'canvas_id': int(section_data['_id']),
         'name': section_data['name'],
-        'created_at': section_data['createdAt'],
-        'updated_at': section_data['updatedAt']
     }
     return (flat_enroll_dict, flat_user_dict, flat_section_dict)
 
@@ -402,7 +400,9 @@ def run_course_inventory() -> None:
     user_df.to_sql('user', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into user table in {db_creator_obj.db_name}')
 
-    logger.info('Will be inserting section data here!!!')
+    logger.info(f'Inserting {num_section_records} section records to DB')
+    section_df.to_sql('course_section', db_creator_obj.engine, if_exists='append', index=False)
+    logger.info(f'Inserted data into section table in {db_creator_obj.db_name}')
 
     logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)

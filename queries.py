@@ -49,8 +49,6 @@ course_enrollments_query = '''
                     section {
                         _id
                         name
-                        updatedAt
-                        createdAt
                     }
                     state
                     type
