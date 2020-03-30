@@ -24,12 +24,17 @@ steps = [
     step('''
         ALTER TABLE enrollment
         MODIFY
-            user_id INTEGER NOT NULL;
+            user_id BIGINT NOT NULL;
     '''),
     step('''
         ALTER TABLE enrollment
         MODIFY
             course_section_id INTEGER NOT NULL;
+    '''),
+    step('''
+        ALTER TABLE user
+        MODIFY
+            canvas_id BIGINT NOT NULL;
     '''),
     # Drop warehouse_id columns, add canvas_id primary keys
     step('''
