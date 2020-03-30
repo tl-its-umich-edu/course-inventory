@@ -135,4 +135,4 @@ zoom_courses_meetings_df.to_csv("zoom_courses_meetings.csv")
 
 end_time = datetime.now()
 logger.info(f"Script finished at {start_time}")
-print('Duration: {}'.format(end_time - start_time))
+logging.info('Duration: {}'.format(end_time - start_time))

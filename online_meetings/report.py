@@ -60,7 +60,7 @@ def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = {}, par
 
 def run_report(api_url: str, headers: dict, json_attribute_name: str,
                default_params: dict = {}, page_size: int = 300, page_token: bool = False, use_date: bool = False):
-    url = ZOOM_BASE_URL+api_url
+    url = ZOOM_BASE_URL + api_url
     params = default_params
     # If page size is specified use this
     if page_size:
