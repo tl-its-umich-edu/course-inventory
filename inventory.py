@@ -106,7 +106,7 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
 
 
 def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
-    logger.info('* gather_course_data_from_api')
+    logger.info('** gather_course_data_from_api')
     url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
     params = {
         'with_enrollments': True,
@@ -191,7 +191,7 @@ def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
 
 
 def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.DataFrame, ...]:
-    logger.info('* gather_enrollment_data_with_graphql')
+    logger.info('** gather_enrollment_data_with_graphql')
     start = time.time()
 
     complete_url = CANVAS_URL + '/api/graphql'
@@ -233,9 +233,6 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
             data = json.loads(response.text)
 
             response_course_id = data['data']['course']['_id']
-            if course_id != int(response_course_id):
-                logger.warning("course ID does not match query!!")
-                logger.warning(f"{course_id} != {response_course_id}")
 
             enrollments_connection = data['data']['course']['enrollmentsConnection']
             enrollment_dicts = enrollments_connection['nodes']
@@ -248,12 +245,16 @@ def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.D
                 section_records.append(section_record)
 
             if not enrollment_page_info['hasNextPage']:
-                logger.info('There was only one enrollment page!')
                 more_enroll_pages = False
                 params['variables']['enrollmentPageCursor'] = ""
             else:
                 enroll_page_cursor = enrollment_page_info['endCursor']
                 params['variables']['enrollmentPageCursor'] = enroll_page_cursor
+
+        if course_num % 1000 == 0:
+            delta = time.time() - start
+            logger.info('** 1000 interval **')
+            logger.info(f'Seconds elapsed: {delta}')
 
     enrollment_df = pd.DataFrame(enrollment_records)
     user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
@@ -303,6 +304,7 @@ def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
 
 
 def run_course_inventory() -> None:
+    logger.info("* run_course_inventory")
     start = time.time()
 
     # Gather course data
@@ -313,8 +315,9 @@ def run_course_inventory() -> None:
     course_available_ids = course_available_df['canvas_id'].to_list()
     published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS, course_available_ids)
     published_course_date = published_dates.get_published_course_date(course_available_ids)
-    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id','published_at'])
+    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
     course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+
     logger.info("*** Checking for courses available and no published date ***")
     logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
