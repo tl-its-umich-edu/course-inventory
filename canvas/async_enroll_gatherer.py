@@ -1,5 +1,5 @@
 # standard libraries
-import copy, json, logging, os
+import copy, json, logging
 from typing import Dict, Sequence, Tuple
 from json.decoder import JSONDecodeError
 
@@ -59,28 +59,33 @@ class AsyncEnrollGatherer:
                 'enrollmentPageCursor': ''
             }
         }
+        self.course_enrollments: Sequence[Dict[Union[Dict, int]]] = {}
 
-        self.enrollments_in_progress = {}
+    def get_complete_course_ids(self) -> Sequence[int]:
+        complete_course_ids = []
+        for course_id in self.course_enrollments.keys():
+            enroll_meta_dict = self.course_enrollments[course_id]
+            if not enroll_meta_dict['page_info']['hasNextPage']:
+                complete_course_ids.append(course_id)
+        return complete_course_ids
 
-    def get_course_ids_for_incomplete_enrollments(self) -> Sequence[int]:
+    def get_uncompleted_course_ids(self) -> Sequence[int]:
         course_ids = []
+
         # Get unstarted course_ids
         for course_id in self.course_ids:
-            if course_id not in self.enrollments_in_progress.keys():
+            if course_id not in self.course_enrollments.keys():
                 course_ids.append(course_id)
 
         # Get in-progress course ids
-        for course_id in self.enrollments_in_progress.keys():
-            enrollment_in_progress_dict = self.enrollments_in_progress[course_id]
-            if enrollment_in_progress_dict['enroll_page_info']['hasNextPage']:
+        for course_id in self.course_enrollments.keys():
+            course_enrollment_dict = self.course_enrollments[course_id]
+            if course_enrollment_dict['page_info']['hasNextPage']:
                 course_ids.append(course_id)
 
-        logger.debug(f'Number of course_ids with incomplete enrollments: {len(course_ids)}')
         return course_ids
 
     def parse_enrollment_response(self, future_response: Future) -> None:
-        logger.info(f'Number of courses in progress: {len(self.enrollments_in_progress)}')
-
         # Check for irregular results
         response = future_response.result()
         status_code = response.status_code
@@ -96,27 +101,27 @@ class AsyncEnrollGatherer:
                 logger.warning('JSONDecodeError encountered')
                 problem_encountered = True
 
-        if not problem_encountered:
+        if problem_encountered:
+            logger.warning('No data will be stored, and the request will be re-tried')
+        else:
             response_course_id = int(response_data['data']['course']['_id'])
 
             enrollments_connection = response_data['data']['course']['enrollmentsConnection']
             enrollment_dicts = enrollments_connection['nodes']
             enrollment_page_info = enrollments_connection['pageInfo']
 
-            if response_course_id not in self.enrollments_in_progress.keys():
+            if response_course_id not in self.course_enrollments.keys():
                 # Create new in-progress record
-                self.enrollments_in_progress[response_course_id] = {
+                self.course_enrollments[response_course_id] = {
                     'enrollments': enrollment_dicts,
-                    'enroll_page_info': enrollment_page_info,
+                    'page_info': enrollment_page_info,
                     'num_pages': 1
                 }
             else:
                 # Update existing in-progress record
-                self.enrollments_in_progress[response_course_id]['enrollments'] += enrollment_dicts
-                self.enrollments_in_progress[response_course_id]['enroll_page_info'] = enrollment_page_info
-                self.enrollments_in_progress[response_course_id]['num_pages'] += 1
-
-        return None
+                self.course_enrollments[response_course_id]['enrollments'] += enrollment_dicts
+                self.course_enrollments[response_course_id]['page_info'] = enrollment_page_info
+                self.course_enrollments[response_course_id]['num_pages'] += 1
 
     def make_requests(self, course_ids: Sequence[int]) -> None:
         with FuturesSession(max_workers=self.num_workers) as session:
@@ -125,9 +130,9 @@ class AsyncEnrollGatherer:
                 # Prep params
                 params = copy.deepcopy(self.default_params)
                 params['variables']['courseID'] = course_id
-                if course_id in self.enrollments_in_progress.keys():
-                    enrollment_in_progress_dict = self.enrollments_in_progress[course_id]
-                    enroll_page_info = enrollment_in_progress_dict['enroll_page_info']
+                if course_id in self.course_enrollments.keys():
+                    course_enrollment_dict = self.course_enrollments[course_id]
+                    enroll_page_info = course_enrollment_dict['page_info']
                     params['variables']['enrollmentPageCursor'] = enroll_page_info['endCursor']
 
                 logger.debug(params['variables'])
@@ -137,14 +142,18 @@ class AsyncEnrollGatherer:
             for completed_response in as_completed(responses):
                 self.parse_enrollment_response(completed_response)
 
+                # Log process status
+                logger.info(f'# started courses: {len(self.course_enrollments)}')
+                logger.info(f'# completed courses: {len(self.get_complete_course_ids())}')
+
     def generate_output(self) -> Tuple[pd.DataFrame, ...]:
         logger.debug('generate_output')
         enrollment_records = []
         user_records = []
         section_records = []
 
-        for course_id in self.enrollments_in_progress.keys():
-            enrollment_dicts = self.enrollments_in_progress[course_id]['enrollments']
+        for course_id in self.course_enrollments.keys():
+            enrollment_dicts = self.course_enrollments[course_id]['enrollments']
             for enrollment_dict in enrollment_dicts:
                 enrollment_record, user_record, section_record = unnest_enrollment(enrollment_dict)
                 enrollment_records.append(enrollment_record)
@@ -158,17 +167,17 @@ class AsyncEnrollGatherer:
 
     def gather(self) -> None:
         logger.info('** AsyncEnrollGatherer')
-        logger.info('Gathering enrollment data asynchronously with GraphQL')
+        logger.info('Gathering enrollment data for courses asynchronously with GraphQL')
 
         prev_course_id_lists = []
         more_to_gather = True
 
         while more_to_gather:
-            course_ids_to_process = sorted(self.get_course_ids_for_incomplete_enrollments())
+            course_ids_to_process = sorted(self.get_uncompleted_course_ids())
 
             if len(course_ids_to_process) == 0:
                 more_to_gather = False
-                logger.info('Enrollment records have been gathered')
+                logger.info('Enrollment records for the course IDs have been gathered')
             else:
                 if (len(prev_course_id_lists) > 2) and (prev_course_id_lists[0] == course_ids_to_process) and (prev_course_id_lists[1] == course_ids_to_process):
                     logger.warning('A few course IDs could not be processed')
