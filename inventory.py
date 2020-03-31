@@ -48,29 +48,16 @@ INVENTORY_DB = ENV['INVENTORY_DB']
 
 # Function(s)
 
-def make_request_using_lib(
-    url: str,
-    params: Dict[str, Union[str, int]] = {},
-    method: str = 'GET',
-    lib_name: str = 'requests'
-) -> Response:
-
+def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
         logger.debug(f'Attempt #{i}')
-        if lib_name == 'requests':
-            response = requests.request(method=method, url=url, json=params)
-        elif lib_name == 'umich_api':
-            response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params, method=method)
-        else:
-            logger.error('lib_name provided was invalid!')
-        logger.debug('Received response with the following URL: ' + response.url)
+        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
         status_code = response.status_code
 
         if status_code != 200:
             logger.warning(f'Received irregular status code: {status_code}')
-            logger.debug(response.text)
             logger.info('Beginning next_attempt')
         else:
             try:
@@ -118,12 +105,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     # Make first course request
     page_num = 1
     logger.info(f'Course Page Number: {page_num}')
-    response = make_request_using_lib(
-        url_ending_with_scope,
-        params,
-        method='GET',
-        lib_name='umich_api'
-    )
+    response = make_request_using_api_utils(url_ending_with_scope, params)
     all_course_data = json.loads(response.text)
     slim_course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
@@ -133,12 +115,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
         if next_params:
             page_num += 1
             logger.info(f'Course Page Number: {page_num}')
-            response = make_request_using_lib(
-                url_ending_with_scope,
-                next_params,
-                method='GET',
-                lib_name='umich_api'
-            )
+            response = make_request_using_api_utils(url_ending_with_scope, next_params)
             all_course_data = json.loads(response.text)
             slim_course_dicts += slim_down_course_data(all_course_data)
         else:
