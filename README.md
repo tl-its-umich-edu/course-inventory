@@ -65,6 +65,10 @@ To configure the application before installation and usage (see the next section
     `NUM_ASYNC_WORKERS` | Number of workers for course published date async call, defaults to 8
     `CANVAS_URL` | canvas instance url
     `CANVAS_TOKEN` | canvas token for auth
+    `ZOOM_TOKEN` | Token for Zoom
+    `ZOOM_BASE_URL` | Base URL for Zoom
+    `ZOOM_EARLIEST_FROM` | The earliest date to retrieve zoom content from
+    `DEFAULT_SLEEP_TIME` | Amount of time to sleep between retries when given a 429 error and no Retry-After in the response headers.
 
 
 ### Installation & Usage

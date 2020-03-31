@@ -29,14 +29,12 @@ logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
 logger.info(ENV)
 
-payload = {}
-
 headers = {
   "Authorization": f"Bearer {ENV['ZOOM_TOKEN']}"
 }
 
 ZOOM_BASE_URL = ENV.get('ZOOM_BASE_URL', "")
-DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', "10")
+DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
 # Functions
@@ -58,8 +56,8 @@ def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = {}, par
     return total_page_count
 
 
-def run_report(api_url: str, headers: dict, json_attribute_name: str,
-               default_params: dict = {}, page_size: int = 300, page_token: bool = False, use_date: bool = False):
+def run_report(api_url: str, headers: Dict[str, Union[str, int]], json_attribute_name: str,
+               default_params: Dict[str, Union[str, int]] = {}, page_size: int = 300, page_token: bool = False, use_date: bool = False):
     url = ZOOM_BASE_URL + api_url
     params = default_params
     # If page size is specified use this
@@ -97,8 +95,8 @@ def run_report(api_url: str, headers: dict, json_attribute_name: str,
     total_df.to_csv(output_file_name)
 
 
-def zoom_loop(url: str, headers: dict, json_attribute_name: str,
-              params: dict, page_token: bool = False) -> list:
+def zoom_loop(url: str, headers: Dict[str, Union[str, int]], json_attribute_name: str,
+              params: Dict[str, Union[str, int]], page_token: bool = False) -> list:
     # Need a fresh copy of dicts
     total_list = []    # get total page count
     total_page_count = get_total_page_count(url, headers, params)
