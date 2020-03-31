@@ -79,6 +79,8 @@ class AsyncEnrollGatherer:
         return course_ids
 
     def parse_enrollment_response(self, future_response: Future) -> None:
+        logger.info(f'Number of courses in progress: {len(self.enrollments_in_progress)}')
+
         # Check for irregular results
         response = future_response.result()
         status_code = response.status_code
@@ -120,8 +122,6 @@ class AsyncEnrollGatherer:
         with FuturesSession(max_workers=self.num_workers) as session:
             responses = []
             for course_id in course_ids:
-                logger.info(f'Number of courses in progress: {len(self.enrollments_in_progress)}')
-                
                 # Prep params
                 params = copy.deepcopy(self.default_params)
                 params['variables']['courseID'] = course_id
