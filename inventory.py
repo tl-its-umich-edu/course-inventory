@@ -13,6 +13,7 @@ from umich_api.api_utils import ApiUtil
 # local libraries
 from db.db_creator import DBCreator
 from canvas.published_date import FetchPublishedDate
+from canvas.async_enroll_gatherer import AsyncEnrollGatherer
 from gql_queries import queries as QUERIES
 
 
@@ -82,8 +83,6 @@ def make_request_using_lib(
     logger.error('The maximum number of request attempts was reached')
     return response
 
-
-# Functions - Course
 
 def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     slim_course_dicts = []
@@ -164,107 +163,6 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     return course_df
 
 
-# Functions - Enrollment
-
-def unnest_enrollments(enroll_dict: Dict) -> Tuple[Dict, ...]:
-    flat_enroll_dict = {
-        'canvas_id': int(enroll_dict['_id']),
-        'user_id': int(enroll_dict['user']['_id']),
-        'course_id': int(enroll_dict['course']['_id']),
-        'course_section_id': int(enroll_dict['section']['_id']),
-        'role_type': enroll_dict['type'],
-        'workflow_state': enroll_dict['state']
-    }
-
-    user_data = enroll_dict['user']
-    flat_user_dict = {
-        'canvas_id': int(user_data['_id']),
-        'name': user_data['name']
-    }
-
-    section_data = enroll_dict['section']
-    flat_section_dict = {
-        'canvas_id': int(section_data['_id']),
-        'name': section_data['name'],
-    }
-    return (flat_enroll_dict, flat_user_dict, flat_section_dict)
-
-
-def gather_enrollment_data_with_graphql(course_ids: Sequence[int]) -> Tuple[pd.DataFrame, ...]:
-    logger.info('** gather_enrollment_data_with_graphql')
-    start = time.time()
-
-    complete_url = CANVAS_URL + '/api/graphql'
-    course_enrollments_query = QUERIES['course_enrollments']
-    params = {
-        'access_token': CANVAS_TOKEN,
-        'query': course_enrollments_query,
-        'variables': {
-            "courseID": None,
-            "enrollmentPageSize": 75,
-            "enrollmentPageCursor": "",
-        }
-    }
-
-    enrollment_records = []
-    user_records = []
-    section_records = []
-
-    course_num = 0
-    for course_id in course_ids:
-        course_num += 1
-        params['variables']['courseID'] = course_id
-
-        logger.info(f'Enrollment records: {len(enrollment_records)}')
-        logger.info(f'Course number {course_num}: {course_id}')
-
-        more_enroll_pages = True
-        enroll_page_num = 0
-        while more_enroll_pages:
-            enroll_page_num += 1
-            logger.info(f'Enrollment Page Number: {enroll_page_num}')
-
-            response = make_request_using_lib(
-                complete_url,
-                params,
-                method='POST',
-                lib_name='requests'
-            )
-            data = json.loads(response.text)
-
-            response_course_id = data['data']['course']['_id']
-
-            enrollments_connection = data['data']['course']['enrollmentsConnection']
-            enrollment_dicts = enrollments_connection['nodes']
-            enrollment_page_info = enrollments_connection['pageInfo']
-
-            for enrollment_dict in enrollment_dicts:
-                enrollment_record, user_record, section_record = unnest_enrollments(enrollment_dict)
-                enrollment_records.append(enrollment_record)
-                user_records.append(user_record)
-                section_records.append(section_record)
-
-            if not enrollment_page_info['hasNextPage']:
-                more_enroll_pages = False
-                params['variables']['enrollmentPageCursor'] = ""
-            else:
-                enroll_page_cursor = enrollment_page_info['endCursor']
-                params['variables']['enrollmentPageCursor'] = enroll_page_cursor
-
-        if course_num % 1000 == 0:
-            delta = time.time() - start
-            logger.info('** 1000 interval **')
-            logger.info(f'Seconds elapsed: {delta}')
-
-    enrollment_df = pd.DataFrame(enrollment_records)
-    user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
-    section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'])
-
-    delta = time.time() - start
-    logger.info(delta)
-    return (enrollment_df, user_df, section_df)
-
-
 def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
     udw_conn = psycopg2.connect(**ENV['UDW'])
     users_string = ','.join([str(user_id) for user_id in user_ids])
@@ -328,8 +226,19 @@ def run_course_inventory() -> None:
                                                errors='coerce')
 
     # Gather enrollment, user, and section data
+    beginning = time.time()
     course_ids = course_df['canvas_id'].to_list()
-    enrollment_df, user_df, section_df = gather_enrollment_data_with_graphql(course_ids)
+    enroll_gatherer = AsyncEnrollGatherer(
+        course_ids=course_ids,
+        access_token=CANVAS_TOKEN,
+        complete_url=CANVAS_URL + '/api/graphql',
+        gql_query=QUERIES['course_enrollments'],
+        enroll_page_size=75,
+        num_workers=NUM_ASYNC_WORKERS
+    )
+    enroll_gatherer.gather()
+    enrollment_df, user_df, section_df = enroll_gatherer.generate_output()
+    logger.info(time.time() - beginning)
 
     # Pull SIS user data from Unizin Data Warehouse
     udw_user_ids = user_df['canvas_id'].to_list()
