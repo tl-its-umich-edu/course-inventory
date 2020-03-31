@@ -1,5 +1,5 @@
 #
-# file: migrations/0006.add_section_table.py
+# file: migrations/0007.add_section_table.py
 #
 from yoyo import step
 
