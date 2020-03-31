@@ -82,9 +82,9 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
                 posturl = form.get('action')
 
                 # Start up the zoom session
-                zoom_s = requests.Session()
+                zoom_session = requests.Session()
                 # Initiate the LTI launch to Zoom in a session
-                r = zoom_s.post(url=posturl, data=formdata)
+                r = zoom_session.post(url=posturl, data=formdata)
 
                 # Get the XSRF Token
                 pattern = re.search('"X-XSRF-TOKEN".* value:"(.*)"', r.text)
@@ -94,7 +94,7 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
                 })
 
                 if pattern:
-                    zoom_s.headers.update({
+                    zoom_session.headers.update({
                         'X-XSRF-TOKEN': pattern.group(1)
                     })
                 # Get tab 1 (Previous Meetings)
@@ -102,7 +102,7 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
                             'total': 0,
                             'storage_timezone': 'America/Montreal',
                             'client_timezone': 'America/Detroit'}
-                    r = zoom_s.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
+                    r = zoom_session.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
                     zoom_json = json.loads(r.text)
 
                     for meeting in zoom_json["result"]["list"]:
