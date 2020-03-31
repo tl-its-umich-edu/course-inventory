@@ -6,7 +6,6 @@ from typing import Dict, Sequence, Tuple, Union
 # third-party libraries
 import pandas as pd
 import psycopg2
-import requests
 from requests import Response
 from umich_api.api_utils import ApiUtil
 
