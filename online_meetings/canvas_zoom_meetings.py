@@ -17,7 +17,7 @@ import pandas as pd
 
 # read configurations
 try:
-    with open(os.path.join('../config', 'env.json')) as env_file:
+    with open(os.path.join(os.path.dirname(__file__), '../config/env.json')) as env_file:
         ENV = yaml.safe_load(env_file.read())
 except FileNotFoundError:
     sys.exit(
@@ -117,6 +117,10 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
                             'status': meeting['status'],
                             'timezone': meeting['timezone']
                         })
+                else:
+                    logger.warn("PATTERN NOT FOUND in course, no details logged")
+                    logger.debug(r.text)
+
     return (zoom_courses, zoom_courses_meetings)
 
 
