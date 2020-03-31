@@ -120,6 +120,8 @@ class AsyncEnrollGatherer:
         with FuturesSession(max_workers=self.num_workers) as session:
             responses = []
             for course_id in course_ids:
+                logger.info(f'Number of courses in progress: {len(self.enrollments_in_progress)}')
+                
                 # Prep params
                 params = copy.deepcopy(self.default_params)
                 params['variables']['courseID'] = course_id
@@ -150,8 +152,6 @@ class AsyncEnrollGatherer:
                 section_records.append(section_record)
 
         enrollment_df = pd.DataFrame(enrollment_records)
-        enrollment_df.to_csv(os.path.join('data', 'test_enrollment.csv'), index=False)
-        enrollment_df = enrollment_df.drop_duplicates(subset=['canvas_id', 'user_id', 'course_section_id'])
         user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
         section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'])
         return (enrollment_df, user_df, section_df)
@@ -168,7 +168,7 @@ class AsyncEnrollGatherer:
 
             if len(course_ids_to_process) == 0:
                 more_to_gather = False
-                logger.info('Enrollment records have been gathered.')
+                logger.info('Enrollment records have been gathered')
             else:
                 if (len(prev_course_id_lists) > 2) and (prev_course_id_lists[0] == course_ids_to_process) and (prev_course_id_lists[1] == course_ids_to_process):
                     logger.warning('A few course IDs could not be processed')
