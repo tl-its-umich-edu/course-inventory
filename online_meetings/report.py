@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # read configurations
 try:
     with open(os.path.join('../config', 'env.json')) as env_file:
-        ENV = yaml.load(env_file.read())
+        ENV = yaml.safe_load(env_file.read())
 except FileNotFoundError:
     logger.error(
         'Configuration file could not be found; please add env.yaml to the config directory.')
@@ -38,7 +38,12 @@ DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
 # Functions
-def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = {}, params: dict = {}):
+def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = None, params: Dict[str, Union[str, int]] = None):
+    if params is None:
+        params = {}
+    if headers is None:
+        headers = {}
+
     # get the total page count
     total_page_count = 0
     response = requests.request("GET", f"{url}", headers=headers, params=params)
@@ -57,7 +62,9 @@ def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = {}, par
 
 
 def run_report(api_url: str, headers: Dict[str, Union[str, int]], json_attribute_name: str,
-               default_params: Dict[str, Union[str, int]] = {}, page_size: int = 300, page_token: bool = False, use_date: bool = False):
+               default_params: Dict[str, Union[str, int]] = None, page_size: int = 300, page_token: bool = False, use_date: bool = False):
+    if default_params is None:
+        default_params = {}
     url = ZOOM_BASE_URL + api_url
     params = default_params
     # If page size is specified use this

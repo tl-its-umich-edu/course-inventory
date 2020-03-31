@@ -18,7 +18,7 @@ import pandas as pd
 # read configurations
 try:
     with open(os.path.join('../config', 'env.json')) as env_file:
-        ENV = yaml.load(env_file.read())
+        ENV = yaml.safe_load(env_file.read())
 except FileNotFoundError:
     sys.exit(
         'Configuration file could not be found; please add env.json to the config directory.')
