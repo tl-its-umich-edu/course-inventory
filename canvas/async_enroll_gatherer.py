@@ -160,9 +160,14 @@ class AsyncEnrollGatherer:
                 user_records.append(user_record)
                 section_records.append(section_record)
 
+        # Seems like we shouldn't have to drop duplicates, but once one duplicate broke the process
         enrollment_df = pd.DataFrame(enrollment_records)
-        user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'])
-        section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'])
+        enrollment_count = len(enrollment_df)
+        enrollment_df = enrollment_df.drop_duplicates()
+        logger.info(f'{len(enrollment_df) - enrollment_count} enrollment records were dropped')
+
+        user_df = pd.DataFrame(user_records).drop_duplicates()
+        section_df = pd.DataFrame(section_records).drop_duplicates()
         return (enrollment_df, user_df, section_df)
 
     def gather(self) -> None:
@@ -187,4 +192,3 @@ class AsyncEnrollGatherer:
                     self.make_requests(course_ids_to_process)
 
         logger.info('Enrollment records for the course IDs have been gathered')
-
