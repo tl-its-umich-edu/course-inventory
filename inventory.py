@@ -168,13 +168,6 @@ def process_sis_id(id: str) -> Union[int, None]:
     return sis_id
 
 
-def check_if_valid_user_id(id: int, user_ids: Sequence[int]) -> bool:
-    if id in user_ids:
-        return True
-    else:
-        return False
-
-
 def run_course_inventory() -> None:
     logger.info("* run_course_inventory")
     start = time.time()
