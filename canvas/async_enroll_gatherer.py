@@ -69,7 +69,7 @@ class AsyncEnrollGatherer:
                 complete_course_ids.append(course_id)
         return complete_course_ids
 
-    def get_uncompleted_course_ids(self) -> Sequence[int]:
+    def get_incomplete_course_ids(self) -> Sequence[int]:
         course_ids = []
 
         # Get unstarted course_ids
@@ -169,20 +169,22 @@ class AsyncEnrollGatherer:
         logger.info('** AsyncEnrollGatherer')
         logger.info('Gathering enrollment data for courses asynchronously with GraphQL')
 
-        prev_course_id_lists = []
         more_to_gather = True
 
         while more_to_gather:
-            course_ids_to_process = sorted(self.get_uncompleted_course_ids())
+            complete_course_ids = self.get_complete_course_ids()
+            course_ids_to_process = sorted(self.get_incomplete_course_ids())
 
             if len(course_ids_to_process) == 0:
                 more_to_gather = False
-                logger.info('Enrollment records for the course IDs have been gathered')
             else:
-                if (len(prev_course_id_lists) > 2) and (prev_course_id_lists[0] == course_ids_to_process) and (prev_course_id_lists[1] == course_ids_to_process):
+                unstarted_course_ids = [course_id for course_id in course_ids_to_process if course_id not in self.course_enrollments.keys()]
+                if len(complete_course_ids) > 0 and unstarted_course_ids == course_ids_to_process:
                     logger.warning('A few course IDs could not be processed')
                     logger.warning(course_ids_to_process)
                     more_to_gather = False
                 else:
                     self.make_requests(course_ids_to_process)
-            prev_course_id_lists = [course_ids_to_process] + prev_course_id_lists
+
+        logger.info('Enrollment records for the course IDs have been gathered')
+
