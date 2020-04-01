@@ -8,6 +8,7 @@ import pandas as pd
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed, Future
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,13 +60,25 @@ class AsyncEnrollGatherer:
                 'enrollmentPageCursor': ''
             }
         }
-        self.course_enrollments: Sequence[Dict[Union[Dict, int]]] = {}
+
+        # course_enrollments will have this structure
+        # {
+        #     course_id: {
+        #         'enrollments': [nested_gql_enrollment_dict, ...],
+        #         'page_info': {
+        #             'endCursor': some_code,
+        #             'hasNextPage': some_bool
+        #         },
+        #         'num_pages': some_integer
+        #     }
+        # }
+        self.course_enrollments = {}
 
     def get_complete_course_ids(self) -> Sequence[int]:
         complete_course_ids = []
         for course_id in self.course_enrollments.keys():
-            enroll_meta_dict = self.course_enrollments[course_id]
-            if not enroll_meta_dict['page_info']['hasNextPage']:
+            course_enrollment_dict = self.course_enrollments[course_id]
+            if not course_enrollment_dict['page_info']['hasNextPage']:
                 complete_course_ids.append(course_id)
         return complete_course_ids
 
@@ -87,9 +100,10 @@ class AsyncEnrollGatherer:
 
     def parse_enrollment_response(self, future_response: Future) -> None:
         # Check for irregular results
-        response = future_response.result()
-        status_code = response.status_code
         problem_encountered = False
+        response = future_response.result()
+
+        status_code = response.status_code
         if status_code != 200:
             logger.warning(f'Received irregular status code: {status_code}')
             logger.debug(response.text)
@@ -184,6 +198,8 @@ class AsyncEnrollGatherer:
                 more_to_gather = False
             else:
                 unstarted_course_ids = [course_id for course_id in course_ids_to_process if course_id not in self.course_enrollments.keys()]
+                # This condition will stop the gather process if all the remaining course_ids have not been started.
+                # Several request attempts will have been made using this course_id before reaching this state.
                 if len(complete_course_ids) > 0 and unstarted_course_ids == course_ids_to_process:
                     logger.warning('A few course IDs could not be processed')
                     logger.warning(course_ids_to_process)
