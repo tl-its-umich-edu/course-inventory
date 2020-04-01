@@ -1,7 +1,7 @@
 # standard libraries
 import json, logging, os, time
 from json.decoder import JSONDecodeError
-from typing import Dict, Sequence, Tuple, Union
+from typing import Dict, Sequence, Union
 
 # third-party libraries
 import pandas as pd
@@ -133,7 +133,6 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     logger.info(f'Dropped {num_slim_course_dicts - num_slim_course_dicts_with_students} records')
 
     course_df = pd.DataFrame(slim_course_dicts_with_students)
-    course_df.to_csv(os.path.join('data', 'course_with_total_students.csv'), index=False)
     course_df = course_df.drop(['total_students'], axis='columns')
     logger.debug(course_df.head())
     return course_df
