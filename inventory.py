@@ -85,7 +85,6 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
         else:
             logger.info('Total students not found, setting to zero')
             slim_course_dict['total_students'] = 0
-            logger.info(course_dict['total_students'])
         slim_course_dicts.append(slim_course_dict)
     return slim_course_dicts
 
