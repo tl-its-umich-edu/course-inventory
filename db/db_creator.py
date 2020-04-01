@@ -1,6 +1,7 @@
 # standard libraries
 import logging, os
 from typing import Dict, Sequence
+from urllib.parse import quote_plus
 
 # third-party libraries
 from sqlalchemy.engine import create_engine
@@ -20,7 +21,7 @@ class DBCreator:
         self.conn_str = (
             'mysql+mysqldb' +
             f"://{db_params['user']}" +
-            f":{db_params['password']}" +
+            f":{quote_plus(db_params['password'])}" +
             f"@{db_params['host']}" +
             f":{db_params['port']}" +
             f"/{db_params['dbname']}?charset=utf8"
