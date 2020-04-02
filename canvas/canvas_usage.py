@@ -5,6 +5,7 @@ from concurrent.futures import as_completed
 import json
 logger = logging.getLogger(__name__)
 import pandas as pd
+import time
 
 
 class CanvasUsage:
@@ -97,7 +98,11 @@ class CanvasUsage:
         return df
 
     def get_canvas_views_participation_data(self):
+        start = time.time()
         self._get_canvas_views_participation_data()
+        delta = time.time() - start
+        str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
+        logger.info(f'Duration of Canvas usage run took: {str_time}')
         return self.canvas_usage_to_df()
 
 
