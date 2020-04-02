@@ -1,11 +1,11 @@
 import logging
+import time
+import pandas as pd
 from json.decoder import JSONDecodeError
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 import json
 logger = logging.getLogger(__name__)
-import pandas as pd
-import time
 
 
 class CanvasUsage:
@@ -104,11 +104,3 @@ class CanvasUsage:
         str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
         logger.info(f'Duration of Canvas usage run took: {str_time}')
         return self.canvas_usage_to_df()
-
-
-
-
-
-
-
-
