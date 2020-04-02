@@ -243,7 +243,7 @@ def run_course_inventory() -> None:
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
         logger.info(f"Writing {num_canvas_usage_records} canvas usage record to CSV")
-        canvas_usage_df.to_csv(os.path.join('data', 'canvas_usage_trails.csv'), index=False)
+        canvas_usage_df.to_csv(os.path.join('data', 'canvas_usage.csv'), index=False)
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
