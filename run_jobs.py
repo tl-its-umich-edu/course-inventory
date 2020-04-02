@@ -47,7 +47,7 @@ class Job:
         # Until we have a decorator for this
         start_time = time.time()
         start_method()
-        delta = time.time() - start
+        delta = time.time() - start_time
         str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
         logger.info(f'Duration of job run: {str_time}')
 
@@ -66,13 +66,15 @@ class JobManager:
     def run_jobs(self):
         for job in self.jobs:
             logger.info(f'- - Running job {job.name} - -')
-
             job.run()
 
 
 if __name__ == '__main__':
-    # Wait for MySQL to finish settting up
-    time.sleep(10.0)
+    how_started = os.environ.get('HOW_STARTED', None)
+
+    if how_started == 'DOCKER_COMPOSE':
+        # Wait for MySQL container to finish setting up
+        time.sleep(5.0)
 
     # Apply any new migrations
     db_creator_obj = DBCreator(ENV['INVENTORY_DB'])
