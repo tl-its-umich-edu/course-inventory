@@ -23,6 +23,6 @@ logger.debug(os.environ)
 # Add ENV key-value pairs to environment, skipping if the key is already set
 for key, value in ENV.items():
     if key in os.environ:
+        ENV[key] = value
         logger.info('ENV value overidden')
         logger.info(f'key: {key}; value: {value}')
-        ENV[key] = value
