@@ -36,27 +36,50 @@ ZOOM_BASE_URL = ENV.get('ZOOM_BASE_URL', "")
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
-# Functions
-def get_total_page_count(url: str, headers: Dict[str, Union[str, int]] = None, params: Dict[str, Union[str, int]] = None):
-    if params is None:
-        params = {}
-    if headers is None:
-        headers = {}
+def get_request_retry(url: str, headers: Dict[str, Union[str, int]], 
+                      params: Dict[str, Union[str, int]]) -> requests.Response:
 
+    response = requests.request("GET", url, headers=headers, params=params)
+
+    # Rate limited, wait a few seconds
+    if response.status_code == requests.codes.too_many_requests:
+        # This is what the header should be
+        retry_after = response.headers.get("Retry-After")
+        sleep_time = DEFAULT_SLEEP_TIME
+        if retry_after and retry_after.isdigit():
+            logger.warning(
+                f"Received status 429, need to wait for {retry_after}")
+            sleep_time = retry_after
+        else:
+            logger.warning(
+                f"No Retry-After header, setting sleep loop for {DEFAULT_SLEEP_TIME} seconds")
+        while response.status_code == requests.codes.too_many_requests:
+            time.sleep(sleep_time)
+            response = requests.request(
+                "GET", url, headers=headers, params=params)
+
+    # If it's not okay at this point, raise an error
+    if response.status_code != requests.codes.ok:
+        logger.warning(f'Received irregular status code: {response.status_code}')
+        response.raise_for_status()
+    return response
+
+
+# Functions
+def get_total_page_count(url: str, headers: Dict[str, Union[str, int]], params: Dict[str, Union[str, int]]):
     # get the total page count
     total_page_count = 0
-    response = requests.request("GET", f"{url}", headers=headers, params=params)
-    status_code = response.status_code
-    if status_code != 200:
-        logger.warning(f'Received irregular status code: {status_code}')
+    try:
+        response = get_request_retry(url, headers, params)
+    except requests.exceptions.HTTPError:
+        logger.exception('Received irregular status code during request')
+        return 0
+    try:
+        results = json.loads(response.text.encode('utf8'))
+        total_page_count = results['page_count']
+    except json.JSONDecodeError:
+        logger.warning('JSONDecodeError encountered')
         logger.info('No page at all!')
-    else:
-        try:
-            results = json.loads(response.text.encode('utf8'))
-            total_page_count = results['page_count']
-        except json.JSONDecodeError:
-            logger.warning('JSONDecodeError encountered')
-            logger.info('No page at all!')
     return total_page_count
 
 
@@ -111,49 +134,30 @@ def zoom_loop(url: str, headers: Dict[str, Union[str, int]], json_attribute_name
     while (page_token or params.get('page_number') <= total_page_count):
         if (params.get("page_number")):
             logger.info(f"Page Number: {params.get('page_number')} out of total page number {total_page_count}")
-
-        response = requests.request(
-            "GET", url, headers=headers, params=params)
-        status_code = response.status_code
-        # Rate limited, wait a few seconds
-        if status_code == 429:
-            # This is what the header should be
-            retry_after = response.headers.get("Retry-After")
-            sleep_time = DEFAULT_SLEEP_TIME
-            if retry_after and retry_after.isdigit():
-                logger.warning(f"Received status 429, need to wait for {retry_after}")
-                sleep_time = retry_after
-            else:
-                logger.warning(f"No Retry-After header, setting sleep loop for {DEFAULT_SLEEP_TIME} seconds")
-            while status_code == 429:
-                time.sleep(sleep_time)
-                response = requests.request(
-                    "GET", url, headers=headers, params=params)
-                status_code = response.status_code
-
-        if status_code != 200:
-            logger.warning(f'Received irregular status code: {status_code}')
+        try:
+            response = get_request_retry(url, headers=headers, params=params)
+        except requests.exceptions.HTTPError:
+            logger.exception('Received irregular status code during request')
             break
-        else:
-            try:
-                results = json.loads(response.text.encode('utf8'))
+        try:
+            results = json.loads(response.text.encode('utf8'))
 
-                total_list.extend(results[json_attribute_name])
-                logger.info(f'Current size of list: {len(total_list)}')
+            total_list.extend(results[json_attribute_name])
+            logger.info(f'Current size of list: {len(total_list)}')
 
-                # go retrieve next page
-                if results.get("next_page_token"):
-                    page_token = results.get("next_page_token")
-                    params["next_page_token"] = page_token
-                elif params.get("page_number"):
-                    params["page_number"] += 1
-                else:
-                    logger.info("No more tokens and not paged!")
-                    break
-            except json.JSONDecodeError:
-                logger.exception('JSONDecodeError encountered')
-                logger.info('No more pages!')
+            # go retrieve next page
+            if results.get("next_page_token"):
+                page_token = results.get("next_page_token")
+                params["next_page_token"] = page_token
+            elif params.get("page_number"):
+                params["page_number"] += 1
+            else:
+                logger.info("No more tokens and not paged!")
                 break
+        except json.JSONDecodeError:
+            logger.exception('JSONDecodeError encountered')
+            logger.info('No more pages!')
+            break
     return total_list
 
 

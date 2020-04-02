@@ -52,6 +52,9 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
     per_page = 100
     # Get all published courses from the defined enrollment term
     courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
+    # For testing
+    # course = CANVAS.get_course(331376)
+    # courses = [course, ]
     course_count = 0
     for course in courses:
         course_count += 1
@@ -97,26 +100,36 @@ def zoom_course_report(canvas_account=1, enrollment_term_id=1, published=True):
                     zoom_session.headers.update({
                         'X-XSRF-TOKEN': pattern.group(1)
                     })
-                # Get tab 1 (Previous Meetings)
-                    data = {'page': 1,
-                            'total': 0,
-                            'storage_timezone': 'America/Montreal',
-                            'client_timezone': 'America/Detroit'}
-                    r = zoom_session.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
-                    zoom_json = json.loads(r.text)
 
-                    for meeting in zoom_json["result"]["list"]:
-                        zoom_courses_meetings.append({
-                            'course_id': course.id,
-                            'meeting_id': meeting['meetingId'],
-                            'meeting_number': meeting['meetingNumber'],
-                            'host_id': meeting['hostId'],
-                            'topic': meeting['topic'],
-                            'join_url': meeting['joinUrl'],
-                            'start_time': meeting['startTime'],
-                            'status': meeting['status'],
-                            'timezone': meeting['timezone']
-                        })
+                    # Page iterator
+                    page_num = 1
+                    while True:
+                        logger.info(f"Paging though course on {page_num}")
+                        # Get tab 1 (Previous Meetings)
+                        data = {'page': page_num,
+                                'total': 0,
+                                'storage_timezone': 'America/Montreal',
+                                'client_timezone': 'America/Detroit'}
+                        r = zoom_session.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
+                        zoom_json = json.loads(r.text)
+                        # If the length of the list is empty we've run out of pages
+                        if len(zoom_json["result"]["list"]) == 0:
+                            logger.info("Done paging through list")
+                            break
+                        for meeting in zoom_json["result"]["list"]:
+                            zoom_courses_meetings.append({
+                                'course_id': course.id,
+                                'meeting_id': meeting['meetingId'],
+                                'meeting_number': meeting['meetingNumber'],
+                                'host_id': meeting['hostId'],
+                                'topic': meeting['topic'],
+                                'join_url': meeting['joinUrl'],
+                                'start_time': meeting['startTime'],
+                                'status': meeting['status'],
+                                'timezone': meeting['timezone']
+                            })
+                        page_num += 1
+
                 else:
                     logger.warn("PATTERN NOT FOUND in course, no details logged")
                     logger.debug(r.text)
