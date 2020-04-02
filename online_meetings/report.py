@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # read configurations
 try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/env.json')) as env_file:
+    with open(os.path.join(os.path.dirname(__file__), '../config/secrets/env.json')) as env_file:
         ENV = yaml.safe_load(env_file.read())
 except FileNotFoundError:
     logger.error(
@@ -61,7 +61,6 @@ def get_request_retry(url: str, headers: Dict[str, Union[str, int]],
 
     # If it's not okay at this point, raise an error
     if response.status_code != requests.codes.ok:
-        logger.warning(f'Received irregular status code: {response.status_code}')
         response.raise_for_status()
     return response
 
