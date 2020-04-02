@@ -4,8 +4,6 @@ import json
 import logging
 import os
 import sys
-from json.decoder import JSONDecodeError
-from typing import Dict, Union
 import yaml
 
 # third-party libraries
@@ -14,12 +12,11 @@ import furl
 import time
 import dateparser
 import pytz
-from datetime import datetime, timedelta, timezone
-import urllib.request
+from datetime import datetime, timedelta
 import glob
 
-# importing required modules 
-from zipfile import ZipFile 
+# importing required modules
+from zipfile import ZipFile
 
 # Initialize settings and globals
 
@@ -27,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 # Default time to sleep when hitting a 429 limit
 DEFAULT_SLEEP_TIME = 10
-
 
 # read configurations
 try:
@@ -154,20 +150,20 @@ for i in range((datetime.now(pytz.timezone('America/Detroit')).date() - early_da
     }
     r = requests.get(download_url, headers=headers)
 
-    # specifying the zip file name 
+    # specifying the zip file name
     zip_file_name = "./bj.zip"
 
     with open(zip_file_name, 'wb') as f:
         f.write(r.content)
     
-    # opening the zip file in READ mode 
-    with ZipFile(zip_file_name, 'r') as zip: 
-        # printing all the contents of the zip file 
-        zip.printdir() 
+    # opening the zip file in READ mode
+    with ZipFile(zip_file_name, 'r') as zip_file:
+        # printing all the contents of the zip file
+        zip_file.printdir()
     
-        # extracting all the files 
-        print('Extracting all the files now...') 
-        zip.extractall() 
+        # extracting all the files
+        print('Extracting all the files now...')
+        zip_file.extractall()
         for csv_file in glob.glob("./meetings_*.csv"):
             logger.info(csv_file)
             df = pd.read_csv(csv_file)
