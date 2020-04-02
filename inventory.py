@@ -244,6 +244,7 @@ def run_course_inventory() -> None:
         logger.info('Wrote data to data/enrollment.csv')
         logger.info(f"Writing {num_canvas_usage_records} canvas usage record to CSV")
         canvas_usage_df.to_csv(os.path.join('data', 'canvas_usage.csv'), index=False)
+        logger.info('Wrote data to data/canvas_usage.csv')
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
@@ -272,6 +273,7 @@ def run_course_inventory() -> None:
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
     logger.info(f"Inserting {num_canvas_usage_records} canvas_usage records to DB")
     canvas_usage_df.to_sql('canvas_usage', db_creator_obj.engine, if_exists='append', index=False)
+    logger.info(f'Inserted data into canvas_usage table in {db_creator_obj.db_name}')
 
     delta = time.time() - start
     str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
