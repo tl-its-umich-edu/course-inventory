@@ -7,7 +7,7 @@ from typing import Dict, Sequence, Union
 # local libraries
 import course_inventory
 from db.db_creator import DBCreator
-from env import ENV
+from environ import ENV
 import online_meetings
 
 

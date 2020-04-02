@@ -12,7 +12,7 @@ from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db.db_creator import DBCreator
-from env import ENV
+from environ import ENV
 from .published_date import FetchPublishedDate
 
 
