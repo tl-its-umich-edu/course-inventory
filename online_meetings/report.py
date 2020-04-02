@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 # read configurations
 try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/env.json')) as env_file:        ENV = yaml.safe_load(env_file.read())
+    with open(os.path.join(os.path.dirname(__file__), '../config/env.json')) as env_file:
+        ENV = yaml.safe_load(env_file.read())
 except FileNotFoundError:
     logger.error(
         'Configuration file could not be found; please add env.yaml to the config directory.')
@@ -36,7 +37,7 @@ ZOOM_BASE_URL = ENV.get('ZOOM_BASE_URL', "")
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
-def get_request_retry(url: str, headers: Dict[str, Union[str, int]], 
+def get_request_retry(url: str, headers: Dict[str, Union[str, int]],
                       params: Dict[str, Union[str, int]]) -> requests.Response:
 
     response = requests.request("GET", url, headers=headers, params=params)
