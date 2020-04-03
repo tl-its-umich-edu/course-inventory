@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 class CanvasCourseUsage:
     def __init__(self, canvas_url, canvas_token, retry_attempts, course_ids):
-        self.canvas_url = canvas_url,
-        self.canvas_token = canvas_token,
+        self.canvas_url = canvas_url
+        self.canvas_token = canvas_token
         self.course_ids = course_ids
         self.retry_attempts = retry_attempts
         self.canvas_usage_courses = []
@@ -58,16 +58,16 @@ class CanvasCourseUsage:
     def _get_canvas_course_views_participation_data(self, retry_courses=None):
         logger.info("Starting of _get_canvas_course_views_participation_data call")
         with FuturesSession() as session:
-            headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token[0]}
+            headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
             # https://umich.instructure.com/api/v1/courses/course_id/analytics/activity
             if retry_courses is None:
                 logger.info("Initial round getting canvas_course_usage data")
-                responses = [session.get(f'{self.canvas_url[0]}/api/v1/courses/{course_id}/analytics/activity',
+                responses = [session.get(f'{self.canvas_url}/api/v1/courses/{course_id}/analytics/activity',
                                          headers=headers) for course_id in self.course_ids]
             else:
                 self.course_retry_list = []
                 logger.info("Retry round getting canvas_course_usage data")
-                responses = [session.get(f'{self.canvas_url[0]}/api/v1/courses/{retry_course}/analytics/activity',
+                responses = [session.get(f'{self.canvas_url}/api/v1/courses/{retry_course}/analytics/activity',
                                          headers=headers) for retry_course in retry_courses]
 
             for response in as_completed(responses):
