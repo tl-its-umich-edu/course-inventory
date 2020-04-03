@@ -194,6 +194,8 @@ def run_course_inventory() -> None:
 
     # Gather enrollment, user, and section data
     course_ids = course_df['canvas_id'].to_list()
+
+    enroll_start = time.time()
     enroll_gatherer = AsyncEnrollGatherer(
         course_ids=course_ids,
         access_token=CANVAS_TOKEN,
@@ -204,6 +206,8 @@ def run_course_inventory() -> None:
     )
     enroll_gatherer.gather()
     enrollment_df, user_df, section_df = enroll_gatherer.generate_output()
+    enroll_delta = time.time() - enroll_start
+    logger.info(f'Duration of process (seconds): {enroll_delta}')
 
     # Pull SIS user data from Unizin Data Warehouse
     udw_user_ids = user_df['canvas_id'].to_list()

@@ -189,7 +189,6 @@ class AsyncEnrollGatherer:
         logger.info('** AsyncEnrollGatherer')
         logger.info('Gathering enrollment data for courses asynchronously with GraphQL')
 
-        start = time.time()
         more_to_gather = True
 
         loop_num = 0
@@ -221,5 +220,3 @@ class AsyncEnrollGatherer:
                     self.make_requests(course_ids_to_process)
 
         logger.info('Enrollment records for the course IDs have been gathered')
-        delta = time.time() - start
-        logger.info(f'Duration of process (seconds): {delta}')
