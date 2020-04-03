@@ -43,6 +43,8 @@ class CanvasCourseUsage:
             analytics_data = json.loads(response.result().text)
         except JSONDecodeError as e:
             logger.error(f"Error in parsing the response due to {e.msg}")
+            logger.info("Append to retry list")
+            self.course_retry_list.append(course_id)
             return
 
         if not analytics_data:
