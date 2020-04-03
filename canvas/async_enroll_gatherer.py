@@ -210,9 +210,12 @@ class AsyncEnrollGatherer:
                 # all requests are tried at least once; if the unlikely event occurred that all
                 # requests failed the first time, the process would then exit.
                 if (loop_num > 1) and (unstarted_course_ids == course_ids_to_process):
-                    logger.warning('Some course IDs could not be processed')
-                    logger.warning(course_ids_to_process)
                     more_to_gather = False
+                    if loop_num == 2:
+                        logger.error('No course IDs could be processed on the first loop!')
+                    else:
+                        logger.warning('Some course IDs could not be processed')
+                    logger.warning(course_ids_to_process)
                 else:
                     self.make_requests(course_ids_to_process)
 
