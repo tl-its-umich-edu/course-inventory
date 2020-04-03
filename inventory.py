@@ -17,7 +17,6 @@ from gql_queries import queries as QUERIES
 from canvas.canvas_course_usage import CanvasCourseUsage
 
 
-
 # Initialize settings and globals
 
 logger = logging.getLogger(__name__)

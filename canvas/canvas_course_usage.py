@@ -25,7 +25,7 @@ class CanvasCourseUsage:
             logger.info(f"For Canvas Course usage response is None ")
             return
 
-        logger.info(f"CanvasCourseUsage date collected so far : {len(self.canvas_usage_courses)}")
+        logger.info(f"CanvasCourseUsage data collected so far : {len(self.canvas_usage_courses)}")
         status = response.result().status_code
 
         course_id = response.result().url.split('courses/')[1].split('/')[0]
@@ -46,7 +46,7 @@ class CanvasCourseUsage:
             return
 
         if not analytics_data:
-            logger.info(f"Response for fetching canvas course usage is empty {analytics_data}")
+            logger.info(f"Response for fetching canvas course usage is empty")
             return
         new_dic['course_id'] = course_id
         new_dic['analytics'] = analytics_data
