@@ -12,7 +12,7 @@ import http.client
 from datetime import datetime
 from typing import Dict
 
-from canvasapi import Canvas
+import canvasapi
 from bs4 import BeautifulSoup as bs
 
 import pandas as pd
@@ -42,7 +42,7 @@ requests_log = logging.getLogger("requests.packages.urllib3")
 requests_log.setLevel(LOG_LEVEL)
 requests_log.propagate = True
 # Global variable to access Canvas
-CANVAS = Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
+CANVAS = canvasapi.Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
 
 
 class ZoomPlacements:
@@ -105,51 +105,65 @@ class ZoomPlacements:
             logger.warn("PATTERN NOT FOUND in course, no details logged")
             logger.debug(r.text)
 
-    def zoom_course_report(self, canvas_account: int = 1, enrollment_term_id: int = 1, published: bool = True):
+    def get_zoom_course(self, course: canvasapi.course.Course) -> None:
+        # Get tabs and look for defined tool(s) that aren't hidden
+        tabs = course.get_tabs()
+        for tab in tabs:
+            # Hidden only included if true
+            if (tab.label == "Zoom" and not hasattr(tab, "hidden")):
+                logger.info("Found a course with zoom as %s", tab.id)
+
+                r = CANVAS._Canvas__requester.request("GET", _url=tab.url)
+                external_url = r.json().get("url")
+                r = requests.get(external_url)
+                # Parse out the form from the response
+                soup = bs(r.text, 'html.parser')
+                # Get the form and parse out all of the inputs
+                form = soup.find('form')
+                if not form:
+                    logger.info("Could not find a form to launch this zoom page, skipping")
+                    break
+
+                self.zoom_courses.append({'account_id': course.account_id, 'course_id': course.id, 'course_name': course.name})
+
+                fields = form.findAll('input')
+                formdata = dict((field.get('name'), field.get('value')) for field in fields)
+                # Get the URL to post back to
+                posturl = form.get('action')
+                self.get_zoom_details(posturl, formdata, course.id)
+        return None
+
+    def zoom_course_report(self, canvas_account: int = 1, enrollment_term_id: int = 0,
+                           published: bool = True, add_course_ids: list = None) -> None:
 
         account = CANVAS.get_account(canvas_account)
         # Canvas has a limit of 100 per page on this API
         per_page = 100
         # Get all published courses from the defined enrollment term
-        courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
-        # For testing
+        courses = []
+        if enrollment_term_id:
+            courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
+
+        # If there's course_id's passed in extend this to include these courses
+
         course_count = 0
         for course in courses:
             course_count += 1
             # TODO: In the future get the total count from the Paginated object
             # Needs API support https://github.com/ucfopen/canvasapi/issues/114
             logger.info(f"Fetching course #{course_count} for {course}")
-            # Get tabs and look for defined tool(s) that aren't hidden
-            tabs = course.get_tabs()
-            for tab in tabs:
-                # Hidden only included if true
-                if (tab.label == "Zoom" and not hasattr(tab, "hidden")):
-                    logger.info("Found a course with zoom as %s", tab.id)
+            self.get_zoom_course(course)
 
-                    r = CANVAS._Canvas__requester.request("GET", _url=tab.url)
-                    external_url = r.json().get("url")
-                    r = requests.get(external_url)
-                    # Parse out the form from the response
-                    soup = bs(r.text, 'html.parser')
-                    # Get the form and parse out all of the inputs
-                    form = soup.find('form')
-                    if not form:
-                        logger.info("Could not find a form to launch this zoom page, skipping")
-                        break
-
-                    self.zoom_courses.append({'account_id': course.account_id, 'course_id': course.id, 'course_name': course.name})
-
-                    fields = form.findAll('input')
-                    formdata = dict((field.get('name'), field.get('value')) for field in fields)
-                    # Get the URL to post back to
-                    posturl = form.get('action')
-                    self.get_zoom_details(posturl, formdata, course.id)
+        if add_course_ids:
+            for course_id in add_course_ids:
+                self.get_zoom_course(CANVAS.get_course(course_id))
+        return None
 
 
 start_time = datetime.now()
 logger.info(f"Script started at {start_time}")
 zoom_placements = ZoomPlacements()
-zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 1), True)
+zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 0), True, ENV.get("ADD_COURSE_IDS", []))
 
 zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
 zoom_courses_df.index.name = "id"

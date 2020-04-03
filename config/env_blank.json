@@ -2,6 +2,7 @@
   "LOG_LEVEL": "DEBUG",
   "CANVAS_ACCOUNT_ID": 1,
   "CANVAS_TERM_ID": 164,
+  "ADD_COURSE_IDS": [],
   "API_BASE_URL": "https://apigw.it.umich.edu",
   "API_SCOPE_PREFIX": "",
   "API_SUBSCRIPTION_NAME": "",
