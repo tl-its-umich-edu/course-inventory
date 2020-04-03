@@ -58,7 +58,7 @@ class FetchPublishedDate:
         try:
             audit_events = json.loads(response.result().text)
         except JSONDecodeError as e:
-            logger.info(f"Error in parsing the response {e.message}")
+            logger.error(f"Error in parsing the response {e.msg}")
             return
 
         if not audit_events:
