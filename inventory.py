@@ -14,7 +14,8 @@ from db.db_creator import DBCreator
 from canvas.published_date import FetchPublishedDate
 from canvas.async_enroll_gatherer import AsyncEnrollGatherer
 from gql_queries import queries as QUERIES
-from canvas.canvas_usage import CanvasUsage
+from canvas.canvas_course_usage import CanvasCourseUsage
+
 
 
 # Initialize settings and globals
@@ -192,9 +193,10 @@ def run_course_inventory() -> None:
     course_df['published_at'] = pd.to_datetime(course_df['published_at'],
                                                format="%Y-%m-%dT%H:%M:%SZ",
                                                errors='coerce')
-    logger.info("*** Fetching the canvas usage data ****")
-    canvas_usage = CanvasUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
-    canvas_usage_df = canvas_usage.get_canvas_views_participation_data()
+    logger.info("*** Fetching the canvas course usage data ****")
+
+    canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
+    canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
     # Gather enrollment, user, and section data
     course_ids = course_df['canvas_id'].to_list()
@@ -223,7 +225,7 @@ def run_course_inventory() -> None:
     num_user_records = len(user_df)
     num_section_records = len(section_df)
     num_enrollment_records = len(enrollment_df)
-    num_canvas_usage_records = len(canvas_usage_df)
+    num_canvas_usage_records = len(canvas_course_usage_df)
 
     if CREATE_CSVS:
         # Generate CSV Output
@@ -242,9 +244,10 @@ def run_course_inventory() -> None:
         logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
-        logger.info(f"Writing {num_canvas_usage_records} canvas usage record to CSV")
-        canvas_usage_df.to_csv(os.path.join('data', 'canvas_usage.csv'), index=False)
-        logger.info('Wrote data to data/canvas_usage.csv')
+
+        logger.info(f"Writing {num_canvas_usage_records} canvas course usage record to CSV")
+        canvas_course_usage_df.to_csv(os.path.join('data', 'canvas_course_usage.csv'), index=False)
+        logger.info('Wrote data to data/canvas_course_usage.csv')
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
@@ -271,9 +274,10 @@ def run_course_inventory() -> None:
     logger.info(f'Inserting {num_enrollment_records} enrollment records to DB')
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
-    logger.info(f"Inserting {num_canvas_usage_records} canvas_usage records to DB")
-    canvas_usage_df.to_sql('canvas_usage', db_creator_obj.engine, if_exists='append', index=False)
-    logger.info(f'Inserted data into canvas_usage table in {db_creator_obj.db_name}')
+
+    logger.info(f"Inserting {num_canvas_usage_records} canvas_course_usage records to DB")
+    canvas_course_usage_df.to_sql('canvas_course_usage', db_creator_obj.engine, if_exists='append', index=False)
+    logger.info(f'Inserted data into canvas_course_usage table in {db_creator_obj.db_name}')
 
     delta = time.time() - start
     str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
