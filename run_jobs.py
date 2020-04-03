@@ -1,14 +1,12 @@
 # standard libraries
-import json, logging, os, time
+import logging, os, time
 from importlib import import_module
 from enum import Enum
-from typing import Dict, Sequence, Union
+from typing import Sequence
 
 # local libraries
-import course_inventory
 from db.db_creator import DBCreator
 from environ import ENV
-import online_meetings
 
 
 # Initialize settings and global variables
@@ -73,6 +71,7 @@ if __name__ == '__main__':
     how_started = os.environ.get('HOW_STARTED', None)
 
     if how_started == 'DOCKER_COMPOSE':
+        logger.info('Waiting for MySQL, hehe')
         # Wait for MySQL container to finish setting up
         time.sleep(5.0)
 
