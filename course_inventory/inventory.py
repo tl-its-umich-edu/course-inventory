@@ -11,24 +11,16 @@ from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db.db_creator import DBCreator
-from canvas.published_date import FetchPublishedDate
-from canvas.async_enroll_gatherer import AsyncEnrollGatherer
-from gql_queries import queries as QUERIES
+from environ import ENV
+from .published_date import FetchPublishedDate
+from .async_enroll_gatherer import AsyncEnrollGatherer
+from .gql_queries import queries as QUERIES
+
 
 
 # Initialize settings and globals
 
 logger = logging.getLogger(__name__)
-
-try:
-    config_path = os.getenv("ENV_PATH", os.path.join('config', 'secrets', 'env.json'))
-    with open(config_path) as env_file:
-        ENV = json.loads(env_file.read())
-except FileNotFoundError:
-    logger.error('Configuration file could not be found; please add env.json to the config directory.')
-
-logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'),
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
 TERM_ID = ENV['CANVAS_TERM_ID']
@@ -170,7 +162,6 @@ def process_sis_id(id: str) -> Union[int, None]:
 
 def run_course_inventory() -> None:
     logger.info("* run_course_inventory")
-    start = time.time()
 
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_ID)
@@ -242,9 +233,7 @@ def run_course_inventory() -> None:
     logger.info('Emptying tables in DB')
     db_creator_obj = DBCreator(INVENTORY_DB)
     db_creator_obj.set_up()
-    if len(db_creator_obj.get_table_names()) > 0:
-        db_creator_obj.drop_records()
-    db_creator_obj.migrate()
+    db_creator_obj.drop_records()
     db_creator_obj.tear_down()
 
     # Insert gathered data
@@ -264,10 +253,7 @@ def run_course_inventory() -> None:
     enrollment_df.to_sql('enrollment', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into enrollment table in {db_creator_obj.db_name}')
 
-    delta = time.time() - start
-    str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
-    logger.info(f'Duration of run: {str_time}')
-
 
 if __name__ == "__main__":
+    logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
     run_course_inventory()

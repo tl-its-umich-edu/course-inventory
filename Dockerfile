@@ -17,6 +17,6 @@ COPY . /app/
 ENV TZ=America/Detroit
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-CMD ["python", "inventory.py"]
+CMD ["python", "run_jobs.py"]
 
 # Done!
