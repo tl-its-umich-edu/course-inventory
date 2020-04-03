@@ -174,7 +174,8 @@ class AsyncEnrollGatherer:
                 user_records.append(user_record)
                 section_records.append(section_record)
 
-        # Seems like we shouldn't have to drop duplicates, but once one duplicate broke the process
+        # Seems like we shouldn't have to drop duplicates for enrollments, but once one
+        # duplicate broke the process
         enrollment_df = pd.DataFrame(enrollment_records)
         enrollment_count = len(enrollment_df)
         enrollment_df = enrollment_df.drop_duplicates()
@@ -190,18 +191,26 @@ class AsyncEnrollGatherer:
 
         more_to_gather = True
 
+        loop_num = 0
         while more_to_gather:
-            complete_course_ids = self.get_complete_course_ids()
+            loop_num += 1
+            logger.info(f'Starting loop number {loop_num}')
             course_ids_to_process = sorted(self.get_incomplete_course_ids())
 
             if len(course_ids_to_process) == 0:
                 more_to_gather = False
             else:
-                unstarted_course_ids = [course_id for course_id in course_ids_to_process if course_id not in self.course_enrollments.keys()]
-                # This condition will stop the gather process if all the remaining course_ids have not been started.
-                # Several request attempts will have been made using this course_id before reaching this state.
-                if len(complete_course_ids) > 0 and unstarted_course_ids == course_ids_to_process:
-                    logger.warning('A few course IDs could not be processed')
+                unstarted_course_ids = [
+                    course_id for course_id in course_ids_to_process
+                    if course_id not in self.course_enrollments.keys()
+                ]
+                # This condition will stop the gather process if all the remaining course_ids
+                # have not been started. Usually, several request attempts will have been made
+                # using this course_id before reaching this state. The first check ensures that
+                # all requests are tried at least once; if the unlikely event occurred that all
+                # requests failed the first time, the process would then exit.
+                if (loop_num > 1) and (unstarted_course_ids == course_ids_to_process):
+                    logger.warning('Some course IDs could not be processed')
                     logger.warning(course_ids_to_process)
                     more_to_gather = False
                 else:
