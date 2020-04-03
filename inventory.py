@@ -244,7 +244,7 @@ def run_course_inventory() -> None:
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
 
-        logger.info(f"Writing {num_canvas_usage_records} canvas course usage record to CSV")
+        logger.info(f"Writing {num_canvas_usage_records} canvas course usage records to CSV")
         canvas_course_usage_df.to_csv(os.path.join('data', 'canvas_course_usage.csv'), index=False)
         logger.info('Wrote data to data/canvas_course_usage.csv')
 
