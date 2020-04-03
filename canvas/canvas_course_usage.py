@@ -18,7 +18,7 @@ class CanvasCourseUsage:
         self.course_retry_list = []
         self.retry_count = 0
 
-    def parsing_canvas_course_usage_data(self, response):
+    def parsing_canvas_course_usage_data(self, response) -> None:
         logger.info("parsing_canvas_course_usage_data Call")
         new_dic = {}
         if response is None:
