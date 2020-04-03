@@ -78,8 +78,6 @@ class ZoomPlacements:
                 'X-XSRF-TOKEN': pattern.group(1)
             })
 
-            # Page iterator
-            page_num = 1
             zoom_json = self.get_zoom_json(1)
             # The first call to zoom returns total and pageSize, get the total pages by dividing
             if zoom_json:
