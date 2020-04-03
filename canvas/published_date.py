@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class FetchPublishedDate:
 
     def __init__(self, canvas_url, canvas_token, num_workers, canvas_ids):
-        self.canvas_url = canvas_url,
-        self.canvas_token = canvas_token,
+        self.canvas_url = canvas_url
+        self.canvas_token = canvas_token
         self.canvas_ids = canvas_ids
         self.num_workers = num_workers
         self.published_course_date = {}
@@ -87,7 +87,7 @@ class FetchPublishedDate:
     def get_published_course_date(self,course_ids, next_page_links=None):
         logger.info("Starting of get_published_course_date call")
         with FuturesSession(max_workers=self.num_workers) as session:
-            headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token[0]}
+            headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
             if next_page_links is not None:
                 logger.info("Going through Next page URL set")
                 responses = []
@@ -97,7 +97,7 @@ class FetchPublishedDate:
                     responses.append(response)
             else:
                 logger.info("Initial Round of Fetching course published date")
-                responses = [session.get(f'{self.canvas_url[0]}/api/v1/audit/course/courses/{course_id}?per_page=100', headers=headers)
+                responses = [session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100', headers=headers)
                 for course_id in course_ids]
 
             for response in as_completed(responses):
