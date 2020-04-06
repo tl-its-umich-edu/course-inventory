@@ -1,7 +1,7 @@
 # standard libraries
 import logging, os, time
-from importlib import import_module
 from enum import auto, Enum
+from importlib import import_module
 from typing import Dict, Sequence
 
 # local libraries
@@ -66,10 +66,13 @@ class Job:
         logger.info(f'Inserted job_run record with finished_at value of {started_at_dt}')
         job_run_id = pd.read_sql('job_run', db_creator_obj.engine).iloc[-1]['id']
 
-        data_source_status_df = pd.DataFrame(self.data_sources)
-        data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
-        data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
-        logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
+        if len(self.data_sources) == 0:
+            logger.warning('No valid data sources were identified')
+        else:
+            data_source_status_df = pd.DataFrame(self.data_sources)
+            data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
+            data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
+            logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
 
     def run(self) -> Dict[str, str]:
         leaf_module = import_module(self.import_path)
