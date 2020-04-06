@@ -180,11 +180,11 @@ Follow the steps below to implement a new job that can be executed from `run_job
     ```
     If the data source provides a timestamp for the data, use that; otherwise, use the current time once all queries or requests to that data source have been made. For consistency, `some_timestamp` should be generated using [the `pandas` method `pd.to_datetime`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.to_datetime.html), which accepts a number of time formats and objects and will return a `pd.Timestamp` object for single values. See the `run_course_inventory` entry function for the COURSE_INVENTORY job for an example. 
 
-3. Add a new entry to the `ValidJobName` enumeration within `run_jobs.py`. The name (on the left) should be in all capitals. The value (on the right) should be a period-delimited path string, where the first element is the package name, the second is the module or file name, and the third is the name of the job's entry method or function. See `run_jobs.py` for examples.
+4. Add a new entry to the `ValidJobName` enumeration within `run_jobs.py`. The name (on the left) should be in all capitals. The value (on the right) should be a period-delimited path string, where the first element is the package name, the second is the module or file name, and the third is the name of the job's entry method or function. See `run_jobs.py` for examples.
 
-4. If you are introducing a new data source, you also need to add an entry to the `ValidDataSourceName` enumeration. The name should be all capitals; the value has no meaning for the application, so `auto()` is sufficient.
+5. If you are introducing a new data source, you also need to add an entry to the `ValidDataSourceName` enumeration. The name should be all capitals; the value has no meaning for the application, so `auto()` is sufficient.
 
-5. Add the job name to the `JOB_NAMES` environment variable.
+6. Add the job name to the `JOB_NAMES` environment variable.
 
 ### Database Management and Schema Changes
 
