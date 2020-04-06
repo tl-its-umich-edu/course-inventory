@@ -124,7 +124,7 @@ if __name__ == '__main__':
     if how_started == 'DOCKER_COMPOSE':
         logger.info('Waiting for the MySQL turtle, hehe')
         # Wait for MySQL container to finish setting up
-        time.sleep(3.0)
+        time.sleep(30.0)
 
     # Apply any new migrations
     db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
