@@ -49,9 +49,9 @@ class Job:
         self.name: str = job_name.name
         self.import_path: str = '.'.join(job_name.value.split('.')[:-1])
         self.method_name: str = job_name.value.split('.')[-1]
-        self.started_at = None
-        self.finished_at = None
-        self.data_sources: Sequence[Dict[str, str]] = []
+        self.started_at: Union[int, None] = None
+        self.finished_at: Union[int, None] = None
+        self.data_sources: Sequence[Dict[str, Union[str, pd.Timestamp]] = []
 
     def create_metadata(self) -> None:
         started_at_dt = pd.to_datetime(self.started_at, unit='s')
@@ -74,7 +74,7 @@ class Job:
             data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
             logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
 
-    def run(self) -> Dict[str, str]:
+    def run(self) -> None:
         leaf_module = import_module(self.import_path)
         start_method = getattr(leaf_module, self.method_name)
 
@@ -104,7 +104,7 @@ class Job:
 class JobManager:
 
     def __init__(self, job_names: Sequence[str]) -> None:
-        self.jobs = []
+        self.jobs: Sequence[Job] = []
         for job_name in job_names:
             try:
                 valid_job_name = ValidJobName[job_name.upper()]
@@ -112,7 +112,7 @@ class JobManager:
             except KeyError:
                 logger.error(f'{job_name} is not a valid job name')
 
-    def run_jobs(self):
+    def run_jobs(self) -> None:
         for job in self.jobs:
             logger.info(f'- - Running job {job.name} - -')
             job.run()
