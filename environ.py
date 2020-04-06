@@ -1,11 +1,13 @@
 # standard libraries
 import json, logging, os
 
-# entry-level job methods need to be one-level beneath root
+# entry-level job modules need to be one-level beneath root
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger(__name__)
 
+
+# Set up ENV
 
 config_path = os.path.join(ROOT_DIR, os.getenv('ENV_PATH', os.path.join('config', 'secrets', 'env.json')))
 
@@ -18,9 +20,8 @@ except FileNotFoundError:
 
 logging.basicConfig(level=ENV['LOG_LEVEL'])
 
-logger.debug(os.environ)
-
 # Add ENV key-value pairs to environment, skipping if the key is already set
+logger.debug(os.environ)
 for key, value in ENV.items():
     if key in os.environ:
         ENV[key] = value
