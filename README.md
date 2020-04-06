@@ -5,9 +5,7 @@
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, enrollments, users, and course activity -- as well as data about the usage of technology for remote learning, including BlueJeans, Zoom, and MiVideo -- in order to inform leadership at the University of Michigan about the status and utilization of tools for teaching and learning. Currently, the application collects data from various APIs and data services managed by Unizin Consortium and then stores the data in an external MySQL database. Tableau dashboards and other processes then consume that data to generate reports and visualizations.
 
-
 ## Development
-
 
 ### Pre-requisities
 
@@ -18,7 +16,6 @@ The sections below provide instructions for configuring, installing, using, and 
    * [OpenShift CLI](https://docs.openshift.com/enterprise/3.1/cli_reference/get_started_cli.html)
 
 While performing any of the actions described below, use a terminal, text editor, or file utility as necessary. Some sample command-line instructions are provided for some steps.
-
 
 ### Configuration
 
@@ -72,9 +69,7 @@ To configure the application before installation and usage (see the next section
     `INVENTORY_DB` | An object containing the necessary credential information for connecting to a MySQL database, where output data will be inserted.
     `APPEND_TABLE_NAMES` | An array of strings identifying tables that accumulate data and from which records should never be dropped programmatically.
 
-
 ### Installation & Usage
-
 
 #### With Docker
 
@@ -114,7 +109,6 @@ Use `^C` to stop the running MySQL container, or -- if you used the detached fla
 
 Data in the MySQL database will persist after the container is stopped, as MySQL data is stored in a volume that is mapped to a `.data/` directory in the project. To completely reset the database, delete the `.data` directory.
 
-
 #### With a Virtual Environment
 
 You can also set up the application using `virtualenv` by doing the following:
@@ -139,7 +133,6 @@ You can also set up the application using `virtualenv` by doing the following:
     ```
     python run_jobs.py
     ```
-
 
 #### OpenShift Deployment
 
@@ -168,7 +161,7 @@ this README. However, a few details about how the job is configurd are provided 
 
 ### Implementing a New Job
 
-The application was designed with the goal of being extensible -- in order to aid collaboration, integrate new data sources, and satisfy new requirements. This was primarily accomplished by defining different jobs, which are managed by the `run_jobs.py` file (the starting point for Docker). When executed, the file will attempt to run all jobs provided in the value for the `JOB_NAMES` variable in `env.json`, but only jobs previously defined in the codebase will be actually executed.
+The application was designed with the goal of being extensible -- in order to aid collaboration, integrate new data sources, and satisfy new requirements. This is primarily made possible by enabling the creation of new jobs, which are managed by the `run_jobs.py` file (the starting point for Docker). When executed, the file will attempt to run all jobs provided in the value for the `JOB_NAMES` variable in `env.json`, but only jobs previously defined in the codebase will be actually executed.
 
 Follow the steps below to implement a new job that can be executed from `run_jobs.py`. All the changes described below (minus the configuration changes) should be included in the pull request introducing the new job.
 
@@ -176,7 +169,7 @@ Follow the steps below to implement a new job that can be executed from `run_job
 
 2. Make use of variables from the `env.json` configuration file by importing the `ENV` variable from `environ.py`.
 
-3. Ensure you have one function or method defined that will kick off all other steps in the job, and have it return a sequence of dictionaries, with each naming a data source used during the job and providing a timestamp of when that data was updated (or collected).
+3. Ensure you have one function or method defined that will kick off all other steps in the job, and have it return a list of dictionaries, with each naming a data source used during the job and providing a timestamp of when that data was updated (or collected).
     
     These dictionaries will be used to create new records in the `data_source_status` table of the MySQL database. Each dictionary should have the following format:
     ```
@@ -185,7 +178,7 @@ Follow the steps below to implement a new job that can be executed from `run_job
         "data_updated_at": some_timestamp
     }
     ```
-    For consistency, `some_timestamp` should be generated using [the `pandas` method `pd.to_datetime`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.to_datetime.html), which should accept a number of time formats and objects and will return a `pd.Timestamp` object for single values. If the data source provides a timestamp for the data, use that; otherwise, use the current time once all queries or requests to that data source have been made. See the `run_course_inventory` entry function for the COURSE_INVENTORY job for an example. 
+    If the data source provides a timestamp for the data, use that; otherwise, use the current time once all queries or requests to that data source have been made. For consistency, `some_timestamp` should be generated using [the `pandas` method `pd.to_datetime`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.to_datetime.html), which accepts a number of time formats and objects and will return a `pd.Timestamp` object for single values. See the `run_course_inventory` entry function for the COURSE_INVENTORY job for an example. 
 
 3. Add a new entry to the `ValidJobName` enumeration within `run_jobs.py`. The name (on the left) should be in all capitals. The value (on the right) should be a period-delimited path string, where the first element is the package name, the second is the module or file name, and the third is the name of the job's entry method or function. See `run_jobs.py` for examples.
 
