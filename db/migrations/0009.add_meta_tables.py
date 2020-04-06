@@ -1,9 +1,9 @@
 #
-# file: migrations/0008.add_meta_tables.py
+# file: migrations/0009.add_meta_tables.py
 #
 from yoyo import step
 
-__depends__ = {'0007.add_section_table'}
+__depends__ = {'0008.canvas_usage_table'}
 
 step('''
     CREATE TABLE IF NOT EXISTS job_run
