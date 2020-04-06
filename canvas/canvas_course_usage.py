@@ -94,7 +94,7 @@ class CanvasCourseUsage:
         logger.info(df.head())
         df = df.drop(['id'], axis=1)
         df_dup = df[df.duplicated()]
-        logger.info('Check for duplicate items ')
+        logger.info('Check for duplicate items')
         logger.info(df_dup)
         df = df.drop_duplicates()
         logger.debug(df.head())
