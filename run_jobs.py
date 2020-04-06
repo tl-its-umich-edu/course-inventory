@@ -1,12 +1,15 @@
 # standard libraries
 import logging, os, time
 from importlib import import_module
-from enum import Enum
-from typing import Sequence
+from enum import auto, Enum
+from typing import Dict, Sequence
 
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
+
+# third-party libraries
+import pandas as pd
 
 
 # Initialize settings and global variables
@@ -20,34 +23,79 @@ logging.basicConfig(
 
 # Enum(s)
 
-# Each job should be defined in AvailableJob.
+# Each job name should be defined in ValidJobName.
 # NAME_OF_JOB = 'path.to.method'
 
-class AvailableJob(Enum):
+class ValidJobName(Enum):
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
     # ONLINE_MEETINGS = 'online_meetings.report...'
     # ZOOM = 'online_meetings.canvas_zoom_meetings...'
+    # MIVIDEO = 'mivideo...'
+
+
+# Each data source name should be defined in ValidDataSourceName.
+# NAME_OF_DATA_SOURCE = auto()
+
+class ValidDataSourceName(Enum):
+    CANVAS_API = auto()
+    UNIZIN_DATA_WAREHOUSE = auto()
 
 
 # Class(es)
 
 class Job:
 
-    def __init__(self, job: AvailableJob) -> None:
-        self.name = job.name
-        self.import_path = '.'.join(job.value.split('.')[:-1])
-        self.method_name = job.value.split('.')[-1]
+    def __init__(self, job_name: ValidJobName) -> None:
+        self.name: str = job_name.name
+        self.import_path: str = '.'.join(job_name.value.split('.')[:-1])
+        self.method_name: str = job_name.value.split('.')[-1]
+        self.started_at = None
+        self.finished_at = None
+        self.data_sources: Sequence[Dict[str, str]] = []
 
-    def run(self):
+    def create_metadata(self) -> None:
+        started_at_dt = pd.to_datetime(self.started_at, unit='s')
+        finshed_at_dt = pd.to_datetime(self.finished_at, unit='s')
+
+        job_run_df = pd.DataFrame({
+            'job_name': [self.name],
+            'started_at': [started_at_dt],
+            'finished_at': [finshed_at_dt]
+        })
+        job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
+        logger.info(f'Inserted job_run record with finished_at value of {started_at_dt}')
+        job_run_id = pd.read_sql('job_run', db_creator_obj.engine).iloc[-1]['id']
+
+        data_source_status_df = pd.DataFrame(self.data_sources)
+        data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
+        data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
+        logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
+
+    def run(self) -> Dict[str, str]:
         leaf_module = import_module(self.import_path)
         start_method = getattr(leaf_module, self.method_name)
 
         # Until we have a decorator for this
-        start_time = time.time()
-        start_method()
-        delta = time.time() - start_time
-        str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
+        self.started_at = time.time()
+        data_sources = start_method()
+        self.finished_at = time.time()
+
+        delta = self.finished_at - self.started_at
+        str_time = time.strftime('%H:%M:%S', time.gmtime(delta))
         logger.info(f'Duration of job run: {str_time}')
+
+        valid_data_sources = []
+        for data_source in data_sources:
+            data_source_name = data_source['data_source_name']
+            try:
+                valid_data_source_name = ValidDataSourceName[data_source_name]
+                valid_data_sources.append(data_source)
+            except KeyError:
+                logger.error(f'{data_source_name} is not a valid data source name')
+                logger.error(f'No data_source_status record will be inserted.')
+
+        self.data_sources = valid_data_sources
+        self.create_metadata()
 
 
 class JobManager:
@@ -56,8 +104,8 @@ class JobManager:
         self.jobs = []
         for job_name in job_names:
             try:
-                avail_job = AvailableJob[job_name.upper()]
-                self.jobs.append(Job(avail_job))
+                valid_job_name = ValidJobName[job_name.upper()]
+                self.jobs.append(Job(valid_job_name))
             except KeyError:
                 logger.error(f'{job_name} is not a valid job name')
 
@@ -71,12 +119,12 @@ if __name__ == '__main__':
     how_started = os.environ.get('HOW_STARTED', None)
 
     if how_started == 'DOCKER_COMPOSE':
-        logger.info('Waiting for MySQL, hehe')
+        logger.info('Waiting for the MySQL turtle, hehe')
         # Wait for MySQL container to finish setting up
-        time.sleep(5.0)
+        time.sleep(3.0)
 
     # Apply any new migrations
-    db_creator_obj = DBCreator(ENV['INVENTORY_DB'])
+    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
     db_creator_obj.migrate()
 
     # Run those jobs
