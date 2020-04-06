@@ -19,7 +19,7 @@ class CanvasCourseUsage:
         self.retry_count = 0
 
     def parsing_canvas_course_usage_data(self, response) -> None:
-        logger.info("parsing_canvas_course_usage_data Call")
+        logger.debug("parsing_canvas_course_usage_data Call")
         new_dic = {}
         if response is None:
             logger.info(f"For Canvas Course usage response is None ")
@@ -56,7 +56,7 @@ class CanvasCourseUsage:
         self.canvas_usage_courses.append(new_dic)
 
     def _get_canvas_course_views_participation_data(self, retry_courses=None):
-        logger.info("Starting of _get_canvas_course_views_participation_data call")
+        logger.debug("Starting of _get_canvas_course_views_participation_data call")
         with FuturesSession() as session:
             headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
             # https://umich.instructure.com/api/v1/courses/course_id/analytics/activity
@@ -92,12 +92,12 @@ class CanvasCourseUsage:
 
         df = pd.DataFrame(rows)
         logger.info(df.head())
-        df.drop(['id'], axis=1, inplace=True)
+        df = df.drop(['id'], axis=1)
         df_dup = df[df.duplicated()]
         logger.info('Check for duplicate items ')
         logger.info(df_dup)
         df = df.drop_duplicates()
-        logger.info(df.head())
+        logger.debug(df.head())
         return df
 
     def get_canvas_course_views_participation_data(self):
