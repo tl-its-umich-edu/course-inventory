@@ -1,5 +1,6 @@
 # standard libraries
 import json, logging, os
+from json.decoder import JSONDecodeError
 
 # entry-level job modules need to be one-level beneath root
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +25,12 @@ logging.basicConfig(level=ENV['LOG_LEVEL'])
 logger.debug(os.environ)
 for key, value in ENV.items():
     if key in os.environ:
-        ENV[key] = value
+        os_value = os.environ[key]
+        try:
+            os_value = json.loads(os_value)
+            logger.info('Found valid JSON and parsed it')
+        except JSONDecodeError:
+            logger.debug('Valid JSON was not found')
+        ENV[key] = os_value
         logger.info('ENV value overidden')
         logger.info(f'key: {key}; value: {value}')
