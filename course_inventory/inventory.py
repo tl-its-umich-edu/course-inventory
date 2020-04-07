@@ -6,30 +6,22 @@ from typing import Dict, Sequence, Union
 # third-party libraries
 import pandas as pd
 import psycopg2
+from psycopg2.extensions import connection
 from requests import Response
 from umich_api.api_utils import ApiUtil
 
 # local libraries
 from db.db_creator import DBCreator
-from canvas.published_date import FetchPublishedDate
-from canvas.async_enroll_gatherer import AsyncEnrollGatherer
-from gql_queries import queries as QUERIES
-from canvas.canvas_course_usage import CanvasCourseUsage
+from environ import ENV
+from .async_enroll_gatherer import AsyncEnrollGatherer
+from .canvas_course_usage import CanvasCourseUsage
+from .gql_queries import queries as QUERIES
+from .published_date import FetchPublishedDate
 
 
 # Initialize settings and globals
 
 logger = logging.getLogger(__name__)
-
-try:
-    config_path = os.getenv("ENV_PATH", os.path.join('config', 'secrets', 'env.json'))
-    with open(config_path) as env_file:
-        ENV = json.loads(env_file.read())
-except FileNotFoundError:
-    logger.error('Configuration file could not be found; please add env.json to the config directory.')
-
-logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'),
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
 TERM_ID = ENV['CANVAS_TERM_ID']
@@ -44,6 +36,7 @@ NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
+APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_status'])
 
 
 # Function(s)
@@ -138,8 +131,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     return course_df
 
 
-def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
-    udw_conn = psycopg2.connect(**ENV['UDW'])
+def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd.DataFrame:
     users_string = ','.join([str(user_id) for user_id in user_ids])
     user_query = f'''
         SELECT u.canvas_id AS canvas_id,
@@ -150,13 +142,12 @@ def pull_sis_user_data_from_udw(user_ids: Sequence[int]) -> pd.DataFrame:
             ON u.id=p.user_id
         WHERE u.canvas_id in ({users_string});
     '''
-    logger.info('Making user_dim query')
-    udw_user_df = pd.read_sql(user_query, udw_conn)
+    logger.info('Making user_dim and pseudonym_dim query against UDW')
+    udw_user_df = pd.read_sql(user_query, conn)
     udw_user_df['sis_id'] = udw_user_df['sis_id'].map(process_sis_id, na_action='ignore')
     # Found that the IDs are not necessarily unique, so dropping duplicates
     udw_user_df = udw_user_df.drop_duplicates(subset=['canvas_id'])
     logger.debug(udw_user_df.head())
-    udw_conn.close()
     return udw_user_df
 
 
@@ -169,9 +160,9 @@ def process_sis_id(id: str) -> Union[int, None]:
     return sis_id
 
 
-def run_course_inventory() -> None:
+def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
-    start = time.time()
+    logger.info('Making requests against the Canvas API')
 
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_ID)
@@ -214,10 +205,29 @@ def run_course_inventory() -> None:
     enroll_delta = time.time() - enroll_start
     logger.info(f'Duration of process (seconds): {enroll_delta}')
 
+    # Record data source info for Canvas API
+    canvas_data_source = {
+        'data_source_name': 'CANVAS_API',
+        'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
+    }
+
+    udw_conn = psycopg2.connect(**ENV['UDW'])
+
     # Pull SIS user data from Unizin Data Warehouse
     udw_user_ids = user_df['canvas_id'].to_list()
-    sis_user_df = pull_sis_user_data_from_udw(udw_user_ids)
+    sis_user_df = pull_sis_user_data_from_udw(udw_user_ids, udw_conn)
     user_df = pd.merge(user_df, sis_user_df, on='canvas_id', how='left')
+
+    # Record data source info for UDW
+    udw_meta_df = pd.read_sql('SELECT * FROM unizin_metadata;', udw_conn)
+    udw_update_datetime_str = udw_meta_df.iloc[1, 1]
+    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
+    logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
+
+    udw_data_source = {
+        'data_source_name': 'UNIZIN_DATA_WAREHOUSE',
+        'data_updated_at': udw_update_datetime
+    }
 
     # Produce output
     num_course_records = len(course_df)
@@ -250,11 +260,9 @@ def run_course_inventory() -> None:
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator(INVENTORY_DB)
+    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
     db_creator_obj.set_up()
-    if len(db_creator_obj.get_table_names()) > 0:
-        db_creator_obj.drop_records()
-    db_creator_obj.migrate()
+    db_creator_obj.drop_records()
     db_creator_obj.tear_down()
 
     # Insert gathered data
@@ -278,10 +286,11 @@ def run_course_inventory() -> None:
     canvas_course_usage_df.to_sql('canvas_course_usage', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into canvas_course_usage table in {db_creator_obj.db_name}')
 
-    delta = time.time() - start
-    str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
-    logger.info(f'Duration of run: {str_time}')
+    return [canvas_data_source, udw_data_source]
 
+
+# Main Program
 
 if __name__ == "__main__":
+    logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
     run_course_inventory()
