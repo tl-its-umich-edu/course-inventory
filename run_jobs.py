@@ -51,7 +51,7 @@ class Job:
         self.method_name: str = job_name.value.split('.')[-1]
         self.started_at: Union[int, None] = None
         self.finished_at: Union[int, None] = None
-        self.data_sources: Sequence[Dict[str, Union[str, pd.Timestamp]] = []
+        self.data_sources: Sequence[Dict[str, Union[str, pd.Timestamp]]] = []
 
     def create_metadata(self) -> None:
         started_at_dt = pd.to_datetime(self.started_at, unit='s')
@@ -90,10 +90,9 @@ class Job:
         valid_data_sources = []
         for data_source in data_sources:
             data_source_name = data_source['data_source_name']
-            try:
-                valid_data_source_name = ValidDataSourceName[data_source_name]
+            if data_source_name in ValidJobName.__members__:
                 valid_data_sources.append(data_source)
-            except KeyError:
+            else:
                 logger.error(f'{data_source_name} is not a valid data source name')
                 logger.error(f'No data_source_status record will be inserted.')
 
@@ -106,11 +105,11 @@ class JobManager:
     def __init__(self, job_names: Sequence[str]) -> None:
         self.jobs: Sequence[Job] = []
         for job_name in job_names:
-            try:
-                valid_job_name = ValidJobName[job_name.upper()]
-                self.jobs.append(Job(valid_job_name))
-            except KeyError:
-                logger.error(f'{job_name} is not a valid job name')
+            if job_name.upper() in ValidJobName.__members__:
+                job_name_mem = ValidJobName[job_name.upper()]
+                self.jobs.append(Job(job_name_mem))
+            else:
+                logger.error(f'{job_name} is not a valid job name; it will be ignored')
 
     def run_jobs(self) -> None:
         for job in self.jobs:
