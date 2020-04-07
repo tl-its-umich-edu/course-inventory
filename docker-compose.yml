@@ -23,6 +23,8 @@ services:
         dockerfile: Dockerfile
     depends_on:
       - mysql
+    environment:
+      - HOW_STARTED=DOCKER_COMPOSE
     volumes:
       - ${HOME}/secrets/course-inventory:/app/config/secrets
       - ${HOME}/data/course-inventory:/app/data
