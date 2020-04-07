@@ -1,5 +1,5 @@
 #
-# file: migrations/00010.add_fkc_course_usage_table.py
+# file: migrations/0010.add_fkc_course_usage_table.py
 #
 from yoyo import step
 
