@@ -1,9 +1,9 @@
 #
-# file: migrations/0009.add_fkc_course_usage_table.py
+# file: migrations/00010.add_fkc_course_usage_table.py
 #
 from yoyo import step
 
-__depends__ = {'0008.canvas_usage_table'}
+__depends__ = {'0009.add_meta_tables'}
 
 step('''
         ALTER TABLE canvas_course_usage
