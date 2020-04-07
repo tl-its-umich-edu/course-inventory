@@ -33,4 +33,4 @@ for key, value in ENV.items():
             logger.debug('Valid JSON was not found')
         ENV[key] = os_value
         logger.info('ENV value overidden')
-        logger.info(f'key: {key}; value: {value}')
+        logger.info(f'key: {key}; os_value: {os_value}')
