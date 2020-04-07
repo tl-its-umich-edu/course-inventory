@@ -144,16 +144,17 @@ class ZoomPlacements:
         if enrollment_term_id:
             courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
 
-        # If there's course_id's passed in extend this to include these courses
-
         course_count = 0
         for course in courses:
             course_count += 1
+            if add_course_ids and course.id in add_course_ids:
+                add_course_ids.remove(course.id)
             # TODO: In the future get the total count from the Paginated object
             # Needs API support https://github.com/ucfopen/canvasapi/issues/114
             logger.info(f"Fetching course #{course_count} for {course}")
             self.get_zoom_course(course)
 
+        # If there's course_id's passed in extend this to include these courses
         if add_course_ids:
             for course_id in add_course_ids:
                 self.get_zoom_course(CANVAS.get_course(course_id))
