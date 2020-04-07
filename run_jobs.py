@@ -2,7 +2,7 @@
 import logging, os, time
 from enum import auto, Enum
 from importlib import import_module
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Union
 
 # local libraries
 from db.db_creator import DBCreator
