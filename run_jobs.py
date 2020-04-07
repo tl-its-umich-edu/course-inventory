@@ -90,7 +90,7 @@ class Job:
         valid_data_sources = []
         for data_source in data_sources:
             data_source_name = data_source['data_source_name']
-            if data_source_name in ValidJobName.__members__:
+            if data_source_name in ValidDataSourceName.__members__:
                 valid_data_sources.append(data_source)
             else:
                 logger.error(f'{data_source_name} is not a valid data source name')
