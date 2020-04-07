@@ -49,7 +49,8 @@ To configure the application before installation and usage (see the next section
     `LOG_LEVEL` | The minimum level for log messages that will appear in output. `INFO` or `DEBUG` is recommended for most use cases; see [Python's logging module](https://docs.python.org/3/library/logging.html).
     `JOB_NAMES` | The names of one or more jobs (not case sensitive) that have been implemented and defined in `run_jobs.py` (see the **Implementing a New Job** section below).
     `CANVAS_ACCOUNT_ID` | The Canvas instance root account ID number associated with the courses for which data will be collected.
-    `CANVAS_TERM_ID` | The Canvas instance term ID number that will be used to limit the query for Canvas courses.
+    `CANVAS_TERM_ID` | The Canvas instance term ID number that will be used to limit the query for Canvas courses. Set to 0 to just use ADD_COURSE_IDS.
+    `ADD_COURSE_IDS` | Additional Canvas course ID's to retrieve. Duplicates found in CANVAS_TERM_ID (if defined) will be removed.
     `API_BASE_URL` | The base URL for making requests using the U-M API Directory; the default value should be correct.
     `API_SCOPE_PREFIX` | The scope prefix that will be added after the `API_BASE_URL`; this is usually an acronym for the university location and the API Directory subscription name in CamelCase, separated by a `/`.
     `API_SUBSCRIPTION_NAME` | The name of the API Directory subscription all in lowercase.
