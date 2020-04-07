@@ -154,7 +154,7 @@ class ZoomPlacements:
             logger.info(f"Fetching course #{course_count} for {course}")
             self.get_zoom_course(course)
 
-        # If there's course_id's passed in extend this to include these courses
+        # If there are course_ids passed in, also process those
         if add_course_ids:
             for course_id in add_course_ids:
                 self.get_zoom_course(CANVAS.get_course(course_id))
