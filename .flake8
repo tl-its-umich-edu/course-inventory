@@ -4,4 +4,5 @@ ignore =
     E401,  # multiple imports
     E111,  # Indentation is not a multiple of 4
     E114,  # Indentation is not a multiple of 4 comment
-    max-line-length = 120
+    W293   # Blank line contains whitespace
+max-line-length = 120
