@@ -222,8 +222,8 @@ All the changes described below (minus the configuration changes) should be incl
 2. Make use of variables from the `env.json` configuration file by importing the `ENV` variable from `environ.py`.
 
 3. Ensure you have one function or method defined that will kick off all other steps in the job.
-   It should return a list of dictionaries, with each naming a data source used during the job.
-   Additional it should providing a timestamp of when that data was updated (or collected).
+   It should return a list of dictionaries, each containing the name of a data source used during the job, 
+   and a timestamp of when that data was updated (or collected).
     
     These dictionaries will be used to create new records in the `data_source_status` table of the MySQL database.
     Each dictionary should have the following format:
