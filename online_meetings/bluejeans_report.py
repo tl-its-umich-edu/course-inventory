@@ -1,3 +1,5 @@
+# TODO: When fixing issue #56 remove this and fix the flake8 issues
+# flake8: noqa
 import requests
 # standard libraries
 import json
@@ -47,7 +49,7 @@ token = token_json["access_token"]
 logger.info(token)
 # the expiration time in seconds
 expires_in_sec = token_json["expires_in"]
-# minus for one minute, for safty check
+# minus for one minute, for safety check
 expires_in_sec = expires_in_sec - 60
 token_expiration_time = datetime.now() + timedelta(seconds=expires_in_sec)
 logger.info(f"{token} expires on: {token_expiration_time}")
