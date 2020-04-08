@@ -2,7 +2,5 @@
 ignore =
     E121,E123,E126,E24,E704,W503,W504,  # these are ignored by default
     E401,  # multiple imports
-    E111,  # Indentation is not a multiple of 4
-    E114,  # Indentation is not a multiple of 4 comment
     W293   # Blank line contains whitespace
 max-line-length = 120
