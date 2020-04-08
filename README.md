@@ -112,6 +112,45 @@ Use `^C` to stop the running MySQL container, or -- if you used the detached fla
 
 Data in the MySQL database will persist after the container is stopped, as MySQL data is stored in a volume that is mapped to a `.data/` directory in the project. To completely reset the database, delete the `.data` directory.
 
+##### A Development Cycle With Docker
+
+1. Build images for all services…
+
+    ```
+    docker-compose build
+    ```  
+
+2. Run the DB service, `mysql`, in the background…
+
+    ```
+    docker-compose up -d mysql
+    ```  
+
+3. Run the main application service, `job`, in the foreground…
+
+    ```
+    docker-compose up job
+    ```  
+    That will show the output from `job`, then return you to the
+    shell prompt.
+
+4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
+5. When ready to run `job` again, remember that most code changes
+    will require you to _specify that the service needs
+    to be rebuilt_…
+
+    ```
+    docker-compose up --build job
+    ```
+    
+    As before, that will show the output from `job`, then return you
+    to the shell prompt.
+    
+    Some changes may not require the `--build` option.  When in doubt,
+    use the option.  If the `docker-compose.yml` and `Dockerfile` have
+    been configured to mount the code in `/app` rather than copy it there,
+    the `--build` option is unnecessary.
+
 #### With a Virtual Environment
 
 You can also set up the application using `virtualenv` by doing the following:
