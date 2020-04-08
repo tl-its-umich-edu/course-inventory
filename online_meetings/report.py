@@ -93,6 +93,7 @@ def run_report(api_url: str, json_attribute_name: str,
     # Either loop for all dates or just one a single report
 
     for zoom_key, zoom_config in ENV["ZOOM_CONFIG"].items():
+        logger.info(f"Starting zoom pull for instance {zoom_key}")
         url = zoom_config["BASE_URL"] + api_url
         token = jwt.encode(
             {'iss': zoom_config["API_KEY"],
@@ -110,6 +111,7 @@ def run_report(api_url: str, json_attribute_name: str,
                 param_date = early_date + timedelta(days=i)
                 params["from"] = str(param_date)
                 params["to"] = str(param_date)
+                logger.info(f"Pulling data from date {param_date}")
                 # Add this loop to the list
                 zoom_list = zoom_loop(url, headers, json_attribute_name, dict(params), page_token)
         else:
