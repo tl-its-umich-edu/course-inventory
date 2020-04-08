@@ -39,7 +39,7 @@ INVENTORY_DB = ENV['INVENTORY_DB']
 APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_status'])
 
 
-# Function(s)
+# Function(s) - Canvas
 
 def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
     logger.debug('Making a request for data...')
@@ -69,6 +69,7 @@ def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
     for course_dict in course_data:
         slim_course_dict = {
             'canvas_id': course_dict['id'],
+            'sis_id': course_dict['sis_course_id'],
             'name': course_dict['name'],
             'account_id': course_dict['account_id'],
             'created_at': course_dict['created_at'],
@@ -99,7 +100,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     logger.info(f'Course Page Number: {page_num}')
     response = make_request_using_api_utils(url_ending_with_scope, params)
     all_course_data = json.loads(response.text)
-    slim_course_dicts = slim_down_course_data(all_course_data)
+    course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
 
     while more_pages:
@@ -109,30 +110,32 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
             logger.info(f'Course Page Number: {page_num}')
             response = make_request_using_api_utils(url_ending_with_scope, next_params)
             all_course_data = json.loads(response.text)
-            slim_course_dicts += slim_down_course_data(all_course_data)
+            course_dicts += slim_down_course_data(all_course_data)
         else:
             logger.info('No more pages!')
             more_pages = False
 
-    num_slim_course_dicts = len(slim_course_dicts)
-    logger.info(f'Total course records: {num_slim_course_dicts}')
-    slim_course_dicts_with_students = []
-    for slim_course_dict in slim_course_dicts:
-        if slim_course_dict['total_students'] > 0:
-            slim_course_dicts_with_students.append(slim_course_dict)
-    num_slim_course_dicts_with_students = len(slim_course_dicts_with_students)
+    num_course_dicts = len(course_dicts)
+    logger.info(f'Total course records: {num_course_dicts}')
+    course_dicts_with_students = []
+    for course_dict in course_dicts:
+        if course_dict['total_students'] > 0:
+            course_dicts_with_students.append(course_dict)
+    num_course_dicts_with_students = len(course_dicts_with_students)
 
-    logger.info(f'Course records with students: {num_slim_course_dicts_with_students}')
-    logger.info(f'Dropped {num_slim_course_dicts - num_slim_course_dicts_with_students} records')
+    logger.info(f'Course records with students: {num_course_dicts_with_students}')
+    logger.info(f'Dropped {num_course_dicts - num_course_dicts_with_students} records')
 
-    course_df = pd.DataFrame(slim_course_dicts_with_students)
+    course_df = pd.DataFrame(course_dicts_with_students)
     course_df = course_df.drop(['total_students'], axis='columns')
     logger.debug(course_df.head())
     return course_df
 
 
+# Function(s) - UDW
+
 def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd.DataFrame:
-    users_string = ','.join([str(user_id) for user_id in user_ids])
+    user_ids_tup = tuple(user_ids)
     user_query = f'''
         SELECT u.canvas_id AS canvas_id,
                p.sis_user_id AS sis_id,
@@ -140,15 +143,30 @@ def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd
         FROM user_dim u
         JOIN pseudonym_dim p
             ON u.id=p.user_id
-        WHERE u.canvas_id in ({users_string});
+        WHERE u.canvas_id in %s;
     '''
     logger.info('Making user_dim and pseudonym_dim query against UDW')
-    udw_user_df = pd.read_sql(user_query, conn)
+    udw_user_df = pd.read_sql(user_query, conn, params=(user_ids_tup,))
     udw_user_df['sis_id'] = udw_user_df['sis_id'].map(process_sis_id, na_action='ignore')
     # Found that the IDs are not necessarily unique, so dropping duplicates
     udw_user_df = udw_user_df.drop_duplicates(subset=['canvas_id'])
     logger.debug(udw_user_df.head())
     return udw_user_df
+
+
+def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection) -> pd.DataFrame:
+    section_ids_tup = tuple(section_ids)
+    section_query = f'''
+        SELECT cs.canvas_id AS canvas_id,
+               cs.sis_source_id AS sis_id
+        FROM course_section_dim cs
+        WHERE cs.canvas_id in %s;
+    '''
+    logger.info('Making course_section_dim query against UDW')
+    udw_section_df = pd.read_sql(section_query, conn, params=(section_ids_tup,))
+    # udw_section_df = udw_section_df.drop_duplicates(subset=['canvas_id'])
+    logger.debug(udw_section_df.head())
+    return udw_section_df
 
 
 def process_sis_id(id: str) -> Union[int, None]:
@@ -159,6 +177,8 @@ def process_sis_id(id: str) -> Union[int, None]:
         sis_id = None
     return sis_id
 
+
+# Entry point for run_jobs.py
 
 def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
@@ -183,8 +203,8 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     course_df['published_at'] = pd.to_datetime(course_df['published_at'],
                                                format="%Y-%m-%dT%H:%M:%SZ",
                                                errors='coerce')
-    logger.info("*** Fetching the canvas course usage data ****")
 
+    logger.info("*** Fetching the canvas course usage data ***")
     canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
     canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
@@ -213,10 +233,15 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
 
     udw_conn = psycopg2.connect(**ENV['UDW'])
 
-    # Pull SIS user data from Unizin Data Warehouse
+    # Pull SIS user data from UDW
     udw_user_ids = user_df['canvas_id'].to_list()
     sis_user_df = pull_sis_user_data_from_udw(udw_user_ids, udw_conn)
     user_df = pd.merge(user_df, sis_user_df, on='canvas_id', how='left')
+
+    # Pull SIS course section data from UDW
+    udw_section_ids = section_df['canvas_id'].to_list()
+    sis_section_df = pull_sis_section_data_from_udw(udw_section_ids, udw_conn)
+    section_df = pd.merge(section_df, sis_section_df, on='canvas_id', how='left')
 
     # Record data source info for UDW
     udw_meta_df = pd.read_sql('SELECT * FROM unizin_metadata;', udw_conn)
