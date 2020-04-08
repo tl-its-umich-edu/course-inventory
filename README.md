@@ -243,9 +243,10 @@ All the changes described below (minus the configuration changes) should be incl
 
 4. Add a new entry to the `ValidJobName` enumeration within `run_jobs.py`. 
    The name (on the left) should be in all capitals.
-   The value (on the right) should be a period-delimited path string.
-   The first element is the package name.
-   The second is the module or file name, and the third is the name of the job's entry method or function.
+   The value (on the right) should be a period-delimited path string,
+   where the first element is the package name,
+   the second is the module or file name, 
+   and the third is the name of the job's entry method or function.
    See `run_jobs.py` for examples.
 
 5. If you are introducing a new data source, you also need to add an entry to the `ValidDataSourceName` enumeration. 
