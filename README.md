@@ -44,7 +44,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
 2. Set up a MySQL database. 
     
     If you plan to run the application using `virtualenv`, you will need to have MySQL installed on your machine.
-    You will also need a test database and user. 
+    You will also need to create a test database and user. 
     
     If you use Docker, instead you will use the database credentials specified in the `docker-compose.yml`.
     This is in the `environment` block (ignoring `MYSQL_ROOT_PASSWORD`) for the `mysql` service. 
