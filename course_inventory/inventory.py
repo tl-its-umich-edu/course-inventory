@@ -134,6 +134,15 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
 
 # Function(s) - UDW
 
+def process_sis_id(orig_sis_id: str) -> Union[int, None]:
+    try:
+        sis_id = int(orig_sis_id)
+    except ValueError:
+        logger.debug(f'Invalid sis_id found: {orig_sis_id}')
+        sis_id = None
+    return sis_id
+
+
 def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd.DataFrame:
     user_ids_tup = tuple(user_ids)
     user_query = f'''
@@ -164,18 +173,9 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
     '''
     logger.info('Making course_section_dim query against UDW')
     udw_section_df = pd.read_sql(section_query, conn, params=(section_ids_tup,))
-    # udw_section_df = udw_section_df.drop_duplicates(subset=['canvas_id'])
+    udw_section_df['sis_id'] = udw_section_df['sis_id'].map(process_sis_id, na_action='ignore')
     logger.debug(udw_section_df.head())
     return udw_section_df
-
-
-def process_sis_id(id: str) -> Union[int, None]:
-    try:
-        sis_id = int(id)
-    except ValueError:
-        logger.debug(f'Invalid sis_id found: {id}')
-        sis_id = None
-    return sis_id
 
 
 # Entry point for run_jobs.py
