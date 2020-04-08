@@ -88,7 +88,8 @@ This includes the creation of a configuration file called `env.json`. Complete t
     `ZOOM_CONFIG` | An object containing the configuration for Zoom. You need a key for each object, this key is inserted into the DB (see below)
     **ZOOM_CONFIG** |
     `BASE_URL` | The base URL for calls to the Zoom API.
-    `TOKEN` | The token for authenticating to the Zoom API.
+    `API_KEY` | The API key to get the JWT token.
+    `API_SECRET` | The API secret to get the JWT token.
     `EARLIEST_FROM` | The earliest date to retrieve zoom content from.
 
 ### Installation & Usage

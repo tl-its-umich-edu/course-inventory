@@ -17,7 +17,8 @@
     "1": {
       "EARLIEST_FROM": "YYYY-MM-DD",
       "BASE_URL": "<ADD zoom.us URL>",
-      "TOKEN": "<ADD THIS TOKEN>"
+      "API_KEY": "<ADD API KEY>",
+      "API_SECRET": "<ADD API SECRET>"
     }
   },
   "DEFAULT_SLEEP_TIME": 10,
