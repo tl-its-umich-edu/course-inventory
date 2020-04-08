@@ -12,6 +12,7 @@ import pandas as pd
 import time
 import dateparser
 from datetime import datetime, timedelta
+import jwt
 
 # Initialize settings and globals
 
@@ -29,11 +30,6 @@ logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
 logger.info(ENV)
 
-headers = {
-  "Authorization": f"Bearer {ENV['ZOOM_TOKEN']}"
-}
-
-ZOOM_BASE_URL = ENV.get('ZOOM_BASE_URL', "")
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
@@ -83,12 +79,11 @@ def get_total_page_count(url: str, headers: Dict[str, Union[str, int]], params: 
     return total_page_count
 
 
-def run_report(api_url: str, headers: Dict[str, Union[str, int]], json_attribute_name: str,
+def run_report(api_url: str, json_attribute_name: str,
                default_params: Dict[str, Union[str, int]] = None, page_size: int = 300,
                page_token: bool = False, use_date: bool = False):
     if default_params is None:
         default_params = {}
-    url = ZOOM_BASE_URL + api_url
     params = default_params
     # If page size is specified use this
     if page_size:
@@ -96,18 +91,33 @@ def run_report(api_url: str, headers: Dict[str, Union[str, int]], json_attribute
     total_list = []
     # TODO: Detect the date from the previous CSV
     # Either loop for all dates or just one a single report
-    if use_date:
-        early_date = dateparser.parse(ENV.get('ZOOM_EARLIEST_FROM', '2020-03-01')).date()
-        # Only use the date as a paramter
-        # Loop until yesterday (this will go until now() -1)
-        for i in range((datetime.now().date() - early_date).days):
-            param_date = early_date + timedelta(days=i)
-            params["from"] = str(param_date)
-            params["to"] = str(param_date)
-            # Add this loop to the list
-            total_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
-    else:
-        total_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
+
+    for zoom_key, zoom_config in ENV["ZOOM_CONFIG"].items():
+        url = zoom_config["BASE_URL"] + api_url
+        token = jwt.encode(
+            {'iss': zoom_config["API_KEY"],
+             'exp': datetime.utcnow() + timedelta(minutes=30)
+             }, zoom_config["API_SECRET"], algorithm='HS256')
+        headers = {
+            # Need to decode https://github.com/jpadilla/pyjwt/issues/391
+            "Authorization": f"Bearer {token.decode('utf-8')}"
+        }
+        if use_date and "EARLIEST_FROM" in zoom_config:
+            early_date = dateparser.parse(zoom_config["EARLIEST_FROM"]).date()
+            # Only use the date as a paramter
+            # Loop until yesterday (this will go until now() -1)
+            for i in range((datetime.now().date() - early_date).days):
+                param_date = early_date + timedelta(days=i)
+                params["from"] = str(param_date)
+                params["to"] = str(param_date)
+                # Add this loop to the list
+                zoom_list = zoom_loop(url, headers, json_attribute_name, dict(params), page_token)
+        else:
+            zoom_list = zoom_loop(url, headers, json_attribute_name, dict(params), page_token)
+        # Add the instance this was pulled from to each of the results
+        for list_item in zoom_list:
+            list_item.update({"media_instance": zoom_key})
+        total_list.extend(zoom_list)
     # output csv file
     total_df = pd.DataFrame(total_list)
     total_df.index.name = "index_id"
@@ -163,8 +173,8 @@ def zoom_loop(url: str, headers: Dict[str, Union[str, int]], json_attribute_name
 
 
 # run users report
-run_report('/v2/users', headers, 'users', {"status": "active", "page_number": 1}, page_token=False, use_date=False)
+run_report('/v2/users', 'users', {"status": "active", "page_number": 1}, page_token=False, use_date=False)
 # run meetings report
-run_report('/v2/metrics/meetings', headers, 'meetings', {"type": "past"}, page_token=True, use_date=True)
+run_report('/v2/metrics/meetings', 'meetings', {"type": "past"}, page_token=True, use_date=True)
 # run webinars report
-run_report('/v2/metrics/webinars', headers, 'webinars', {"type": "past"}, page_token=True, use_date=True)
+run_report('/v2/metrics/webinars', 'webinars', {"type": "past"}, page_token=True, use_date=True)

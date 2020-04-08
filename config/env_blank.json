@@ -13,9 +13,13 @@
   "CANVAS_URL": "",
   "CANVAS_TOKEN": "",
   "NUM_ASYNC_WORKERS": 8,
-  "ZOOM_TOKEN": "<ADD THIS TOKEN>",
-  "ZOOM_BASE_URL": "<ADD zoom.us URL>",
-  "ZOOM_EARLIEST_FROM": "YYYY-MM-DD",
+  "ZOOM_CONFIG": {
+    "1": {
+      "EARLIEST_FROM": "YYYY-MM-DD",
+      "BASE_URL": "<ADD zoom.us URL>",
+      "TOKEN": "<ADD THIS TOKEN>"
+    }
+  },
   "DEFAULT_SLEEP_TIME": 10,
   "WAREHOUSE_INCREMENT": 0,
   "UDW": {
