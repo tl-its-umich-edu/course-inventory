@@ -191,7 +191,7 @@ this README. However, a few details about how the job is configurd are provided 
   
   * To ensure that the `yoyo-migrations` dependency can run successfully in a containerized environment,
     the environment variable `USER` should be defined. 
-  * The value of `USER` is the name of the project running the job.
+  * For the value of `USER`, use the name of the project running the job.
   The `yoyo-migrations` library will obtain this value by using the 
   [`getpass.getuser` function](https://docs.python.org/3/library/getpass.html) from the Python standard library.
 
