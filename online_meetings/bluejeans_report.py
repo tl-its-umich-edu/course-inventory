@@ -1,3 +1,5 @@
+# TODO: When fixing issue #56 remove this and fix the flake8 issues
+# flake8: noqa
 import requests
 # standard libraries
 import json
@@ -45,9 +47,9 @@ response = requests.request("POST", url, headers=headers, data=payload).text.enc
 token_json = json.loads(response)
 token = token_json["access_token"]
 logger.info(token)
-## the expiration time in seconds
+# the expiration time in seconds
 expires_in_sec = token_json["expires_in"]
-## minus for one minute, for safty check
+# minus for one minute, for safety check
 expires_in_sec = expires_in_sec - 60
 token_expiration_time = datetime.now() + timedelta(seconds=expires_in_sec)
 logger.info(f"{token} expires on: {token_expiration_time}")
@@ -100,7 +102,7 @@ for i in range((datetime.now(pytz.timezone('America/Detroit')).date() - early_da
 
     # sleep to wait for report job finish
     download_file_path = ""
-    while not download_file_path :
+    while not download_file_path:
         # retrieve report job information including the file download path
         jobs_url = f"https://indigo-api.bluejeans.com/v1/enterprise/{ENV.get('BLUEJEANS_ENTERPRISE_ID')}/indigo/jobs/list?userid={ENV.get('BLUEJEANS_USER_ID')}"
         payload = {}
@@ -162,7 +164,6 @@ for i in range((datetime.now(pytz.timezone('America/Detroit')).date() - early_da
     os.remove(zip_file_name)
     print(f" {zip_file_name} file Removed!")
     
-
 
 # Remove any duplicate uuids in the record
 logger.info(f"Initial dataframe size: {len(total_df)}")

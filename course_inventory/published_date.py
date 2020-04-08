@@ -1,4 +1,4 @@
-import logging, os
+import logging
 import time
 import json
 from json.decoder import JSONDecodeError
@@ -84,7 +84,7 @@ class FetchPublishedDate:
         logger.debug(f"Parsing the published date took {str_time} ")
         return
 
-    def get_published_course_date(self,course_ids, next_page_links=None):
+    def get_published_course_date(self, course_ids, next_page_links=None):
         logger.info("Starting of get_published_course_date call")
         with FuturesSession(max_workers=self.num_workers) as session:
             headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
@@ -97,14 +97,17 @@ class FetchPublishedDate:
                     responses.append(response)
             else:
                 logger.info("Initial Round of Fetching course published date")
-                responses = [session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100', headers=headers)
-                for course_id in course_ids]
+                responses = [
+                    session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100',
+                                headers=headers)
+                    for course_id in course_ids
+                ]
 
             for response in as_completed(responses):
                 self.published_date_resp_parsing(response)
 
         if len(self.published_course_next_page_list) != 0:
-            logger.info(f"""Pagination size {len(self.published_course_next_page_list)} with published_at date items 
+            logger.info(f"""Pagination size {len(self.published_course_next_page_list)} with published_at date items
                          {self.published_course_next_page_list}""")
             self.get_published_course_date(course_ids, self.published_course_next_page_list)
 
