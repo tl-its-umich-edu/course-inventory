@@ -93,6 +93,7 @@ def run_report(api_url: str, json_attribute_name: str,
     # Either loop for all dates or just one a single report
 
     for zoom_key, zoom_config in ENV["ZOOM_CONFIG"].items():
+        zoom_list = []
         logger.info(f"Starting zoom pull for instance {zoom_key}")
         url = zoom_config["BASE_URL"] + api_url
         token = jwt.encode(
@@ -113,9 +114,9 @@ def run_report(api_url: str, json_attribute_name: str,
                 params["to"] = str(param_date)
                 logger.info(f"Pulling data from date {param_date}")
                 # Add this loop to the list
-                zoom_list = zoom_loop(url, headers, json_attribute_name, dict(params), page_token)
+                zoom_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
         else:
-            zoom_list = zoom_loop(url, headers, json_attribute_name, dict(params), page_token)
+            zoom_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
         # Add the instance this was pulled from to each of the results
         for list_item in zoom_list:
             list_item.update({"media_instance": zoom_key})
