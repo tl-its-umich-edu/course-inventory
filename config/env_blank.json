@@ -1,7 +1,10 @@
 {
   "LOG_LEVEL": "DEBUG",
+  "JOB_NAMES": ["COURSE_INVENTORY"],
   "CANVAS_ACCOUNT_ID": 1,
   "CANVAS_TERM_ID": 164,
+  "API_BASE_URL": "https://apigw.it.umich.edu/um",
+  "ADD_COURSE_IDS": [],
   "API_BASE_URL": "https://apigw.it.umich.edu/um",
   "API_SCOPE_PREFIX": "",
   "API_SUBSCRIPTION_NAME": "",
@@ -30,5 +33,6 @@
     "dbname": "course_inventory",
     "user": "",
     "password": ""
-  }
+  },
+  "APPEND_TABLE_NAMES": ["job_run", "data_source_status"]
 }
