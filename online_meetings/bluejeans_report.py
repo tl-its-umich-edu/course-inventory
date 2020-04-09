@@ -1,3 +1,5 @@
+# TODO: When fixing issue #56 remove this and fix the flake8 issues
+# flake8: noqa
 import requests
 # standard libraries
 import json
@@ -100,13 +102,14 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
         {\"type\":\"date\",\"comparison\":\"lt\",\"value\":\"" + end.astimezone().isoformat() + "\",\"field\":\"start_time\"},\
         {\"type\":\"date\",\"comparison\":\"gt\",\"value\":\"" + start.astimezone().isoformat() + "\",\"field\":\"start_time\"}]\
         &fileName=meetings_30th-Mar-2020_30th-Mar-2020&userid=" + str(ENV.get("BLUEJEANS_USER_ID")) + "&app_name=command_center"
-
+        
         payload = {}
         headers = {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {token}'
         }
+        
         reportJobs_response = requests.request("POST", url, headers=headers, data=payload)
         reportJob_json = json.loads(reportJobs_response.text.encode('utf8'))
         if ("status" in reportJob_json) and (reportJob_json["status"] == "success") and ("jobId" in reportJob_json):

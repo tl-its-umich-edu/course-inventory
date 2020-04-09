@@ -60,7 +60,8 @@ class ZoomPlacements:
                 'storage_timezone': 'America/Montreal',
                 'client_timezone': 'America/Detroit'}
         # TODO: Specify which page we want, currently hardcoded to previous meetings
-        r = self.zoom_session.get("https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all", params=data)
+        zoom_previous_url = "https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all"
+        r = self.zoom_session.get(zoom_previous_url, params=data)
         # Load in the json and look for results
         zoom_json = json.loads(r.text)
         if zoom_json and "result" in zoom_json:
@@ -124,7 +125,9 @@ class ZoomPlacements:
                     logger.info("Could not find a form to launch this zoom page, skipping")
                     break
 
-                self.zoom_courses.append({'account_id': course.account_id, 'course_id': course.id, 'course_name': course.name})
+                self.zoom_courses.append({'account_id': course.account_id,
+                                          'course_id': course.id,
+                                          'course_name': course.name})
 
                 fields = form.findAll('input')
                 formdata = dict((field.get('name'), field.get('value')) for field in fields)
@@ -164,7 +167,8 @@ class ZoomPlacements:
 start_time = datetime.now()
 logger.info(f"Script started at {start_time}")
 zoom_placements = ZoomPlacements()
-zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 0), True, ENV.get("ADD_COURSE_IDS", []))
+zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 0),
+                                   True, ENV.get("ADD_COURSE_IDS", []))
 
 zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
 zoom_courses_df.index.name = "id"
