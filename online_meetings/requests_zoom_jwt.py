@@ -69,7 +69,6 @@ class ZoomJWT(AuthBase):
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """ For requests library to call
-        
         :param request: Request from requests
         :type request: requests.PreparedRequest
         :return: Request with an Authorization header
