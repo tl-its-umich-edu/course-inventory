@@ -82,8 +82,8 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     total_df = pd.DataFrame()
 
     # TODO: the earliest time is hardcoded now
-    from_date = dateparser.parse(ENV.get('ZOOM_EARLIEST_FROM', '2020-03-31')).date()
-    to_date = dateparser.parse(ENV.get('ZOOM_EARLIEST_TO', '2020-04-09')).date()
+    from_date = dateparser.parse(ENV.get('BLUEJEANS_FROM_DATE', '2020-03-31')).date()
+    to_date = dateparser.parse(ENV.get('BLUEJEANS_TO_DATE', '2020-04-09')).date()
 
     # Only use the date as a paramter
     # Loop until yesterday (this will go until now() -1)
