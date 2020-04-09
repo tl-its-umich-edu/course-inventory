@@ -28,7 +28,7 @@ logging.basicConfig(
 
 class ValidJobName(Enum):
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
-    MIVIDEO = 'mivideo.extract.main'
+    MIVIDEO = 'mivideo.mivideo_extract.main'
     # ONLINE_MEETINGS = 'online_meetings.report...'
     # ZOOM = 'online_meetings.canvas_zoom_meetings...'
 
