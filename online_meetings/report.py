@@ -5,14 +5,14 @@ import json
 import logging
 import os
 
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 # third-party libraries
 import pandas as pd
 import time
 import dateparser
 from datetime import datetime, timedelta
-import jwt
+from requests_zoom_jwt import ZoomJWT
 
 # Initialize settings and globals
 
@@ -33,10 +33,17 @@ logger.info(ENV)
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
-def get_request_retry(url: str, headers: Dict[str, Union[str, int]],
+def requests_zoom_auth(url: str, zoom_config: Dict[str, str],
+                       params: Dict[str, Union[str, int]]) -> requests.Response:
+    return requests.request("GET", url, params=params,
+                            auth=ZoomJWT(zoom_config["API_KEY"], zoom_config["API_SECRET"], exp_seconds=60 * 10)
+                            )
+
+
+def get_request_retry(url: str, zoom_config: Dict[str, str],
                       params: Dict[str, Union[str, int]]) -> requests.Response:
 
-    response = requests.request("GET", url, headers=headers, params=params)
+    response = requests_zoom_auth(url, zoom_config, params=params)
 
     # Rate limited, wait a few seconds
     if response.status_code == requests.codes.too_many_requests:
@@ -52,8 +59,7 @@ def get_request_retry(url: str, headers: Dict[str, Union[str, int]],
                 f"No Retry-After header, setting sleep loop for {DEFAULT_SLEEP_TIME} seconds")
         while response.status_code == requests.codes.too_many_requests:
             time.sleep(sleep_time)
-            response = requests.request(
-                "GET", url, headers=headers, params=params)
+            response = requests_zoom_auth(url, zoom_config, params=params)
 
     # If it's not okay at this point, raise an error
     if response.status_code != requests.codes.ok:
@@ -62,11 +68,11 @@ def get_request_retry(url: str, headers: Dict[str, Union[str, int]],
 
 
 # Functions
-def get_total_page_count(url: str, headers: Dict[str, Union[str, int]], params: Dict[str, Union[str, int]]):
+def get_total_page_count(url: str, zoom_config: Dict[str, str], params: Dict[str, Union[str, int]]):
     # get the total page count
     total_page_count = 0
     try:
-        response = get_request_retry(url, headers, params)
+        response = get_request_retry(url, zoom_config, params)
     except requests.exceptions.HTTPError:
         logger.exception('Received irregular status code during request')
         return 0
@@ -96,14 +102,7 @@ def run_report(api_url: str, json_attribute_name: str,
         zoom_list = []
         logger.info(f"Starting zoom pull for instance {zoom_key}")
         url = zoom_config["BASE_URL"] + api_url
-        token = jwt.encode(
-            {'iss': zoom_config["API_KEY"],
-             'exp': datetime.utcnow() + timedelta(minutes=30)
-             }, zoom_config["API_SECRET"], algorithm='HS256')
-        headers = {
-            # Need to decode https://github.com/jpadilla/pyjwt/issues/391
-            "Authorization": f"Bearer {token.decode('utf-8')}"
-        }
+
         if use_date and "EARLIEST_FROM" in zoom_config:
             early_date = dateparser.parse(zoom_config["EARLIEST_FROM"]).date()
             # Only use the date as a parameter
@@ -114,9 +113,9 @@ def run_report(api_url: str, json_attribute_name: str,
                 params["to"] = str(param_date)
                 logger.info(f"Pulling data from date {param_date}")
                 # Add this loop to the list
-                zoom_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
+                zoom_list.extend(zoom_loop(url, zoom_config, json_attribute_name, dict(params), page_token))
         else:
-            zoom_list.extend(zoom_loop(url, headers, json_attribute_name, dict(params), page_token))
+            zoom_list.extend(zoom_loop(url, zoom_config, json_attribute_name, dict(params), page_token))
         # Add the instance this was pulled from to each of the results
         for list_item in zoom_list:
             list_item.update({"media_instance": zoom_key})
@@ -138,18 +137,18 @@ def run_report(api_url: str, json_attribute_name: str,
     total_df.to_csv(output_file_name)
 
 
-def zoom_loop(url: str, headers: Dict[str, Union[str, int]], json_attribute_name: str,
+def zoom_loop(url: str, zoom_config: Dict[str, Union[str, str]], json_attribute_name: str,
               params: Dict[str, Union[str, int]], page_token: bool = False) -> list:
     # Need a fresh copy of dicts
-    total_list = []    # get total page count
-    total_page_count = get_total_page_count(url, headers, params)
+    total_list: List[Dict] = []    # get total page count
+    total_page_count = get_total_page_count(url, zoom_config, params)
     logger.info(f"Total page number {total_page_count}")
     # Either go by the page number or token
     while (page_token or params.get('page_number') <= total_page_count):
         if (params.get("page_number")):
             logger.info(f"Page Number: {params.get('page_number')} out of total page number {total_page_count}")
         try:
-            response = get_request_retry(url, headers=headers, params=params)
+            response = get_request_retry(url, zoom_config, params=params)
         except requests.exceptions.HTTPError:
             logger.exception('Received irregular status code during request')
             break
@@ -164,7 +163,10 @@ def zoom_loop(url: str, headers: Dict[str, Union[str, int]], json_attribute_name
                 page_token = results.get("next_page_token")
                 params["next_page_token"] = page_token
             elif params.get("page_number"):
-                params["page_number"] += 1
+                if (isinstance(params["page_number"], int)):
+                    params["page_number"] += 1
+                else:
+                    raise TypeError("Could not increment page number as it not an int")
             else:
                 logger.info("No more tokens and not paged!")
                 break
