@@ -1,6 +1,6 @@
 # course-inventory
 
-[TOC]
+[TOC] <!-- show table of contents in MacDown, others -->
 
 ## Overview
 
