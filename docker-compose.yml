@@ -28,4 +28,5 @@ services:
     volumes:
       - ${HOME}/secrets/course-inventory:/app/config/secrets
       - ${HOME}/data/course-inventory:/app/data
+      - .:/app
     container_name: course_inventory

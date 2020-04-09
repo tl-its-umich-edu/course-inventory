@@ -1,6 +1,9 @@
 
 # course-inventory
 
+<!-- show table of contents in MacDown, others -->
+[TOC] 
+
 ## Overview
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, 
@@ -99,7 +102,7 @@ It will then create a separate container for the job, which will ultimately inse
 
 Before beginning, perform the following additional steps to configure the project for Docker.
 
-1. Create two paths at your user's root level (i.e. `~`): `secrets/course-inventory` and `data/course-inventory`.
+1. Create two paths in your home directory (i.e., `~` or `${HOME}`): `secrets/course-inventory` and `data/course-inventory`.
 
     The `docker-compose.yml` file specifies two volumes that are mapped to these directories. 
     The first, `secrets/course-inventory`, is mapped to `config/secrets`. 
@@ -139,9 +142,69 @@ mysql --user=ci_user --password=ci_pw
 Use `^C` to stop the running MySQL container,
 or -- if you used the detached flag `-d` with `docker-compose up` -- use `docker-compose down`.
 
-Data in the MySQL database will persist after the container is stopped. 
-The MySQL data is stored in a volume mapped to the `.data/` directory in the project. 
+Data in the MySQL database will persist after the container is stopped.
+The MySQL data is stored in a volume mapped to the `.data/` directory in the project.
 To completely reset the database, delete the `.data` directory.
+
+
+
+##### A Typical Development Cycle With Docker
+
+1. Build images for all services…
+
+    ```
+    docker-compose build
+    ```  
+
+2. Run the DB service, `mysql`, in the background…
+
+    ```
+    docker-compose up -d mysql
+    ```
+    The `-d` option (short for `--detach`), detaches the process from
+    the terminal, and will "Run containers in the background, print
+    new container names."
+
+    * If you need to see the console output of the `mysql` service 
+        while it runs in the background, use the `logs` command and
+        the service name…
+        
+        ```
+        docker-compose logs mysql
+        ```
+
+3. Run the main application service, `job`, in the foreground…
+
+    ```
+    docker-compose up job
+    ```  
+
+    That will show the output from `job`, then return you to the
+    shell prompt.
+
+4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
+
+5. When ready to run `job` again, use the same command as before…
+
+    ```
+    docker-compose up job
+    ```  
+
+    As before, that will show the output from `job`, then return you
+    to the shell prompt.
+
+    This will work as long as `docker-compose.yml` is configured
+    to mount the project source code directory as `/app` in the
+    container.
+    
+    * If the container is not running with the project source code
+        mounted as `/app`, then most code changes will require you
+        to _specify that the service needs to be rebuilt_…
+
+        ```
+        docker-compose up --build job
+        ```
+6. Repeat the previous two steps (4 and 5) as necessary.
 
 #### With a Virtual Environment
 
