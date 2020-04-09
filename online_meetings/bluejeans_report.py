@@ -77,9 +77,6 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     'Authorization': f'Bearer {token}'
     }
 
-    page_size = 1000
-    total_records = 0
-
     total_df = pd.DataFrame()
 
     # TODO: the earliest time is hardcoded now
