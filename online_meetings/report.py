@@ -1,4 +1,5 @@
 import requests
+from requests.auth import AuthBase
 # standard libraries
 import yaml
 import json
@@ -33,12 +34,12 @@ logger.info(ENV)
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
-def requests_zoom_auth(url: str, auth: ZoomJWT,
+def requests_zoom_auth(url: str, auth: AuthBase,
                        params: Dict[str, Union[str, int]]) -> requests.Response:
     return requests.request("GET", url, params=params, auth=auth)
 
 
-def get_request_retry(url: str, auth: ZoomJWT,
+def get_request_retry(url: str, auth: AuthBase,
                       params: Dict[str, Union[str, int]]) -> requests.Response:
 
     response = requests_zoom_auth(url, auth, params=params)
@@ -66,7 +67,7 @@ def get_request_retry(url: str, auth: ZoomJWT,
 
 
 # Functions
-def get_total_page_count(url: str, auth: ZoomJWT, params: Dict[str, Union[str, int]]):
+def get_total_page_count(url: str, auth: AuthBase, params: Dict[str, Union[str, int]]):
     # get the total page count
     total_page_count = 0
     try:
@@ -136,7 +137,7 @@ def run_report(api_url: str, json_attribute_name: str,
     total_df.to_csv(output_file_name)
 
 
-def zoom_loop(url: str, auth: ZoomJWT, json_attribute_name: str,
+def zoom_loop(url: str, auth: AuthBase, json_attribute_name: str,
               params: Dict[str, Union[str, int]], page_token: bool = False) -> list:
     # Need a fresh copy of dicts
     total_list: List[Dict] = []    # get total page count
