@@ -1,5 +1,6 @@
 # course-inventory
 
+[TOC]
 
 ## Overview
 
@@ -124,32 +125,51 @@ Data in the MySQL database will persist after the container is stopped, as MySQL
 
     ```
     docker-compose up -d mysql
-    ```  
+    ```
+    The `-d` option (short for `--detach`), detaches the process from
+    the terminal, and will "Run containers in the background, print
+    new container names."
+
+    * If you need to see the console output of the `mysql` service 
+        while it runs in the background, use the `logs` command and
+        the service name…
+        
+        ```
+        docker-compose logs mysql
+        ```
 
 3. Run the main application service, `job`, in the foreground…
 
     ```
     docker-compose up job
     ```  
+
     That will show the output from `job`, then return you to the
     shell prompt.
 
 4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
-5. When ready to run `job` again, remember that most code changes
-    will require you to _specify that the service needs
-    to be rebuilt_…
+
+5. When ready to run `job` again, use the same command as before…
 
     ```
-    docker-compose up --build job
-    ```
-    
+    docker-compose up job
+    ```  
+
     As before, that will show the output from `job`, then return you
     to the shell prompt.
+
+    This will work as long as `docker-compose.yml` is configured
+    to mount the project source code directory as `/app` in the
+    container.
     
-    Some changes may not require the `--build` option.  When in doubt,
-    use the option.  If the `docker-compose.yml` and `Dockerfile` have
-    been configured to mount the code in `/app` rather than copy it there,
-    the `--build` option is unnecessary.
+    * If the container is not running with the project source code
+        mounted as `/app`, then most code changes will require you
+        to _specify that the service needs to be rebuilt_…
+
+        ```
+        docker-compose up --build job
+        ```
+6. Repeat the previous two steps (4 and 5) as necessary.
 
 #### With a Virtual Environment
 

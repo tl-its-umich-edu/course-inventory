@@ -11,7 +11,11 @@ COPY requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
 
 WORKDIR /app/
-#COPY . /app/
+
+# This works even if docker-compose has already mounted "." as "/app".
+# It appears to just skip this step.  Or maybe it finds that "/app" already contains
+# everything from ".".
+COPY . /app/
 
 # Sets the local timezone of the docker image
 ENV TZ=America/Detroit
