@@ -105,7 +105,7 @@ def run_report(api_url: str, json_attribute_name: str,
         }
         if use_date and "EARLIEST_FROM" in zoom_config:
             early_date = dateparser.parse(zoom_config["EARLIEST_FROM"]).date()
-            # Only use the date as a paramter
+            # Only use the date as a parameter
             # Loop until yesterday (this will go until now() -1)
             for i in range((datetime.now().date() - early_date).days):
                 param_date = early_date + timedelta(days=i)
