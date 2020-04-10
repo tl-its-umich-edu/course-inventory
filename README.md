@@ -2,7 +2,7 @@
 # course-inventory
 
 <!-- show table of contents in MacDown, others -->
-[TOC] 
+\[TOC]
 
 ## Overview
 
