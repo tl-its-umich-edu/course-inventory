@@ -134,7 +134,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
 
 # Function(s) - UDW
 
-def process_sis_id(orig_sis_id: str) -> Optional[int]:
+def process_sis_id(orig_sis_id: str) -> Union[int, None]:
     try:
         sis_id = int(orig_sis_id)
         return sis_id
