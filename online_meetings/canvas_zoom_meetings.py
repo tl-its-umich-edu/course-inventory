@@ -1,21 +1,20 @@
 # Script to get all sites where Zoom is visible and retrieve the meetings to generate a report
 
+import http.client
 import json
-import yaml
-import re
-import os
-import sys
-import requests
 import logging
 import math
-import http.client
+import os
+import re
+import sys
 from datetime import datetime
 from typing import Dict
 
 import canvasapi
-from bs4 import BeautifulSoup as bs
-
 import pandas as pd
+import requests
+import yaml
+from bs4 import BeautifulSoup as bs
 
 # read configurations
 try:

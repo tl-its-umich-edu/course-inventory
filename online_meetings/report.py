@@ -1,48 +1,30 @@
-import requests
-from requests.auth import AuthBase
-# standard libraries
-import yaml
 import json
 import logging
-import os
-
-from typing import Dict, Union, List
-
-# third-party libraries
-import pandas as pd
 import time
-import dateparser
 from datetime import datetime, timedelta
+from typing import Dict, List, Union
+
+import dateparser
+import pandas as pd
+import requests
+from requests.auth import AuthBase
+
+from environ import ENV
 from requests_zoom_jwt import ZoomJWT
 
 # Initialize settings and globals
 
 logger = logging.getLogger(__name__)
 
-# read configurations
-try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/secrets/env.json')) as env_file:
-        ENV = yaml.safe_load(env_file.read())
-except FileNotFoundError:
-    logger.error(
-        'Configuration file could not be found; please add env.yaml to the config directory.')
-
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
-logger.info(ENV)
-
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
-
-
-def requests_zoom_auth(url: str, auth: AuthBase,
-                       params: Dict[str, Union[str, int]]) -> requests.Response:
-    return requests.request("GET", url, params=params, auth=auth)
 
 
 def get_request_retry(url: str, auth: AuthBase,
                       params: Dict[str, Union[str, int]]) -> requests.Response:
 
-    response = requests_zoom_auth(url, auth, params=params)
+    response = requests.get(url, params=params, auth=auth)
 
     # Rate limited, wait a few seconds
     if response.status_code == requests.codes.too_many_requests:
@@ -58,7 +40,7 @@ def get_request_retry(url: str, auth: AuthBase,
                 f"No Retry-After header, setting sleep loop for {DEFAULT_SLEEP_TIME} seconds")
         while response.status_code == requests.codes.too_many_requests:
             time.sleep(sleep_time)
-            response = requests_zoom_auth(url, auth, params=params)
+            response = requests.get(url, params=params, auth=auth)
 
     # If it's not okay at this point, raise an error
     if response.status_code != requests.codes.ok:
@@ -102,7 +84,7 @@ def run_report(api_url: str, json_attribute_name: str,
         logger.info(f"Starting zoom pull for instance {zoom_key}")
         url = zoom_config["BASE_URL"] + api_url
 
-        auth = ZoomJWT(zoom_config["API_KEY"], zoom_config["API_SECRET"], exp_seconds=60 * 10)
+        auth = ZoomJWT(zoom_config["API_KEY"], zoom_config["API_SECRET"], exp_seconds=600)
         if use_date and "EARLIEST_FROM" in zoom_config:
             early_date = dateparser.parse(zoom_config["EARLIEST_FROM"]).date()
             # Only use the date as a parameter

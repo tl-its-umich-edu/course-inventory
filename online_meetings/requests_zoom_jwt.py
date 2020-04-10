@@ -1,11 +1,17 @@
 """
     Class for managing tokens, expirations and generations.
     Currently just handles JWT for Zoom
+    This extends AuthBase and implements the __call__() method
+    https://requests.readthedocs.io/en/master/user/authentication/#new-forms-of-authentication
 """
+import logging
 from datetime import datetime, timedelta
+
+import jwt
 import requests
 from requests.auth import AuthBase
-import jwt
+
+logger = logging.getLogger(__name__)
 
 
 class ZoomJWT(AuthBase):
@@ -19,6 +25,7 @@ class ZoomJWT(AuthBase):
         """
         # If token is close to expiring just re-create
         if datetime.utcnow() > self.expiration - timedelta(seconds=30):
+            logger.debug(f"Token has expired, renewing token expiration time: {self.expiration}")
             self.token = self.create_token()
 
         return self._token
@@ -49,6 +56,7 @@ class ZoomJWT(AuthBase):
         
         # If the expiration time is less than 60, this really won't work well, just set to 60
         if exp_seconds < 60:
+            logger.warn("Expiration time less than 60 seconds, setting to 60")
             exp_seconds = 60
         self.exp_seconds = exp_seconds
         self.api_key = api_key
