@@ -1,5 +1,5 @@
 # standard libraries
-import logging, os, time
+import logging, os, sys, time
 from enum import auto, Enum
 from importlib import import_module
 from typing import Dict, Sequence, Union
@@ -125,17 +125,21 @@ if __name__ == '__main__':
     if how_started == 'DOCKER_COMPOSE':
         # Wait for MySQL container to finish setting up
         logger.info('Waiting for the MySQL turtle')
-        waiting = True
-        while waiting:
+        # If it's not ready in two minutes, exit
+        num_loops = 40
+        for i in range(1, num_loops + 1):
             time.sleep(3.0)
             try:
                 db_creator_obj.set_up()
                 db_creator_obj.tear_down()
                 logger.info('MySQL caught up')
-                waiting = False
+                break
             except sqlalchemy.exc.OperationalError:
-                logger.debug('Still waiting!')
-
+                if i == num_loops:
+                    logger.error('MySQL was not available')
+                    sys.exit(1)
+                else:
+                    logger.debug('Still waiting!')
 
     # Apply any new migrations
     logger.info('Applying any new migrations')
