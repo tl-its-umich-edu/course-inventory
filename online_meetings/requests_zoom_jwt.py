@@ -41,7 +41,7 @@ class ZoomJWT(AuthBase):
         :type api_key: str
         :param api_secret: secret to use
         :type api_secret: str
-        :param exp_seconds: How long to expire the token.
+        :param exp_seconds: How long the token should last before expiring
         :type exp_seconds: int
         :return: token as a string
         :rtype: str
