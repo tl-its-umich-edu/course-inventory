@@ -262,11 +262,11 @@ this README. However, a few details about how the job is configurd are provided 
   With the above two variables set, the `env` block in the `.yml` will look something like this:
 
     ```yaml
-    - env:
+      - env:
         - name: ENV_FILE
-            value: /config/secrets/env_test.json
+          value: /config/secrets/env_test.json
         - name: USER
-            value: project_name
+          value: project_name
     ```
 
 ### Implementing a New Job
