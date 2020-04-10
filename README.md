@@ -36,7 +36,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
 
 1. Clone and navigate into the repository.
 
-    ```bash
+    ```sh
     git clone https://github.com/tl-its-umich-edu/course-inventory.git  # HTTPS
     git clone git@github.com:tl-its-umich-edu/course-inventory.git      # SSH
     
@@ -58,7 +58,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
    re-name it `env.json`, 
    and place it inside the `secrets` subdirectory.
 
-    ```bash
+    ```sh
     mv config/env_blank.json config/secrets/env.json
     ```
 
@@ -112,7 +112,7 @@ Before beginning, perform the following additional steps to configure the projec
 
 2. Move the `env.json` file to `secrets/course-inventory` so it will be mapped into the `job` container.
 
-    ```bash
+    ```sh
     mv config/secrets/env.json ~/secrets/course-inventory
     ```
 
@@ -120,13 +120,13 @@ Once these steps are completed, you can use the standard `docker-compose` comman
 
 1. Build the images for the `mysql` and `job` services.
 
-    ```bash
+    ```sh
     docker-compose build
     ```
 
 2. Start up the services.
 
-    ```bash
+    ```sh
     docker-compose up
     ```
 
@@ -134,7 +134,7 @@ Once these steps are completed, you can use the standard `docker-compose` comman
 When the job finishes, the job container will stop, but the MySQL container will continue running.
 This allows you to enter the container and execute queries.
 
-```bash
+```sh
 docker exec -it course_inventory_mysql /bin/bash
 mysql --user=ci_user --password=ci_pw
 ```
@@ -152,15 +152,16 @@ To completely reset the database, delete the `.data` directory.
 
 1. Build images for all services…
 
-    ```
+    ```sh
     docker-compose build
     ```  
 
 2. Run the DB service, `mysql`, in the background…
 
-    ```
+    ```sh
     docker-compose up -d mysql
     ```
+    
     The `-d` option (short for `--detach`), detaches the process from
     the terminal, and will "Run containers in the background, print
     new container names."
@@ -169,13 +170,13 @@ To completely reset the database, delete the `.data` directory.
         while it runs in the background, use the `logs` command and
         the service name…
         
-        ```
+        ```sh
         docker-compose logs mysql
         ```
 
 3. Run the main application service, `job`, in the foreground…
 
-    ```
+    ```sh
     docker-compose up job
     ```  
 
@@ -186,7 +187,7 @@ To completely reset the database, delete the `.data` directory.
 
 5. When ready to run `job` again, use the same command as before…
 
-    ```
+    ```sh
     docker-compose up job
     ```  
 
@@ -201,9 +202,10 @@ To completely reset the database, delete the `.data` directory.
         mounted as `/app`, then most code changes will require you
         to _specify that the service needs to be rebuilt_…
 
-        ```
+        ```sh
         docker-compose up --build job
         ```
+
 6. Repeat the previous two steps (4 and 5) as necessary.
 
 #### With a Virtual Environment
@@ -212,26 +214,26 @@ You can also set up the application using `virtualenv` by doing the following:
 
 1. Create a virtual environment using `virtualenv`.
 
-    ```bash
+    ```sh
     virtualenv venv
     source venv/bin/activate  # for Mac OS
     ```
 
 2. Install the dependencies specified in `requirements.txt`.
 
-    ```bash
+    ```sh
     pip install -r requirements.txt
     ```
 
 3. Initialize the database using `create_db.py`.
 
-    ```bash
+    ```sh
     python create_db.py
     ```
 
 4. Run the application.
 
-    ```bash
+    ```sh
     python run_jobs.py
     ```
 
@@ -243,7 +245,7 @@ this README. However, a few details about how the job is configurd are provided 
 * The `env.json` file described in the **Configuration** section above needs to be made available to 
   running course-inventory containers via an OpenShift ConfigMap, a type of Resource. A volume containing the ConfigMap 
   should be mapped to the `config/secrets` subdirectory. These details will be specified in a configuration file
-  (.yaml) defining the pod.
+  (`.yml`) defining the pod.
 
 * By default, the application will run with the assumption that the JSON configuration file will be named `env.json`. 
   However, `inventory.py` will also check for the environment variable `ENV_PATH`. 
@@ -257,15 +259,15 @@ this README. However, a few details about how the job is configurd are provided 
   The `yoyo-migrations` library will obtain this value by using the 
   [`getpass.getuser` function](https://docs.python.org/3/library/getpass.html) from the Python standard library.
 
-  With the above two variables set, the `env` block in the `.yaml` will look something like this:
+  With the above two variables set, the `env` block in the `.yml` will look something like this:
 
     ```yaml
-  - env:
-      - name: ENV_FILE
-        value: /config/secrets/env_test.json
-      - name: USER
-        value: project_name
-  ```
+    - env:
+        - name: ENV_FILE
+            value: /config/secrets/env_test.json
+        - name: USER
+            value: project_name
+    ```
 
 ### Implementing a New Job
 
