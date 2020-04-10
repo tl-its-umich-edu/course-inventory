@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
     if how_started == 'DOCKER_COMPOSE':
         # Wait for MySQL container to finish setting up
-        logger.info('Waiting for the MySQL turtle')
+        logger.info('Waiting for the MySQL snail')
         # If it's not ready in two minutes, exit
         num_loops = 40
         for i in range(1, num_loops + 1):
