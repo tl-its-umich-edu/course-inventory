@@ -1,7 +1,7 @@
 # standard libraries
 import json, logging, os, time
 from json.decoder import JSONDecodeError
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union
 
 # third-party libraries
 import pandas as pd
