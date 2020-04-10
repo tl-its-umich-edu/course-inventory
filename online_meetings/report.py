@@ -79,7 +79,7 @@ def run_report(api_url: str, json_attribute_name: str,
     # TODO: Detect the date from the previous CSV
     # Either loop for all dates or just one a single report
 
-    for zoom_key, zoom_config in ENV["ZOOM_CONFIG"].items():
+    for zoom_key, zoom_config in enumerate(ENV["ZOOM_CONFIG"], start=1):
         zoom_list = []
         logger.info(f"Starting zoom pull for instance {zoom_key}")
         url = zoom_config["BASE_URL"] + api_url
