@@ -10,7 +10,7 @@ import requests
 from requests.auth import AuthBase
 
 from environ import ENV
-from requests_zoom_jwt import ZoomJWT
+from .requests_zoom_jwt import ZoomJWT
 
 # Initialize settings and globals
 
