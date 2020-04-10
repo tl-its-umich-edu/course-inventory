@@ -55,15 +55,15 @@ class Job:
 
     def create_metadata(self) -> None:
         started_at_dt = pd.to_datetime(self.started_at, unit='s')
-        finshed_at_dt = pd.to_datetime(self.finished_at, unit='s')
+        finished_at_dt = pd.to_datetime(self.finished_at, unit='s')
 
         job_run_df = pd.DataFrame({
             'job_name': [self.name],
             'started_at': [started_at_dt],
-            'finished_at': [finshed_at_dt]
+            'finished_at': [finished_at_dt]
         })
         job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
-        logger.info(f'Inserted job_run record with finished_at value of {started_at_dt}')
+        logger.info(f'Inserted job_run record with finished_at value of {finished_at_dt}')
         job_run_id = pd.read_sql('job_run', db_creator_obj.engine).iloc[-1]['id']
 
         if len(self.data_sources) == 0:
