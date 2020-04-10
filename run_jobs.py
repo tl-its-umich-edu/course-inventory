@@ -50,8 +50,8 @@ class Job:
         self.name: str = job_name.name
         self.import_path: str = '.'.join(job_name.value.split('.')[:-1])
         self.method_name: str = job_name.value.split('.')[-1]
-        self.started_at: Union[int, None] = None
-        self.finished_at: Union[int, None] = None
+        self.started_at: Union[float, None] = None
+        self.finished_at: Union[float, None] = None
         self.data_sources: Sequence[Dict[str, Union[str, pd.Timestamp]]] = []
 
     def create_metadata(self) -> None:
