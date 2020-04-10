@@ -19,7 +19,6 @@ class ZoomJWT(AuthBase):
     @property
     def token(self) -> str:
         """Check if the token is expired, if so generate a new token and return the token either way.
-        
         :return: Returning the token value as a string
         :rtype: str
         """
@@ -43,7 +42,7 @@ class ZoomJWT(AuthBase):
         self._expiration = value
 
     def __init__(self, api_key: str, api_secret: str, alg="HS256", exp_seconds: int = 60):
-        """ Generates a JWT Token for Zoom
+        """ Generates a JWT Token for Zoom.
         :param api_key: api key to use
         :type api_key: str
         :param api_secret: secret to use
@@ -65,7 +64,7 @@ class ZoomJWT(AuthBase):
         self.token = self.create_token()
 
     def create_token(self):
-        """Creates a token using JWT and sets the expiration using values in this class
+        """Creates a token using JWT and sets the expiration using values in this class.
         """
         self.expiration = datetime.utcnow() + timedelta(seconds=self.exp_seconds)
         token = jwt.encode(
@@ -76,7 +75,7 @@ class ZoomJWT(AuthBase):
         return token.decode('utf-8')
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        """ For requests library to call
+        """ For requests library to call.
         :param request: Request from requests
         :type request: requests.PreparedRequest
         :return: Request with an Authorization header
