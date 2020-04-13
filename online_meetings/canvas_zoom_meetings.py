@@ -1,6 +1,5 @@
 # Script to get all sites where Zoom is visible and retrieve the meetings to generate a report
 
-import http.client
 import json
 import logging
 import math
@@ -8,7 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional, List, Union
 
 import canvasapi
 import pandas as pd
@@ -27,12 +26,6 @@ except FileNotFoundError:
 LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
 logging.basicConfig(level=LOG_LEVEL)
 
-# These two lines enable debugging at httplib level (requests->urllib3->http.client)
-# You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
-# The only thing missing will be the response.body which is not logged.
-if LOG_LEVEL == logging.DEBUG:
-    http.client.HTTPConnection.debuglevel = 1
-
 # You must initialize logging, otherwise you'll not see debug output.
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
@@ -45,19 +38,31 @@ CANVAS = canvasapi.Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
 
 
 class ZoomPlacements:
-    zoom_courses = []
-    zoom_courses_meetings = []
+    zoom_courses: List[Dict] = []
+    zoom_courses_meetings: List[Dict] = []
 
     def __init__(self):
         self.zoom_session = requests.Session()
 
-    def get_zoom_json(self, page_num: int = 1) -> Dict:
-        logger.info(f"Paging though course on page number {page_num}")
+    def get_zoom_json(self, data: Dict[str, Union[str, int]] = None) -> Optional[Dict]:
+        """Retrieves data directly from Zoom. You need to have zoom_session already setup
+        
+        :param data: Supplied dictionary to use, should at least have page and lti_scid, defaults to None
+        :type data: Dict[str, Union[str, int]], optional
+        :return: json result from the Zoom call
+        :rtype: Optional[Dict]
+        """
+        if not data:
+            # Set empty array if not set
+            data = {"page": 1, "lti_scid": ""}
+        logger.info(f"Paging though course on page number {data.get('page')}")
         # Get tab 1 (Previous Meetings)
-        data = {'page': page_num,
-                'total': 0,
-                'storage_timezone': 'America/Montreal',
-                'client_timezone': 'America/Detroit'}
+        # Zoom needs this lti_scid now as a parameter, pull it out of the header
+        data.update({'total': 0,
+                     'storage_timezone': 'America/Montreal',
+                     'client_timezone': 'America/Detroit',
+                     })
+
         # TODO: Specify which page we want, currently hardcoded to previous meetings
         zoom_previous_url = "https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all"
         r = self.zoom_session.get(zoom_previous_url, params=data)
@@ -67,42 +72,61 @@ class ZoomPlacements:
             return zoom_json["result"]
         return None
 
+    def extract_from_js(self, key: str, text: str) -> Optional[str]:
+        """Takes a javascript text and attempts to extract a key/value (May not work with everything)
+        
+        :param key: key to extract
+        :type key: str
+        :param text: text to search in
+        :type text: str
+        :return: The matching string or None if not found
+        :rtype: Optional[str]
+        """
+        pattern = re.search(f'{key}.*"(.*)"', text)
+        if pattern:
+            return pattern.group(1)
+        return None
+
     def get_zoom_details(self, url: str, data: Dict[str, str], course_id: int):
         # Start up the zoom session
         # Initiate the LTI launch to Zoom in a session
         r = self.zoom_session.post(url=url, data=data)
+
+        # Get the scid
+        scid = self.extract_from_js("scid", r.text)
+        token = self.extract_from_js("X-XSRF-TOKEN", r.text)
+
         # Get the XSRF Token
-        pattern = re.search('"X-XSRF-TOKEN".* value:"(.*)"', r.text)
-        if pattern:
+        if token and scid:
             self.zoom_session.headers.update({
-                'X-XSRF-TOKEN': pattern.group(1)
+                'X-XSRF-TOKEN': token
             })
 
-            zoom_json = self.get_zoom_json(1)
+            zoom_json = self.get_zoom_json({'page': 1, 'lti_scid': scid})
             # The first call to zoom returns total and pageSize, get the total pages by dividing
             if zoom_json:
                 total = zoom_json["total"]
                 total_pages = math.ceil(total / zoom_json["pageSize"]) + 1
-            for page_num in range(1, total_pages):
+            for page in range(1, total_pages):
                 # Just skip the first call we've already called it, but still need to process
-                if page_num != 1:
-                    zoom_json = self.get_zoom_json(page_num)
-
-                for meeting in zoom_json["list"]:
-                    self.zoom_courses_meetings.append({
-                        'course_id': course_id,
-                        'meeting_id': meeting['meetingId'],
-                        'meeting_number': meeting['meetingNumber'],
-                        'host_id': meeting['hostId'],
-                        'topic': meeting['topic'],
-                        'join_url': meeting['joinUrl'],
-                        'start_time': meeting['startTime'],
-                        'status': meeting['status'],
-                        'timezone': meeting['timezone']
-                    })
+                if page != 1:
+                    zoom_json = self.get_zoom_json({'page': page, 'lti_scid': scid})
+                if zoom_json:
+                    for meeting in zoom_json["list"]:
+                        self.zoom_courses_meetings.append({
+                            'course_id': course_id,
+                            'meeting_id': meeting['meetingId'],
+                            'meeting_number': meeting['meetingNumber'],
+                            'host_id': meeting['hostId'],
+                            'topic': meeting['topic'],
+                            'join_url': meeting['joinUrl'],
+                            'start_time': meeting['startTime'],
+                            'status': meeting['status'],
+                            'timezone': meeting['timezone']
+                        })
 
         else:
-            logger.warn("PATTERN NOT FOUND in course, no details logged")
+            logger.warn("Required script extraction not found, no details logged")
             logger.debug(r.text)
 
     def get_zoom_course(self, course: canvasapi.course.Course) -> None:
