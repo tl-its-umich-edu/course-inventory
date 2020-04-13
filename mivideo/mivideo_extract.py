@@ -12,6 +12,7 @@ from sqlalchemy.engine import ResultProxy
 import mivideo.queries as queries
 from db.db_creator import DBCreator
 from environ import ENV, CONFIG_DIR
+from run_jobs import ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +102,8 @@ class MiVideoExtract(object):
         logger.debug('End of extract')
 
         return [{
-            'data_source_name': 'UNIZIN_DATA_PLATFORM',
-            'data_updated_at': pd.to_datetime(time.time(), utc=True) # unit='s',
+            'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM.name,
+            'data_updated_at': pd.to_datetime(time.time(), utc=True)
         }]
 
 
