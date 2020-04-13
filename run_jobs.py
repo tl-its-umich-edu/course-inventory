@@ -38,6 +38,7 @@ class ValidJobName(Enum):
 
 class ValidDataSourceName(Enum):
     CANVAS_API = auto()
+    UNIZIN_DATA_PLATFORM = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
 
 

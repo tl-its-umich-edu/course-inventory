@@ -101,7 +101,7 @@ class MiVideoExtract(object):
         logger.debug('End of extract')
 
         return [{
-            'data_source_name': 'CANVAS_API',
+            'data_source_name': 'UNIZIN_DATA_PLATFORM',
             'data_updated_at': pd.to_datetime(time.time(), utc=True) # unit='s',
         }]
 
