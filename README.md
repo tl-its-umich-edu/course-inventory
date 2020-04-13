@@ -48,7 +48,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
     If you plan to run the application using `virtualenv`, you will need to have MySQL installed on your machine.
     You will also need to create a test database and user. 
     
-    If you use Docker, instead you will use the database credentials specified in the `docker-compose.yml`.
+    If you use Docker, instead you will use the database credentials specified in the `docker-compose.yaml`.
     This is in the `environment` block (ignoring `MYSQL_ROOT_PASSWORD`) for the `mysql` service. 
     
     Whether you use `virtualenv` or Docker, provide the database credentials within the `INVENTORY_DB` object. 
@@ -96,7 +96,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
 
 #### With Docker
 
-This project provides a `docker-compose.yml` file to help simplify the development and testing process. 
+This project provides a `docker-compose.yaml` file to help simplify the development and testing process. 
 Invoking `docker-compose` will set up MySQL and a database in a container. 
 It will then create a separate container for the job, which will ultimately insert records into the MySQL container's database.
 
@@ -104,7 +104,7 @@ Before beginning, perform the following additional steps to configure the projec
 
 1. Create two paths in your home directory (i.e., `~` or `${HOME}`): `secrets/course-inventory` and `data/course-inventory`.
 
-    The `docker-compose.yml` file specifies two volumes that are mapped to these directories. 
+    The `docker-compose.yaml` file specifies two volumes that are mapped to these directories. 
     The first, `secrets/course-inventory`, is mapped to `config/secrets`. 
     The application expects to find the `env.json` file in this location. 
     The second, `data/course-inventory`, is mapped to the project's `data` directory. 
@@ -194,7 +194,7 @@ To completely reset the database, delete the `.data` directory.
     As before, that will show the output from `job`, then return you
     to the shell prompt.
 
-    This will work as long as `docker-compose.yml` is configured
+    This will work as long as `docker-compose.yaml` is configured
     to mount the project source code directory as `/app` in the
     container.
     
@@ -244,8 +244,8 @@ this README. However, a few details about how the job is configurd are provided 
 
 * The `env.json` file described in the **Configuration** section above needs to be made available to 
   running course-inventory containers via an OpenShift ConfigMap, a type of Resource. A volume containing the ConfigMap 
-  should be mapped to the `config/secrets` subdirectory. These details will be specified in a configuration file
-  (`.yml`) defining the pod.
+  should be mapped to the `config/secrets` subdirectory. These details will be specified in a YAML configuration file
+  defining the pod.
 
 * By default, the application will run with the assumption that the JSON configuration file will be named `env.json`. 
   However, `inventory.py` will also check for the environment variable `ENV_PATH`. 
@@ -259,7 +259,7 @@ this README. However, a few details about how the job is configurd are provided 
   The `yoyo-migrations` library will obtain this value by using the 
   [`getpass.getuser` function](https://docs.python.org/3/library/getpass.html) from the Python standard library.
 
-  With the above two variables set, the `env` block in the `.yml` will look something like this:
+  With the above two variables set, the `env` block in the YAML file will look something like this:
 
     ```yaml
       - env:
