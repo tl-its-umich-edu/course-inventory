@@ -40,7 +40,7 @@ class MiVideoExtract(object):
             project=self.credentials.project_id,
         )
 
-        logger.debug(f'Connected to BigQuery project: "{self.udpDb.project}"')
+        logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
 
         DB_PARAMS = ENV['INVENTORY_DB']
         APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
@@ -67,15 +67,15 @@ class MiVideoExtract(object):
 
         tableName = 'mivideo_media_started_hourly'
 
-        logger.debug(f'"{tableName}" - Starting procedure...')
+        logger.info(f'"{tableName}" - Starting procedure...')
 
         lastTime: str = self._readTableLastTime(tableName, 'event_time_utc_latest')
 
         if (lastTime):
-            logger.debug(f'"{tableName}" - Last time found in table: "{lastTime}"')
+            logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
         else:
             lastTime = '2020-03-01'
-            logger.debug(
+            logger.info(
                 f'"{tableName}" - Last time not found in table; using default time: "{lastTime}"')
 
         logger.debug(f'"{tableName}" - Running query...')
@@ -86,7 +86,7 @@ class MiVideoExtract(object):
         logger.debug(f'"{tableName}" - Completed query.')
 
         if (not dfCourseEvents.empty):
-            logger.debug(
+            logger.info(
                 f'"{tableName}" - Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
 
             logger.debug(f'"{tableName}" - Saving to table...')
@@ -95,11 +95,11 @@ class MiVideoExtract(object):
 
             logger.debug(f'"{tableName}" - Saved.')
         else:
-            logger.debug(f'"{tableName}" - No rows returned.')
+            logger.info(f'"{tableName}" - No rows returned.')
 
-        logger.debug(f'"{tableName}" - Procedure complete.')
+        logger.info(f'"{tableName}" - Procedure complete.')
 
-        logger.debug('End of extract')
+        logger.info('End of extract')
 
         return [{
             'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM,
