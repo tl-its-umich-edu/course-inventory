@@ -21,7 +21,7 @@ except FileNotFoundError:
         'Configuration file could not be found; please add env.json to the config directory.')
     ENV = None
 
-LOG_LEVEL: Union[str, int] = ENV.get('LOG_LEVEL', 0)
+LOG_LEVEL: Union[str, int] = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 
 # Add ENV key-value pairs to environment, skipping if the key is already set
