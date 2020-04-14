@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from json.decoder import JSONDecodeError
-from typing import Union
+from typing import Union, Dict
 
 # Set up ENV
 # entry-level job modules need to be one-level beneath root
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 try:
     with open(CONFIG_PATH) as env_file:
-        ENV: dict = json.loads(env_file.read())
+        ENV: Dict = json.loads(env_file.read())
 except FileNotFoundError:
     logger.error(
         'Configuration file could not be found; please add env.json to the config directory.')
