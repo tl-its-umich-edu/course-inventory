@@ -43,7 +43,9 @@ class MiVideoExtract(object):
         logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
 
         DB_PARAMS = ENV['INVENTORY_DB']
-        APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_status'])
+        APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', [
+            'job_run', 'data_source_status', 'mivideo_media_started_hourly',
+            'mivideo_media_creation'])
 
         self.appDb = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
         self.appDb.set_up()
