@@ -297,11 +297,12 @@ All the changes described below (minus the configuration changes) should be incl
 
     ```json
     {
-        "data_source_name": "SOME_DATA_SOURCE",
+        "data_source_name": valid_data_source_name_member,
         "data_updated_at": some_timestamp
     }
     ```
 
+    For `valid_data_source_name_member`, use a member of the `ValidDataSourceName` enumeration defined in `vocab.py`.
     If the data source provides a timestamp for the data, use that; otherwise, use the current time. 
     For consistency, `some_timestamp` should be generated using 
     [the `pandas` method `pd.to_datetime`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.to_datetime.html).
