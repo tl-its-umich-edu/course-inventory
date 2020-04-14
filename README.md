@@ -1,6 +1,9 @@
 
 # course-inventory
 
+<!-- show table of contents in MacDown, others -->
+\[TOC]
+
 ## Overview
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, 
@@ -33,7 +36,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
 
 1. Clone and navigate into the repository.
 
-    ```bash
+    ```sh
     git clone https://github.com/tl-its-umich-edu/course-inventory.git  # HTTPS
     git clone git@github.com:tl-its-umich-edu/course-inventory.git      # SSH
     
@@ -45,7 +48,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
     If you plan to run the application using `virtualenv`, you will need to have MySQL installed on your machine.
     You will also need to create a test database and user. 
     
-    If you use Docker, instead you will use the database credentials specified in the `docker-compose.yml`.
+    If you use Docker, instead you will use the database credentials specified in the `docker-compose.yaml`.
     This is in the `environment` block (ignoring `MYSQL_ROOT_PASSWORD`) for the `mysql` service. 
     
     Whether you use `virtualenv` or Docker, provide the database credentials within the `INVENTORY_DB` object. 
@@ -55,7 +58,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
    re-name it `env.json`, 
    and place it inside the `secrets` subdirectory.
 
-    ```bash
+    ```sh
     mv config/env_blank.json config/secrets/env.json
     ```
 
@@ -96,15 +99,15 @@ This includes the creation of a configuration file called `env.json`. Complete t
 
 #### With Docker
 
-This project provides a `docker-compose.yml` file to help simplify the development and testing process. 
+This project provides a `docker-compose.yaml` file to help simplify the development and testing process. 
 Invoking `docker-compose` will set up MySQL and a database in a container. 
 It will then create a separate container for the job, which will ultimately insert records into the MySQL container's database.
 
 Before beginning, perform the following additional steps to configure the project for Docker.
 
-1. Create two paths at your user's root level (i.e. `~`): `secrets/course-inventory` and `data/course-inventory`.
+1. Create two paths in your home directory (i.e., `~` or `${HOME}`): `secrets/course-inventory` and `data/course-inventory`.
 
-    The `docker-compose.yml` file specifies two volumes that are mapped to these directories. 
+    The `docker-compose.yaml` file specifies two volumes that are mapped to these directories. 
     The first, `secrets/course-inventory`, is mapped to `config/secrets`. 
     The application expects to find the `env.json` file in this location. 
     The second, `data/course-inventory`, is mapped to the project's `data` directory. 
@@ -112,7 +115,7 @@ Before beginning, perform the following additional steps to configure the projec
 
 2. Move the `env.json` file to `secrets/course-inventory` so it will be mapped into the `job` container.
 
-    ```bash
+    ```sh
     mv config/secrets/env.json ~/secrets/course-inventory
     ```
 
@@ -120,13 +123,13 @@ Once these steps are completed, you can use the standard `docker-compose` comman
 
 1. Build the images for the `mysql` and `job` services.
 
-    ```bash
+    ```sh
     docker-compose build
     ```
 
 2. Start up the services.
 
-    ```bash
+    ```sh
     docker-compose up
     ```
 
@@ -134,7 +137,7 @@ Once these steps are completed, you can use the standard `docker-compose` comman
 When the job finishes, the job container will stop, but the MySQL container will continue running.
 This allows you to enter the container and execute queries.
 
-```bash
+```sh
 docker exec -it course_inventory_mysql /bin/bash
 mysql --user=ci_user --password=ci_pw
 ```
@@ -142,9 +145,71 @@ mysql --user=ci_user --password=ci_pw
 Use `^C` to stop the running MySQL container,
 or -- if you used the detached flag `-d` with `docker-compose up` -- use `docker-compose down`.
 
-Data in the MySQL database will persist after the container is stopped. 
-The MySQL data is stored in a volume mapped to the `.data/` directory in the project. 
+Data in the MySQL database will persist after the container is stopped.
+The MySQL data is stored in a volume mapped to the `.data/` directory in the project.
 To completely reset the database, delete the `.data` directory.
+
+
+
+##### A Typical Development Cycle With Docker
+
+1. Build images for all services…
+
+    ```sh
+    docker-compose build
+    ```  
+
+2. Run the DB service, `mysql`, in the background…
+
+    ```sh
+    docker-compose up -d mysql
+    ```
+    
+    The `-d` option (short for `--detach`), detaches the process from
+    the terminal, and will "Run containers in the background, print
+    new container names."
+
+    * If you need to see the console output of the `mysql` service 
+        while it runs in the background, use the `logs` command and
+        the service name…
+        
+        ```sh
+        docker-compose logs mysql
+        ```
+
+3. Run the main application service, `job`, in the foreground…
+
+    ```sh
+    docker-compose up job
+    ```  
+
+    That will show the output from `job`, then return you to the
+    shell prompt.
+
+4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
+
+5. When ready to run `job` again, use the same command as before…
+
+    ```sh
+    docker-compose up job
+    ```  
+
+    As before, that will show the output from `job`, then return you
+    to the shell prompt.
+
+    This will work as long as `docker-compose.yaml` is configured
+    to mount the project source code directory as `/app` in the
+    container.
+    
+    * If the container is not running with the project source code
+        mounted as `/app`, then most code changes will require you
+        to _specify that the service needs to be rebuilt_…
+
+        ```sh
+        docker-compose up --build job
+        ```
+
+6. Repeat the previous two steps (4 and 5) as necessary.
 
 #### With a Virtual Environment
 
@@ -152,26 +217,26 @@ You can also set up the application using `virtualenv` by doing the following:
 
 1. Create a virtual environment using `virtualenv`.
 
-    ```bash
+    ```sh
     virtualenv venv
     source venv/bin/activate  # for Mac OS
     ```
 
 2. Install the dependencies specified in `requirements.txt`.
 
-    ```bash
+    ```sh
     pip install -r requirements.txt
     ```
 
 3. Initialize the database using `create_db.py`.
 
-    ```bash
+    ```sh
     python create_db.py
     ```
 
 4. Run the application.
 
-    ```bash
+    ```sh
     python run_jobs.py
     ```
 
@@ -182,8 +247,8 @@ this README. However, a few details about how the job is configurd are provided 
 
 * The `env.json` file described in the **Configuration** section above needs to be made available to 
   running course-inventory containers via an OpenShift ConfigMap, a type of Resource. A volume containing the ConfigMap 
-  should be mapped to the `config/secrets` subdirectory. These details will be specified in a configuration file
-  (.yaml) defining the pod.
+  should be mapped to the `config/secrets` subdirectory. These details will be specified in a YAML configuration file
+  defining the pod.
 
 * By default, the application will run with the assumption that the JSON configuration file will be named `env.json`. 
   However, `inventory.py` will also check for the environment variable `ENV_PATH`. 
@@ -197,15 +262,15 @@ this README. However, a few details about how the job is configurd are provided 
   The `yoyo-migrations` library will obtain this value by using the 
   [`getpass.getuser` function](https://docs.python.org/3/library/getpass.html) from the Python standard library.
 
-  With the above two variables set, the `env` block in the `.yaml` will look something like this:
+  With the above two variables set, the `env` block in the YAML file will look something like this:
 
     ```yaml
-  - env:
-      - name: ENV_FILE
-        value: /config/secrets/env_test.json
-      - name: USER
-        value: project_name
-  ```
+      - env:
+        - name: ENV_FILE
+          value: /config/secrets/env_test.json
+        - name: USER
+          value: project_name
+    ```
 
 ### Implementing a New Job
 
