@@ -181,7 +181,7 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 # Entry point for run_jobs.py
 
-def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
+def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
     logger.info('Making requests against the Canvas API')
 
@@ -228,7 +228,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
 
     # Record data source info for Canvas API
     canvas_data_source = {
-        'data_source_name': ValidDataSourceName.CANVAS_API.name,
+        'data_source_name': ValidDataSourceName.CANVAS_API,
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
     }
 
@@ -251,7 +251,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
     udw_data_source = {
-        'data_source_name': ValidDataSourceName.UNIZIN_DATA_WAREHOUSE.name,
+        'data_source_name': ValidDataSourceName.UNIZIN_DATA_WAREHOUSE,
         'data_updated_at': udw_update_datetime
     }
 
