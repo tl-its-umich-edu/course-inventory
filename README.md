@@ -243,7 +243,7 @@ You can also set up the application using `virtualenv` by doing the following:
 #### OpenShift Deployment
 
 Deploying the application as a job using OpenShift and Jenkins involves several steps, which are beyond the scope of
-this README. However, a few details about how the job is configurd are provided below.
+this README. However, a few details about how the job is configured are provided below.
 
 * The `env.json` file described in the **Configuration** section above needs to be made available to 
   running course-inventory containers via an OpenShift ConfigMap, a type of Resource. A volume containing the ConfigMap 
@@ -251,23 +251,27 @@ this README. However, a few details about how the job is configurd are provided 
   defining the pod.
 
 * By default, the application will run with the assumption that the JSON configuration file will be named `env.json`. 
-  However, `inventory.py` will also check for the environment variable `ENV_PATH`. 
-  This variable can be set using the OpenShift pod configuration file. 
-  To use a different name for the JSON file, 
-  set `ENV_PATH` to a path beginning with `config/secrets/` and ending with the file name. 
-  
+  However, `environ.py` will also check for the environment variables `ENV_DIR` and `ENV_FILE`.
+  These variables can be set using the OpenShift pod configuration file. 
+  To use a different name for the JSON file, set `ENV_FILE` to the desired file name.  The default
+  value is `env.json`.
+  To use a different directory containing the JSON file, set `ENV_DIR` to the desired directory
+  path.  The default value is `/config/secrets`.
+
   * To ensure that the `yoyo-migrations` dependency can run successfully in a containerized environment,
     the environment variable `USER` should be defined. 
   * For the value of `USER`, use the name of the project running the job.
   The `yoyo-migrations` library will obtain this value by using the 
   [`getpass.getuser` function](https://docs.python.org/3/library/getpass.html) from the Python standard library.
 
-  With the above two variables set, the `env` block in the YAML file will look something like this:
+  With the above variables set, the `env` block in the YAML file will look something like this:
 
     ```yaml
       - env:
+        - name: ENV_DIR
+          value: /config/test_secrets
         - name: ENV_FILE
-          value: /config/secrets/env_test.json
+          value: env_test.json
         - name: USER
           value: project_name
     ```
