@@ -1,15 +1,15 @@
 # standard libraries
 import logging, os, time
-from enum import auto, Enum
 from importlib import import_module
 from typing import Dict, Sequence, Union
+
+# third-party libraries
+import pandas as pd
 
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-
-# third-party libraries
-import pandas as pd
+from vocab import ValidJobName, ValidDataSourceName
 
 
 # Initialize settings and global variables
@@ -19,26 +19,6 @@ logging.basicConfig(
     level=ENV.get('LOG_LEVEL', 'DEBUG'),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
-
-# Enum(s)
-
-# Each job name should be defined in ValidJobName.
-# NAME_OF_JOB = 'path.to.method'
-
-class ValidJobName(Enum):
-    COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
-    # ONLINE_MEETINGS = 'online_meetings.report...'
-    # ZOOM = 'online_meetings.canvas_zoom_meetings...'
-    # MIVIDEO = 'mivideo...'
-
-
-# Each data source name should be defined in ValidDataSourceName.
-# NAME_OF_DATA_SOURCE = auto()
-
-class ValidDataSourceName(Enum):
-    CANVAS_API = auto()
-    UNIZIN_DATA_WAREHOUSE = auto()
 
 
 # Class(es)

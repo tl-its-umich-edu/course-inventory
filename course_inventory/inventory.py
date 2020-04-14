@@ -13,6 +13,7 @@ from umich_api.api_utils import ApiUtil
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
+from vocab import ValidDataSourceName
 from .async_enroll_gatherer import AsyncEnrollGatherer
 from .canvas_course_usage import CanvasCourseUsage
 from .gql_queries import queries as QUERIES
@@ -227,7 +228,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
 
     # Record data source info for Canvas API
     canvas_data_source = {
-        'data_source_name': 'CANVAS_API',
+        'data_source_name': ValidDataSourceName.CANVAS_API.name,
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
     }
 
@@ -250,7 +251,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
     udw_data_source = {
-        'data_source_name': 'UNIZIN_DATA_WAREHOUSE',
+        'data_source_name': ValidDataSourceName.UNIZIN_DATA_WAREHOUSE.name,
         'data_updated_at': udw_update_datetime
     }
 
