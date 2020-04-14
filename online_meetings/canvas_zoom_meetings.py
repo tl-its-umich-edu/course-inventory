@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Dict, Optional, List, Union
+from typing import Dict, Optional, List
 
 import canvasapi
 import pandas as pd
@@ -44,35 +44,36 @@ class ZoomPlacements:
     def __init__(self):
         self.zoom_session = requests.Session()
 
-    def get_zoom_json(self, data: Dict[str, Union[str, int]] = None) -> Optional[Dict]:
+    def get_zoom_json(self, **kwargs) -> Optional[Dict]:
         """Retrieves data directly from Zoom. You need to have zoom_session already setup
         
-        :param data: Supplied dictionary to use, should at least have page and lti_scid, defaults to None
-        :type data: Dict[str, Union[str, int]], optional
+        :param kwargs: Supplied additional parameters to pass to the API. Should at least supply page and lti_scid.
+        :type kwargs: Dict
         :return: json result from the Zoom call
         :rtype: Optional[Dict]
         """
-        if not data:
+        if not kwargs:
             # Set empty array if not set
-            data = {"page": 1, "lti_scid": ""}
-        logger.info(f"Paging though course on page number {data.get('page')}")
+            kwargs = {"page": 1, "lti_scid": ""}
+        logger.info(f"Paging though course on page number {kwargs.get('page')}")
         # Get tab 1 (Previous Meetings)
         # Zoom needs this lti_scid now as a parameter, pull it out of the header
-        data.update({'total': 0,
-                     'storage_timezone': 'America/Montreal',
-                     'client_timezone': 'America/Detroit',
-                     })
+        kwargs.update({'total': 0,
+                       'storage_timezone': 'America/Montreal',
+                       'client_timezone': 'America/Detroit',
+                       })
 
         # TODO: Specify which page we want, currently hardcoded to previous meetings
         zoom_previous_url = "https://applications.zoom.us/api/v1/lti/rich/meeting/history/COURSE/all"
-        r = self.zoom_session.get(zoom_previous_url, params=data)
+        r = self.zoom_session.get(zoom_previous_url, params=kwargs)
         # Load in the json and look for results
         zoom_json = json.loads(r.text)
         if zoom_json and "result" in zoom_json:
             return zoom_json["result"]
         return None
 
-    def extract_from_js(self, key: str, text: str) -> Optional[str]:
+    @staticmethod
+    def extract_from_js(key: str, text: str) -> Optional[str]:
         """Takes a javascript text and attempts to extract a key/value (May not work with everything)
         
         :param key: key to extract
@@ -102,7 +103,7 @@ class ZoomPlacements:
                 'X-XSRF-TOKEN': token
             })
 
-            zoom_json = self.get_zoom_json({'page': 1, 'lti_scid': scid})
+            zoom_json = self.get_zoom_json(page=1, lti_scid=scid)
             # The first call to zoom returns total and pageSize, get the total pages by dividing
             if zoom_json:
                 total = zoom_json["total"]
@@ -110,7 +111,7 @@ class ZoomPlacements:
             for page in range(1, total_pages):
                 # Just skip the first call we've already called it, but still need to process
                 if page != 1:
-                    zoom_json = self.get_zoom_json({'page': page, 'lti_scid': scid})
+                    zoom_json = self.get_zoom_json(page=page, lti_scid=scid)
                 if zoom_json:
                     for meeting in zoom_json["list"]:
                         self.zoom_courses_meetings.append({
