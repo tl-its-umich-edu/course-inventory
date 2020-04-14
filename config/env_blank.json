@@ -38,5 +38,12 @@
     "user": "",
     "password": ""
   },
-  "APPEND_TABLE_NAMES": ["job_run", "data_source_status"]
+  "APPEND_TABLE_NAMES": [
+    "job_run", "data_source_status",
+    "mivideo_media_started_hourly", "mivideo_media_creation"
+  ],
+  "mivideo": {
+    "/*  'umich-its-tl-reports-prod.json' can be found at https://umich.app.box.com/file/641207013676": "*/",
+    "service_account_json_filename": "umich-its-tl-reports-prod.json"
+  }
 }
