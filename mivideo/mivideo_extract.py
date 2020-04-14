@@ -51,14 +51,14 @@ class MiVideoExtract(object):
         self.appDb.set_up()
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[str, None]:
-        lastTime: str = None
+        lastTime: Union[str, None]
 
         try:
             sql: str = f'select max(t.{tableColumnName}) from {tableName} t'
             result: ResultProxy = self.appDb.engine.execute(sql)
             lastTime = result.fetchone()[0]
-        except:
-            pass
+        except(Exception):
+            lastTime = None
 
         return lastTime
 
@@ -71,7 +71,7 @@ class MiVideoExtract(object):
 
         logger.info(f'"{tableName}" - Starting procedure...')
 
-        lastTime: str = self._readTableLastTime(tableName, 'event_time_utc_latest')
+        lastTime: Union[str, None] = self._readTableLastTime(tableName, 'event_time_utc_latest')
 
         if (lastTime):
             logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')

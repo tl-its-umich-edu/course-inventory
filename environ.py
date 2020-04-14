@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 try:
     with open(CONFIG_PATH) as env_file:
-        ENV: Dict = json.loads(env_file.read())
+        ENV: Union[Dict, None] = json.loads(env_file.read())
 except FileNotFoundError:
     logger.error(
         'Configuration file could not be found; please add env.json to the config directory.')
