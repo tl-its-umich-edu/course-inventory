@@ -1,5 +1,6 @@
-
 # course-inventory
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/431390d7c73d47cfbf9654f0182ba6d6)](https://www.codacy.com/gh/tl-its-umich-edu/course-inventory)
 
 <!-- show table of contents in MacDown, others -->
 \[TOC]
