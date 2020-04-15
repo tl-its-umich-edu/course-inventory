@@ -20,22 +20,18 @@ SHAPE_ROWS: int = 0  # Index of row count in DataFrame.shape() array
 
 
 class MiVideoExtract(object):
-    udpKeyFilePath: str
-    credentials: service_account.Credentials
-    udpDb: bigquery.Client
-    appDb: DBCreator
 
     def __init__(self):
-        self.udpKeyFilePath = os.path.join(CONFIG_DIR, ENV.get('mivideo', {}).get(
+        self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, ENV.get('mivideo', {}).get(
             'service_account_json_filename'))
         logger.debug(f'udpKeyFilePath: "{self.udpKeyFilePath}"')
 
-        self.credentials = service_account.Credentials.from_service_account_file(
+        self.credentials: service_account.Credentials = service_account.Credentials.from_service_account_file(
             self.udpKeyFilePath,
             scopes=['https://www.googleapis.com/auth/cloud-platform'],
         )
 
-        self.udpDb = bigquery.Client(
+        self.udpDb: bigquery.Client = bigquery.Client(
             credentials=self.credentials,
             project=self.credentials.project_id,
         )
@@ -47,7 +43,7 @@ class MiVideoExtract(object):
             'job_run', 'data_source_status', 'mivideo_media_started_hourly',
             'mivideo_media_creation'])
 
-        self.appDb = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
+        self.appDb: DBCreator = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
         self.appDb.set_up()
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[str, None]:
