@@ -38,5 +38,17 @@
     "user": "",
     "password": ""
   },
-  "APPEND_TABLE_NAMES": ["job_run", "data_source_status"]
+
+  "BLUEJEANS_URL_TOKEN": "",
+  "BLUEJEANS_URL_USER_JOBS": "",
+  "BLUEJEANS_URL_REPORT": "",
+  "BLUEJEANS_URL_DOWNLOAD": "",
+  "BLUEJEANS_URL_DOWNLOAD_ZIP_NAME": "bj.zip",
+  "BLUEJEANS_URL_DOWNLOAD_ZIP_NAME_INNER_FILE": "./meetings_*.csv",
+  "BLUEJEANS_CLIENT_SECRET": "",
+  "BLUEJEANS_USER_ID": 1,
+  "BLUEJEANS_FROM_DATE": "2020-03-01",
+  "BLUEJEANS_TO_DATE": "2020-03-02",
+
+  "APPEND_TABLE_NAMES": []
 }

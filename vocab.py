@@ -11,7 +11,7 @@ class ValidJobName(Enum):
     """
     
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
-    # ONLINE_MEETINGS = 'online_meetings.report...'
+    ONLINE_MEETINGS_BLUEJEANS = 'online_meetings.bluejeans_report.run_bluejeans_report'
     # ZOOM = 'online_meetings.canvas_zoom_meetings...'
     # MIVIDEO = 'mivideo...'
 
@@ -24,3 +24,4 @@ class ValidDataSourceName(Enum):
     
     CANVAS_API = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
+    BLUEJEANS_API = auto()
