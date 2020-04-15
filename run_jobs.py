@@ -43,7 +43,9 @@ class Job:
             'finished_at': [finished_at_dt]
         })
         job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
-        logger.info(f'Inserted job_run record for job_name "{self.name}" with finished_at value of "{finished_at_dt}"')
+        logger.info(
+            f'Inserted job_run record for job_name "{self.name}" '
+            f'with finished_at value of "{finished_at_dt}"')
         job_run_id = pd.read_sql('job_run', db_creator_obj.engine).iloc[-1]['id']
 
         if len(self.data_sources) == 0:

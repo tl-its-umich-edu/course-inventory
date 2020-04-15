@@ -1,3 +1,7 @@
+'''
+Migrations for MiVideo tables
+'''
+
 from yoyo import step
 
 steps = [

@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+'''
+Module for setting up and running the MiVideo data extract.
+'''
+
 import logging
 import os
 import time
@@ -20,16 +24,23 @@ SHAPE_ROWS: int = 0  # Index of row count in DataFrame.shape() array
 
 
 class MiVideoExtract(object):
+    '''
+    Initialize the MiVideo data extract process by instantiating the ``MiVideoExtract`` class,
+    then invoke its ``run()`` method.
+
+    For example, ``MiVideoExtract().run()``.
+    '''
 
     def __init__(self):
         self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, ENV.get('mivideo', {}).get(
             'service_account_json_filename'))
         logger.debug(f'udpKeyFilePath: "{self.udpKeyFilePath}"')
 
-        self.credentials: service_account.Credentials = service_account.Credentials.from_service_account_file(
-            self.udpKeyFilePath,
-            scopes=['https://www.googleapis.com/auth/cloud-platform'],
-        )
+        self.credentials: service_account.Credentials = \
+            service_account.Credentials.from_service_account_file(
+                self.udpKeyFilePath,
+                scopes=['https://www.googleapis.com/auth/cloud-platform'],
+            )
 
         self.udpDb: bigquery.Client = bigquery.Client(
             credentials=self.credentials,
@@ -58,9 +69,9 @@ class MiVideoExtract(object):
 
         return lastTime
 
-    def run(self) -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
+    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
         """
-        :return: Sequence of result dictionaries, with string keys and last run timestamp
+        :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
         """
 
         tableName = 'mivideo_media_started_hourly'
@@ -105,7 +116,12 @@ class MiVideoExtract(object):
         }]
 
 
-def main():
+def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    '''
+    This method is invoked when its module is executed as a standalone program.
+
+    :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
+    '''
     return MiVideoExtract().run()
 
 
