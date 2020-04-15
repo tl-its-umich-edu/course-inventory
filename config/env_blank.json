@@ -40,7 +40,7 @@
   },
   "APPEND_TABLE_NAMES": [
     "job_run", "data_source_status",
-    "mivideo_media_started_hourly", "mivideo_media_creation"
+    "mivideo_media_started_hourly"
   ],
   "mivideo": {
     "service_account_json_filename": "umich-its-tl-reports-prod.json"
