@@ -1,7 +1,5 @@
 from yoyo import step
 
-__depends__ = {'0009.add_meta_tables.py'}
-
 steps = [
     step('''
         CREATE TABLE IF NOT EXISTS mivideo_media_started_hourly (
