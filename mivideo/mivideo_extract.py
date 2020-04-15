@@ -63,7 +63,7 @@ class MiVideoExtract(object):
         try:
             sql: str = f'select max(t.{tableColumnName}) from {tableName} t'
             result: ResultProxy = self.appDb.engine.execute(sql)
-            lastTime = result.fetchone()[0]
+            lastTime = str(result.fetchone()[0])
         except(Exception):
             lastTime = None
 
@@ -90,7 +90,12 @@ class MiVideoExtract(object):
         logger.debug(f'"{tableName}" - Running query...')
 
         dfCourseEvents: pd.DataFrame = self.udpDb.query(
-            queries.dfCourseEventsQuery(lastTime)).to_dataframe()
+            queries.COURSE_EVENTS, job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("startTime", "STRING", lastTime),
+                ]
+            )
+        ).to_dataframe()
 
         logger.debug(f'"{tableName}" - Completed query.')
 

@@ -1,17 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
-Functions to generate SQL queries for MiVideo data extraction
+SQL queries for MiVideo data extraction
 '''
 
-
-def dfCourseEventsQuery(startTime: str) -> str:
-    '''
-
-    :param startTime: A SQL-compatible datetime representing the start point of the query.
-    :return: A SQL query string, ready to run.
-    '''
-
-    return f'''
+COURSE_EVENTS: str = f'''
         SELECT
         DISTINCT event_hour_utc,
                  course_id,
@@ -39,7 +31,7 @@ def dfCourseEventsQuery(startTime: str) -> str:
             ed_app = 'https://aakaf.mivideo.it.umich.edu/caliper/info/app/KafEdApp'
         OR ed_app = 'https://1038472-1.kaf.kaltura.com/caliper/info/app/KafEdApp'
         )
-        AND event_time > TIMESTAMP('{startTime}')
+        AND event_time > TIMESTAMP(@startTime)
         AND event_time < TIMESTAMP(
             CURRENT_DATE()
         )
