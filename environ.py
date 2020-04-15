@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 try:
     with open(CONFIG_PATH) as env_file:
-        ENV: Union[Dict, None] = json.loads(env_file.read())
+        ENV: Dict = json.loads(env_file.read())
 except FileNotFoundError:
     logger.error(
-        'Configuration file could not be found; please add env.json to the config directory.')
-    ENV = None
+        f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
+    ENV = dict()
 
 LOG_LEVEL: Union[str, int] = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
@@ -35,7 +35,7 @@ for key, value in ENV.items():
         except JSONDecodeError:
             logger.debug('Valid JSON was not found')
         ENV[key] = os_value
-        logger.info('ENV value overidden')
+        logger.info('ENV value overridden')
         logger.info(f'key: {key}; os_value: {os_value}')
 
 logger.debug(ENV)
