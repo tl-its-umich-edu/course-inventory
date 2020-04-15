@@ -1,15 +1,16 @@
 # standard libraries
-import logging, os, time
-from enum import auto, Enum
+import logging, os, sys, time
 from importlib import import_module
 from typing import Dict, Sequence, Union
+
+# third-party libraries
+import pandas as pd
+import sqlalchemy
 
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-
-# third-party libraries
-import pandas as pd
+from vocab import ValidJobName, ValidDataSourceName
 
 
 # Initialize settings and global variables
@@ -20,27 +21,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-
-# Enum(s)
-
-# Each job name should be defined in ValidJobName.
-# NAME_OF_JOB = 'path.to.method'
-
-class ValidJobName(Enum):
-    COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
-    ONLINE_MEETINGS_BLUEJEANS = 'online_meetings.bluejeans_report.run_bluejeans_report'
-    # ZOOM = 'online_meetings.canvas_zoom_meetings...'
-    # MIVIDEO = 'mivideo...'
-
-
-# Each data source name should be defined in ValidDataSourceName.
-# NAME_OF_DATA_SOURCE = auto()
-
-class ValidDataSourceName(Enum):
-    CANVAS_API = auto()
-    UNIZIN_DATA_WAREHOUSE = auto()
-
-
 # Class(es)
 
 class Job:
@@ -49,27 +29,33 @@ class Job:
         self.name: str = job_name.name
         self.import_path: str = '.'.join(job_name.value.split('.')[:-1])
         self.method_name: str = job_name.value.split('.')[-1]
-        self.started_at: Union[int, None] = None
-        self.finished_at: Union[int, None] = None
-        self.data_sources: Sequence[Dict[str, Union[str, pd.Timestamp]]] = []
+        self.started_at: Union[float, None] = None
+        self.finished_at: Union[float, None] = None
+        self.data_sources: Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]] = []
 
     def create_metadata(self) -> None:
         started_at_dt = pd.to_datetime(self.started_at, unit='s')
-        finshed_at_dt = pd.to_datetime(self.finished_at, unit='s')
+        finished_at_dt = pd.to_datetime(self.finished_at, unit='s')
 
         job_run_df = pd.DataFrame({
             'job_name': [self.name],
             'started_at': [started_at_dt],
-            'finished_at': [finshed_at_dt]
+            'finished_at': [finished_at_dt]
         })
         job_run_df.to_sql('job_run', db_creator_obj.engine, if_exists='append', index=False)
-        logger.info(f'Inserted job_run record with finished_at value of {started_at_dt}')
+        logger.info(f'Inserted job_run record with finished_at value of {finished_at_dt}')
         job_run_id = pd.read_sql('job_run', db_creator_obj.engine).iloc[-1]['id']
 
         if len(self.data_sources) == 0:
             logger.warning('No valid data sources were identified')
         else:
-            data_source_status_df = pd.DataFrame(self.data_sources)
+            db_ready_data_sources = []
+            for data_source in self.data_sources:
+                db_ready_data_source = data_source.copy()
+                db_ready_data_source['data_source_name'] = db_ready_data_source['data_source_name'].name
+                db_ready_data_sources.append(db_ready_data_source)
+                
+            data_source_status_df = pd.DataFrame(db_ready_data_sources)
             data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
             data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
             logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
@@ -89,11 +75,11 @@ class Job:
 
         valid_data_sources = []
         for data_source in data_sources:
-            data_source_name = data_source['data_source_name']
-            if data_source_name in ValidDataSourceName.__members__:
+            data_source_name_mem = data_source['data_source_name']
+            if isinstance(data_source_name_mem, ValidDataSourceName):
                 valid_data_sources.append(data_source)
             else:
-                logger.error(f'{data_source_name} is not a valid data source name')
+                logger.error(f'Received an invalid data source name: {data_source_name_mem}')
                 logger.error(f'No data_source_status record will be inserted.')
 
         self.data_sources = valid_data_sources
@@ -109,7 +95,7 @@ class JobManager:
                 job_name_mem = ValidJobName[job_name.upper()]
                 self.jobs.append(Job(job_name_mem))
             else:
-                logger.error(f'{job_name} is not a valid job name; it will be ignored')
+                logger.error(f'Received an invalid job name: {job_name}; it will be ignored')
 
     def run_jobs(self) -> None:
         for job in self.jobs:
@@ -118,15 +104,30 @@ class JobManager:
 
 
 if __name__ == '__main__':
+    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
     how_started = os.environ.get('HOW_STARTED', None)
 
     if how_started == 'DOCKER_COMPOSE':
-        logger.info('Waiting for the MySQL turtle, hehe')
         # Wait for MySQL container to finish setting up
-        time.sleep(30.0)
+        logger.info('Waiting for the MySQL snail')
+        # If it's not ready in two minutes, exit
+        num_loops = 40
+        for i in range(1, num_loops + 1):
+            time.sleep(3.0)
+            try:
+                db_creator_obj.set_up()
+                db_creator_obj.tear_down()
+                logger.info('MySQL caught up')
+                break
+            except sqlalchemy.exc.OperationalError:
+                if i == num_loops:
+                    logger.error('MySQL was not available')
+                    sys.exit(1)
+                else:
+                    logger.debug('Still waiting!')
 
     # Apply any new migrations
-    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
+    logger.info('Applying any new migrations')
     db_creator_obj.migrate()
 
     # Run those jobs

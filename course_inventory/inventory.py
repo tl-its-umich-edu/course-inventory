@@ -1,7 +1,7 @@
 # standard libraries
 import json, logging, os, time
 from json.decoder import JSONDecodeError
-from typing import Dict, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union
 
 # third-party libraries
 import pandas as pd
@@ -13,6 +13,7 @@ from umich_api.api_utils import ApiUtil
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
+from vocab import ValidDataSourceName
 from .async_enroll_gatherer import AsyncEnrollGatherer
 from .canvas_course_usage import CanvasCourseUsage
 from .gql_queries import queries as QUERIES
@@ -41,7 +42,7 @@ APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_stat
 
 # Function(s) - Canvas
 
-def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = {}) -> Response:
+def make_request_using_api_utils(url: str, params: Dict[str, Any] = {}) -> Response:
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
@@ -54,7 +55,7 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
             logger.info('Beginning next_attempt')
         else:
             try:
-                response_data = json.loads(response.text)
+                json.loads(response.text)
                 return response
             except JSONDecodeError:
                 logger.warning('JSONDecodeError encountered')
@@ -64,7 +65,7 @@ def make_request_using_api_utils(url: str, params: Dict[str, Union[str, int]] = 
     return response
 
 
-def slim_down_course_data(course_data: Sequence[Dict]) -> Sequence[Dict]:
+def slim_down_course_data(course_data: List[Dict]) -> List[Dict]:
     slim_course_dicts = []
     for course_dict in course_data:
         slim_course_dict = {
@@ -137,10 +138,10 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
 def process_sis_id(orig_sis_id: str) -> Union[int, None]:
     try:
         sis_id = int(orig_sis_id)
+        return sis_id
     except ValueError:
         logger.debug(f'Invalid sis_id found: {orig_sis_id}')
-        sis_id = None
-    return sis_id
+        return None
 
 
 def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd.DataFrame:
@@ -180,7 +181,7 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 # Entry point for run_jobs.py
 
-def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
+def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
     logger.info('Making requests against the Canvas API')
 
@@ -227,7 +228,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
 
     # Record data source info for Canvas API
     canvas_data_source = {
-        'data_source_name': 'CANVAS_API',
+        'data_source_name': ValidDataSourceName.CANVAS_API,
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
     }
 
@@ -250,7 +251,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
     udw_data_source = {
-        'data_source_name': 'UNIZIN_DATA_WAREHOUSE',
+        'data_source_name': ValidDataSourceName.UNIZIN_DATA_WAREHOUSE,
         'data_updated_at': udw_update_datetime
     }
 
