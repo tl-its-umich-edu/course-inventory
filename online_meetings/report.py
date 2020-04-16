@@ -21,6 +21,26 @@ logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 DEFAULT_SLEEP_TIME = ENV.get('DEFAULT_SLEEP_TIME', 10)
 
 
+def to_seconds(duration: str) -> int:
+    """Returns a value of a string duration in seconds
+       This string is expected in HH:MM:SS or MM:SS or SS
+
+    :param timestr: String in a duration format like HH:MM:SS
+    :type timestr: str
+    :return: Value in seconds
+    :rtype: int
+    """
+    total_seconds = 0
+    for second in duration.split(':'):
+        try:
+            total_seconds = total_seconds * 60 + int(second)
+        # If there is an error just return 0
+        except ValueError:
+            logger.warning(f"{str} is not a valid duration")
+            return 0
+    return total_seconds
+
+
 def get_request_retry(url: str, auth: AuthBase,
                       params: Dict[str, Union[str, int]]) -> requests.Response:
 
@@ -111,6 +131,13 @@ def run_report(api_url: str, json_attribute_name: str,
     if "uuid" in total_df:
         total_df.drop_duplicates("uuid", inplace=True)
         logger.info(f"Dataframe with duplicates removed: {len(total_df)}")
+
+    # Create a new calculated column in the DataFrame using participants and duration
+    if {'participants', 'duration'}.issubset(total_df.columns):
+        # Fill N/A in participants and duration to zero
+        total_df = total_df.fillna({'participants': 0, 'duration': 0})
+        total_df['particpant_minutes_est'] = total_df.apply(
+            lambda x: round(x['participants'] * to_seconds(x['duration']) / 60, 2), axis=1)
 
     # Sort columns alphabetically
     total_df.sort_index(axis=1, inplace=True)
