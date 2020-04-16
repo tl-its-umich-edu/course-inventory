@@ -9,26 +9,19 @@ import sys
 import yaml
 from typing import Dict, Sequence, Union
 
-# third-party libraries
-import pandas as pd
-import time
-from datetime import datetime, timedelta
-import glob
-
 # local libraries
 from db.db_creator import DBCreator
 from vocab import ValidDataSourceName
 from environ import ENV
 
-# importing required modules
 from zipfile import ZipFile
 
 import dateparser
 # third-party libraries
+import time
+from datetime import datetime, timedelta
 import pandas as pd
-import pytz
 import requests
-import yaml
 
 # Initialize settings and globals
 
@@ -50,7 +43,7 @@ INVENTORY_DB = ENV['INVENTORY_DB']
 APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_status'])
 
 # template for BlueJeans API call
-def bluejeans_api_call(method: str, url: str, headers_dict: Dict, payload_dict: Dict) -> bytes:
+def bluejeans_api_call(method: str, url: str, headers_dict: Dict, payload_dict: Dict) -> requests.Response:
     # return when url is null
     if not url:
         logger.error("bluejeans_api_call url is null")
@@ -71,7 +64,7 @@ def bluejeans_api_call(method: str, url: str, headers_dict: Dict, payload_dict: 
     except requests.exceptions.TooManyRedirects:
         # URL was bad and try a different one
         logger.error("bluejeans_api_call {url}: TooManyRedirect exception")
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         # other exceptions
         logger.error("bluejeans_api_call {url}: RequestException")
 
@@ -84,8 +77,8 @@ def _1_get_bluejeans_api_token() -> str:
     # prepare for the BlueJeans API call
     token_url = ENV.get('BLUEJEANS_URL_TOKEN')
     token_payload = {
-        "grant_type": "client_credentials", 
-        "client_id": "Metrics_BJN", 
+        "grant_type": "client_credentials",
+        "client_id": "Metrics_BJN",
         "client_secret": ENV.get('BLUEJEANS_CLIENT_SECRET')
     }
     token_headers = {
@@ -95,7 +88,7 @@ def _1_get_bluejeans_api_token() -> str:
     token_response = bluejeans_api_call("POST", token_url, token_headers, token_payload)
     if token_response:
         token_json = json.loads(token_response.text.encode('utf8'))
-        token = token_json["access_token"]    
+        token = token_json["access_token"]
 
         ## the expiration time in seconds
         expires_in_sec = token_json["expires_in"]
@@ -109,7 +102,7 @@ def _1_get_bluejeans_api_token() -> str:
 # retrieve the download path for report zip file
 def _2_get_file_download_path(headers_dict: Dict, payload_dict: Dict, job_id: str) -> str:
     path = ""
-    # max 20 times 
+    # max 20 times
     max_count = 20
     count = 0
     while not path and count <= max_count:
@@ -132,9 +125,9 @@ def _2_get_file_download_path(headers_dict: Dict, payload_dict: Dict, job_id: st
     return path
 
 # download report file and insert data into dataframe
-def _3_download_report_file_read_into_dataframe(headers_dict: Dict, 
-                                            payload_dict: Dict, 
-                                            df_param: pd.DataFrame, 
+def _3_download_report_file_read_into_dataframe(headers_dict: Dict,
+                                            payload_dict: Dict,
+                                            df_param: pd.DataFrame,
                                             download_file_path: str) -> pd.DataFrame:
     download_url = ENV["BLUEJEANS_URL_DOWNLOAD"]
     download_url = f"{download_url}{download_file_path}"
@@ -197,19 +190,19 @@ def _4_clean_rename_columns (df: pd.DataFrame) -> pd.DataFrame:
 
     # rename dataframe column names, to "lower_case_with_underscores"
     # https://launchbylunch.com/posts/2014/Feb/16/sql-naming-conventions/#naming-conventions
-    df = df.rename(columns={'meetingTitle': 'meeting_title', 
-                            'meetingId': 'meeting_id', 
-                            'userName': 'user_name', 
-                            'endTime': 'end_time', 
-                            'startTime': 'start_time', 
-                            'participantSeconds': 'participant_seconds', 
-                            'joinDate': 'join_date', 
-                            'joinWeek': 'join_week', 
-                            'joinMonth': 'join_month', 
+    df = df.rename(columns={'meetingTitle': 'meeting_title',
+                            'meetingId': 'meeting_id',
+                            'userName': 'user_name',
+                            'endTime': 'end_time',
+                            'startTime': 'start_time',
+                            'participantSeconds': 'participant_seconds',
+                            'joinDate': 'join_date',
+                            'joinWeek': 'join_week',
+                            'joinMonth': 'join_month',
                             'participantMinutes': 'participant_minutes',
-                            'meetingDurationMinutes': 'meeting_duration_minutes', 
-                            'popId': 'pop_id', 
-                            'userType': 'user_type', 
+                            'meetingDurationMinutes': 'meeting_duration_minutes',
+                            'popId': 'pop_id',
+                            'userType': 'user_type',
                             'moderatorLess': 'moderator_less',
                             })
     return df
@@ -293,7 +286,7 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
     }
 
-    # Insert gathered data    
+    # Insert gathered data
     # logger.info('prepare to insert BlueJeans data into DB')
     db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
     logger.info(list(total_df.columns))
