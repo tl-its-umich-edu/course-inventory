@@ -36,7 +36,7 @@ def to_seconds(duration: str) -> int:
             total_seconds = total_seconds * 60 + int(second)
         # If there is an error just return 0
         except ValueError:
-            logger.warn(f"{str} is not a valid duration")
+            logger.warning(f"{str} is not a valid duration")
             return 0
     return total_seconds
 
