@@ -132,7 +132,7 @@ def run_report(api_url: str, json_attribute_name: str,
         total_df.drop_duplicates("uuid", inplace=True)
         logger.info(f"Dataframe with duplicates removed: {len(total_df)}")
 
-    # Create a new calculated column of partipants and duration in the data frame
+    # Create a new calculated column in the DataFrame using participants and duration
     if {'participants', 'duration'}.issubset(total_df.columns):
         # Fill N/A in participants and duration to zero
         total_df = total_df.fillna({'participants': 0, 'duration': 0})
