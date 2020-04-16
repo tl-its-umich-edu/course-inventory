@@ -3,25 +3,17 @@
 import json
 import logging
 import math
-import os
 import re
-import sys
 from datetime import datetime
 from typing import Dict, Optional, List
 
 import canvasapi
 import pandas as pd
 import requests
-import yaml
 from bs4 import BeautifulSoup as bs
 
-# read configurations
-try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/secrets/env.json')) as env_file:
-        ENV = yaml.safe_load(env_file.read())
-except FileNotFoundError:
-    sys.exit(
-        'Configuration file could not be found; please add env.json to the config directory.')
+import db.util as db_util
+from environ import ENV
 
 LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
 logging.basicConfig(level=LOG_LEVEL)
@@ -194,13 +186,8 @@ zoom_placements = ZoomPlacements()
 zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 0),
                                    True, ENV.get("ADD_COURSE_IDS", []))
 
-zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
-zoom_courses_df.index.name = "id"
-zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
-zoom_courses_meetings_df.index.name = "id"
-
-zoom_courses_df.to_csv("zoom_courses.csv")
-zoom_courses_meetings_df.to_csv("zoom_courses_meetings.csv")
+db_util.write_df_to_csv(pd.DataFrame(zoom_placements.zoom_courses), "id", "zoom_courses")
+db_util.write_df_to_csv(pd.DataFrame(zoom_placements.zoom_courses_meetings), "id", "zoom_courses_meetings")
 
 end_time = datetime.now()
 logger.info(f"Script finished at {start_time}")

@@ -10,6 +10,7 @@ import requests
 from requests.auth import AuthBase
 
 from environ import ENV
+import db.util as db_util
 from .requests_zoom_jwt import ZoomJWT
 
 # Initialize settings and globals
@@ -124,8 +125,6 @@ def run_report(api_url: str, json_attribute_name: str,
         total_list.extend(zoom_list)
     # output csv file
     total_df = pd.DataFrame(total_list)
-    total_df.index.name = "index_id"
-    output_file_name = f"total_{json_attribute_name}.csv"
     # Remove any duplicate uuids in the record
     logger.info(f"Initial dataframe size: {len(total_df)}")
     if "uuid" in total_df:
@@ -139,11 +138,7 @@ def run_report(api_url: str, json_attribute_name: str,
         total_df['particpant_minutes_est'] = total_df.apply(
             lambda x: round(x['participants'] * to_seconds(x['duration']) / 60, 2), axis=1)
 
-    # Sort columns alphabetically
-    total_df.sort_index(axis=1, inplace=True)
-
-    # Write to CSV
-    total_df.to_csv(output_file_name)
+    db_util.write_df_to_csv(total_df, "index_id", "total_" + json_attribute_name)
 
 
 def zoom_loop(url: str, auth: AuthBase, json_attribute_name: str,
@@ -188,7 +183,7 @@ def zoom_loop(url: str, auth: AuthBase, json_attribute_name: str,
 
 # run users report
 run_report('/v2/users', 'users', {"status": "active", "page_number": 1}, page_token=False, use_date=False)
-# run meetings report
+# run meetings report, drop columns id and topic based on business requirements
 run_report('/v2/metrics/meetings', 'meetings', {"type": "past"}, page_token=True, use_date=True)
-# run webinars report
+# run webinars report, drop columns id and topic based on business requirements
 run_report('/v2/metrics/webinars', 'webinars', {"type": "past"}, page_token=True, use_date=True)

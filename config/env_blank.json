@@ -13,6 +13,13 @@
   "CANVAS_URL": "",
   "CANVAS_TOKEN": "",
   "NUM_ASYNC_WORKERS": 8,
+  "DROP_DATABASE_COLUMNS": {
+    "zoom_courses": [],
+    "zoom_courses_meetings": ["meeting_number", "topic", "join_url"],
+    "total_meetings": ["id", "topic"],
+    "total_webinars": ["id", "topic"],
+    "total_users": []
+  },
   "ZOOM_CONFIG": [
     {
       "EARLIEST_FROM": "YYYY-MM-DD",

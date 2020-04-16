@@ -82,6 +82,7 @@ This includes the creation of a configuration file called `env.json`. Complete t
     `CANVAS_URL` | The Canvas instance URL to be used as the base URL for API requests that use the `CANVAS TOKEN`.
     `CANVAS_TOKEN` | The Canvas token used for authenticating to the API when not using the U-M API Directory.
     `NUM_ASYNC_WORKERS` | Number of workers for asynchronous API calls; the default is 8.
+    `DROP_DATABASE_COLUMNS` | This is a special object with the key the table and value as a list of columns to drop. See the sample in the file as an example.
     `DEFAULT_SLEEP_TIME` | Amount of time to sleep between re-tries when given a 429 error and no Retry-After in the response headers.
     `WAREHOUSE_INCREMENT` | A 17-digit number that can be added to some Canvas IDs to create Unizin Data Warehouse IDs (not in use currently).
     `UDW` | An object containing the necessary credential information for connecting to the Unizin Data Warehouse, where data will be pulled from.
