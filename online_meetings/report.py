@@ -183,7 +183,7 @@ def zoom_loop(url: str, auth: AuthBase, json_attribute_name: str,
 
 # run users report
 run_report('/v2/users', 'users', {"status": "active", "page_number": 1}, page_token=False, use_date=False)
-# run meetings report, drop columns id and topic based on business requirements
+# run meetings report
 run_report('/v2/metrics/meetings', 'meetings', {"type": "past"}, page_token=True, use_date=True)
-# run webinars report, drop columns id and topic based on business requirements
+# run webinars report
 run_report('/v2/metrics/webinars', 'webinars', {"type": "past"}, page_token=True, use_date=True)
