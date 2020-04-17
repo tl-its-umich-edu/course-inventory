@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from json.decoder import JSONDecodeError
-from typing import Union, Dict
+from typing import Dict
 
 # Set up ENV
 # entry-level job modules need to be one-level beneath root
@@ -21,7 +21,7 @@ except FileNotFoundError:
         f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
     ENV = dict()
 
-LOG_LEVEL: Union[str, int] = ENV.get('LOG_LEVEL', 'INFO')
+LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 
 # Add ENV key-value pairs to environment, skipping if the key is already set

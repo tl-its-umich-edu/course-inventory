@@ -6,7 +6,8 @@ Module for setting up and running the MiVideo data extract.
 import logging
 import os
 import time
-from typing import Union, Sequence, Dict
+from datetime import datetime, timezone
+from typing import Dict, Sequence, Union
 
 import pandas as pd
 from google.cloud import bigquery
@@ -15,7 +16,7 @@ from sqlalchemy.engine import ResultProxy
 
 import mivideo.queries as queries
 from db.db_creator import DBCreator
-from environ import ENV, CONFIG_DIR
+from environ import CONFIG_DIR, CONFIG_PATH, ENV
 from vocab import ValidDataSourceName
 
 logger = logging.getLogger(__name__)
@@ -32,38 +33,44 @@ class MiVideoExtract(object):
     '''
 
     def __init__(self):
-        self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, ENV.get('mivideo', {}).get(
-            'service_account_json_filename'))
+        udpKeyFileName: str = ENV.get('MIVIDEO', {}).get('service_account_json_filename')
+        if (udpKeyFileName is None):
+            errorMessage: str = (f'"MIVIDEO.service_account_json_filename" '
+                                 f'was not found in {CONFIG_PATH}')
+            logger.error(errorMessage)
+            raise ValueError(errorMessage)
+
+        self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, udpKeyFileName)
         logger.debug(f'udpKeyFilePath: "{self.udpKeyFilePath}"')
 
-        self.credentials: service_account.Credentials = \
+        self.credentials: service_account.Credentials = (
             service_account.Credentials.from_service_account_file(
                 self.udpKeyFilePath,
-                scopes=['https://www.googleapis.com/auth/cloud-platform'],
-            )
+                scopes=['https://www.googleapis.com/auth/cloud-platform'])
+        )
 
         self.udpDb: bigquery.Client = bigquery.Client(
             credentials=self.credentials,
-            project=self.credentials.project_id,
+            project=self.credentials.project_id
         )
 
         logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
 
-        DB_PARAMS = ENV['INVENTORY_DB']
-        APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', [
+        dbParams: Dict = ENV['INVENTORY_DB']
+        appendTableNames: Sequence[str] = ENV.get('APPEND_TABLE_NAMES', [
             'job_run', 'data_source_status', 'mivideo_media_started_hourly',
             'mivideo_media_creation'])
 
-        self.appDb: DBCreator = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
+        self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
         self.appDb.set_up()
 
-    def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[str, None]:
-        lastTime: Union[str, None]
+    def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
+        lastTime: Union[datetime, None]
 
         try:
             sql: str = f'select max(t.{tableColumnName}) from {tableName} t'
             result: ResultProxy = self.appDb.engine.execute(sql)
-            lastTime = str(result.fetchone()[0])
+            lastTime = result.fetchone()[0]
         except(Exception):
             lastTime = None
 
@@ -78,12 +85,13 @@ class MiVideoExtract(object):
 
         logger.info(f'"{tableName}" - Starting procedure...')
 
-        lastTime: Union[str, None] = self._readTableLastTime(tableName, 'event_time_utc_latest')
+        lastTime: Union[datetime, None] = self._readTableLastTime(tableName,
+                                                                  'event_time_utc_latest')
 
         if (lastTime):
             logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = '2020-03-01'
+            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # '2020-03-01'
             logger.info(
                 f'"{tableName}" - Last time not found in table; using default time: "{lastTime}"')
 
@@ -92,7 +100,7 @@ class MiVideoExtract(object):
         dfCourseEvents: pd.DataFrame = self.udpDb.query(
             queries.COURSE_EVENTS, job_config=bigquery.QueryJobConfig(
                 query_parameters=[
-                    bigquery.ScalarQueryParameter("startTime", "STRING", lastTime),
+                    bigquery.ScalarQueryParameter('startTime', 'DATETIME', lastTime),
                 ]
             )
         ).to_dataframe()
@@ -116,7 +124,7 @@ class MiVideoExtract(object):
         logger.info('End of extract')
 
         return [{
-            'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM,
+            'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
             'data_updated_at': pd.to_datetime(time.time(), utc=True)
         }]
 

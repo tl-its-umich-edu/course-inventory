@@ -23,5 +23,5 @@ class ValidDataSourceName(Enum):
     """
     
     CANVAS_API = auto()
-    UNIZIN_DATA_PLATFORM = auto()
+    UNIZIN_DATA_PLATFORM_EVENTS = auto()
     UNIZIN_DATA_WAREHOUSE = auto()

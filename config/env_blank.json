@@ -21,6 +21,9 @@
       "API_SECRET": "<ADD API SECRET>"
     }
   ],
+  "MIVIDEO": {
+    "service_account_json_filename": "umich-its-tl-reports-prod.json"
+  },
   "DEFAULT_SLEEP_TIME": 10,
   "WAREHOUSE_INCREMENT": 0,
   "UDW": {
@@ -41,8 +44,5 @@
   "APPEND_TABLE_NAMES": [
     "job_run", "data_source_status",
     "mivideo_media_started_hourly"
-  ],
-  "mivideo": {
-    "service_account_json_filename": "umich-its-tl-reports-prod.json"
-  }
+  ]
 }
