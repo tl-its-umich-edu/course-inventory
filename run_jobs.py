@@ -1,10 +1,11 @@
 # standard libraries
-import logging, os, time
+import logging, os, sys, time
 from importlib import import_module
 from typing import Dict, Sequence, Union
 
 # third-party libraries
 import pandas as pd
+import sqlalchemy
 
 # local libraries
 from db.db_creator import DBCreator
@@ -29,8 +30,8 @@ class Job:
         self.name: str = job_name.name
         self.import_path: str = '.'.join(job_name.value.split('.')[:-1])
         self.method_name: str = job_name.value.split('.')[-1]
-        self.started_at: Union[int, None] = None
-        self.finished_at: Union[int, None] = None
+        self.started_at: Union[float, None] = None
+        self.finished_at: Union[float, None] = None
         self.data_sources: Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]] = []
 
     def create_metadata(self) -> None:
@@ -106,15 +107,30 @@ class JobManager:
 
 
 if __name__ == '__main__':
+    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
     how_started = os.environ.get('HOW_STARTED', None)
 
     if how_started == 'DOCKER_COMPOSE':
-        logger.info('Waiting for the MySQL turtle, hehe')
         # Wait for MySQL container to finish setting up
-        time.sleep(30.0)
+        logger.info('Waiting for the MySQL snail')
+        # If it's not ready in two minutes, exit
+        num_loops = 40
+        for i in range(1, num_loops + 1):
+            time.sleep(3.0)
+            try:
+                db_creator_obj.set_up()
+                db_creator_obj.tear_down()
+                logger.info('MySQL caught up')
+                break
+            except sqlalchemy.exc.OperationalError:
+                if i == num_loops:
+                    logger.error('MySQL was not available')
+                    sys.exit(1)
+                else:
+                    logger.debug('Still waiting!')
 
     # Apply any new migrations
-    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
+    logger.info('Applying any new migrations')
     db_creator_obj.migrate()
 
     # Run those jobs
