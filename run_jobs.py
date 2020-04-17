@@ -112,11 +112,9 @@ if __name__ == '__main__':
 
     if how_started == 'DOCKER_COMPOSE':
         # Wait for MySQL container to finish setting up
-        logger.info('Waiting for the MySQL snail')
         # If it's not ready in two minutes, exit
         num_loops = 40
-        for i in range(1, num_loops + 1):
-            time.sleep(3.0)
+        for i in range(num_loops + 1):
             try:
                 db_creator_obj.set_up()
                 db_creator_obj.tear_down()
@@ -127,7 +125,11 @@ if __name__ == '__main__':
                     logger.error('MySQL was not available')
                     sys.exit(1)
                 else:
-                    logger.debug('Still waiting!')
+                    if i == 0:
+                        logger.info('Waiting for the MySQL snail')
+                    else:
+                        logger.debug('Still waiting!')
+                    time.sleep(3.0)
 
     # Apply any new migrations
     logger.info('Applying any new migrations')
