@@ -29,7 +29,7 @@ class DBCreator:
             f":{quote_plus(db_params['password'])}" +
             f"@{db_params['host']}" +
             f":{db_params['port']}" +
-            f"/{db_params['dbname']}?charset=utf8"
+            f"/{db_params['dbname']}?charset=utf8&ssl=true"
         )
         self.engine = create_engine(self.conn_str)
         self.append_table_names = append_table_names
