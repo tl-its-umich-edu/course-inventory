@@ -245,8 +245,12 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     section_df = pd.merge(section_df, sis_section_df, on='canvas_id', how='left')
 
     # Record data source info for UDW
-    udw_meta_df = pd.read_sql('SELECT * FROM unizin_metadata;', udw_conn)
-    udw_update_datetime_str = udw_meta_df[udw_meta_df['key'] == 'canvasdatadate']['value'].iloc[0]
+    udw_meta_df = pd.read_sql('''
+        SELECT *
+        FROM unizin_metadata
+        WHERE key='canvasdatadate';
+    ''', udw_conn)
+    udw_update_datetime_str = udw_meta_df['value'].iloc[0]
     udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
