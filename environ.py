@@ -1,25 +1,28 @@
 # standard libraries
-import json, logging, os
+import json
+import logging
+import os
 from json.decoder import JSONDecodeError
+from typing import Dict
 
+# Set up ENV
 # entry-level job modules need to be one-level beneath root
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
+CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.json'))
 
 logger = logging.getLogger(__name__)
 
-
-# Set up ENV
-
-config_path = os.path.join(ROOT_DIR, os.getenv('ENV_PATH', os.path.join('config', 'secrets', 'env.json')))
-
 try:
-    with open(config_path) as env_file:
-        ENV = json.loads(env_file.read())
+    with open(CONFIG_PATH) as env_file:
+        ENV: Dict = json.loads(env_file.read())
 except FileNotFoundError:
-    logger.error('Configuration file could not be found; please add env.json to the config directory.')
-    ENV = None
+    logger.error(
+        f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
+    ENV = dict()
 
-logging.basicConfig(level=ENV['LOG_LEVEL'])
+LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
+logging.basicConfig(level=LOG_LEVEL)
 
 # Add ENV key-value pairs to environment, skipping if the key is already set
 logger.debug(os.environ)
@@ -32,5 +35,7 @@ for key, value in ENV.items():
         except JSONDecodeError:
             logger.debug('Valid JSON was not found')
         ENV[key] = os_value
-        logger.info('ENV value overidden')
+        logger.info('ENV value overridden')
         logger.info(f'key: {key}; os_value: {os_value}')
+
+logger.debug(ENV)
