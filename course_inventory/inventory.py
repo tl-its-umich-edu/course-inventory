@@ -104,7 +104,7 @@ def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
     course_dicts = slim_down_course_data(all_course_data)
     more_pages = True
 
-    while more_pages and page_num < 2:
+    while more_pages:
         next_params = API_UTIL.get_next_page(response)
         if next_params:
             page_num += 1
