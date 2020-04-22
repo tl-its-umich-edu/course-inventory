@@ -1,6 +1,6 @@
 # course-inventory
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/431390d7c73d47cfbf9654f0182ba6d6)](https://www.codacy.com/gh/tl-its-umich-edu/course-inventory)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/299102a0330d4dfd8e9f8d5ef36362b5)](https://www.codacy.com/manual/ITS_Teaching_And_Learning/course-inventory?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tl-its-umich-edu/course-inventory&amp;utm_campaign=Badge_Grade)
 
 <!-- show table of contents in MacDown, others -->
 \[TOC]
