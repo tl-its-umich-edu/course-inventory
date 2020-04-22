@@ -31,7 +31,6 @@ class DBCreator:
     ) -> None:
 
         self.db_name: str = db_params['dbname']
-        self.conn: Union[Connection, None] = None
         self.conn_str: str = (
             'mysql+mysqldb' +
             f"://{db_params['user']}" +
