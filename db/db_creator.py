@@ -3,11 +3,11 @@ from __future__ import annotations
 
 # standard libraries
 import logging, os
-from typing import Dict, List, Union
+from typing import Dict, List
 from urllib.parse import quote_plus
 
 # third-party libraries
-from sqlalchemy.engine import create_engine, Connection, Engine
+from sqlalchemy.engine import create_engine, Engine
 from yoyo import get_backend, read_migrations
 
 
