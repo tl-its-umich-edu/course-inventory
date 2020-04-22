@@ -19,7 +19,7 @@ PARENT_PATH = os.path.dirname(os.path.abspath(__file__))
 MIGRATIONS_PATH = os.path.join(PARENT_PATH, 'migrations')
 
 # The metadata tables are append tables by default.
-DEFAULT_APPEND_TABLES = ['job_run', 'data_source_status']
+DEFAULT_APPEND_TABLE_NAMES = ['job_run', 'data_source_status']
 
 
 class DBCreator:
@@ -42,7 +42,7 @@ class DBCreator:
         self.engine: Engine = create_engine(self.conn_str)
 
         self.append_table_names: List[str] = append_table_names
-        self.append_table_names += DEFAULT_APPEND_TABLES
+        self.append_table_names += DEFAULT_APPEND_TABLE_NAMES
 
     def get_table_names(self) -> List[str]:
         logger.debug('get_table_names')
