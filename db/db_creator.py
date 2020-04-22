@@ -3,17 +3,20 @@ from __future__ import annotations
 
 # standard libraries
 import logging, os
-from typing import Dict, List, Sequence, Union
+from typing import Dict, List, Union
 from urllib.parse import quote_plus
 
 # third-party libraries
 from sqlalchemy.engine import create_engine, Connection, Engine
 from yoyo import get_backend, read_migrations
 
+
+# Initialize settings and global variables
+
 logger = logging.getLogger(__name__)
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-MIGRATIONS_PATH = os.path.join(ROOT_DIR, 'migrations')
+PARENT_PATH = os.path.dirname(os.path.abspath(__file__))
+MIGRATIONS_PATH = os.path.join(PARENT_PATH, 'migrations')
 
 # The metadata tables are append tables by default.
 DEFAULT_APPEND_TABLES = ['job_run', 'data_source_status']
@@ -38,22 +41,11 @@ class DBCreator:
             f"/{db_params['dbname']}?charset=utf8&ssl=true"
         )
         self.engine: Engine = create_engine(self.conn_str)
-        self.append_table_names: List[str] = append_table_names + DEFAULT_APPEND_TABLES
 
-    def connect(self) -> DBCreator:
-        logger.debug('set_up')
-        self.conn = self.engine.connect()
-        return self
+        self.append_table_names: List[str] = append_table_names
+        self.append_table_names += DEFAULT_APPEND_TABLES
 
-    def close(self) -> DBCreator:
-        logger.debug('tear_down')
-        if not isinstance(self.conn, Connection):
-            logger.error('self.conn needs to be initalized before it can be closed')
-        else:
-            self.conn.close()
-        return self
-
-    def get_table_names(self) -> Sequence[str]:
+    def get_table_names(self) -> List[str]:
         logger.debug('get_table_names')
         return self.engine.table_names()
 
@@ -67,18 +59,16 @@ class DBCreator:
 
     def drop_records(self) -> DBCreator:
         logger.debug('drop_records')
-        if not isinstance(self.conn, Connection):
-            logger.error('self.conn needs to be initalized first before it can be used')
-        else:
-            self.conn.execute('SET FOREIGN_KEY_CHECKS=0;')
-            for table_name in self.get_table_names():
-                if 'yoyo' not in table_name and table_name not in self.append_table_names:
-                    logger.debug(f'Table Name: {table_name}')
-                    self.conn.execute(f'DELETE FROM {table_name};')
-                    logger.info(f'Dropped records in {table_name} in {self.db_name}')
-            self.conn.execute('SET FOREIGN_KEY_CHECKS=1;')
+        conn = self.engine.connect()
+        conn.execute('SET FOREIGN_KEY_CHECKS=0;')
+        for table_name in self.get_table_names():
+            if 'yoyo' not in table_name and table_name not in self.append_table_names:
+                logger.debug(f'Table Name: {table_name}')
+                conn.execute(f'DELETE FROM {table_name};')
+                logger.info(f'Dropped records in {table_name} in {self.db_name}')
+        conn.execute('SET FOREIGN_KEY_CHECKS=1;')
         return self
 
     def set_up_database(self) -> DBCreator:
-        self.connect().drop_records().close().migrate()
+        self.drop_records().migrate()
         return self
