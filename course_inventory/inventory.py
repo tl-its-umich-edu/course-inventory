@@ -14,10 +14,10 @@ from umich_api.api_utils import ApiUtil
 from db.db_creator import DBCreator
 from environ import ENV
 from vocab import ValidDataSourceName
-from .async_enroll_gatherer import AsyncEnrollGatherer
-from .canvas_course_usage import CanvasCourseUsage
-from .gql_queries import queries as QUERIES
-from .published_date import FetchPublishedDate
+from course_inventory.async_enroll_gatherer import AsyncEnrollGatherer
+from course_inventory.canvas_course_usage import CanvasCourseUsage
+from course_inventory.gql_queries import queries as QUERIES
+from course_inventory.published_date import FetchPublishedDate
 
 
 # Initialize settings and globals
@@ -25,7 +25,7 @@ from .published_date import FetchPublishedDate
 logger = logging.getLogger(__name__)
 
 ACCOUNT_ID = ENV.get('CANVAS_ACCOUNT_ID', 1)
-TERM_ID = ENV['CANVAS_TERM_ID']
+TERM_IDS = ENV['CANVAS_TERM_IDS']
 
 API_UTIL = ApiUtil(ENV['API_BASE_URL'], ENV['API_CLIENT_ID'], ENV['API_CLIENT_SECRET'])
 SUBSCRIPTION_NAME = ENV['API_SUBSCRIPTION_NAME']
@@ -38,6 +38,8 @@ NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 INVENTORY_DB = ENV['INVENTORY_DB']
 APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run', 'data_source_status'])
+
+CANVAS_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 
 # Function(s) - Canvas
@@ -65,6 +67,53 @@ def make_request_using_api_utils(url: str, params: Dict[str, Any] = {}) -> Respo
     return response
 
 
+def gather_new_term_data_from_api(
+    account_id: int,
+    term_ids: Sequence[int],
+    creator_obj: DBCreator
+) -> pd.DataFrame:
+
+    logger.info('** gather_new_term_data_from_api')
+    # Find terms that don't already have records
+    term_df = pd.read_sql('term', creator_obj.engine)
+    logger.debug(term_df.head(25))
+
+    new_term_ids = [
+        term_id for term_id in term_ids if term_id not in term_df['canvas_id'].to_list()
+    ]
+    if len(new_term_ids) == 0:
+        logger.info('No new term IDS were found; returning empty DataFrame')
+        return pd.DataFrame({})
+    else:
+        logger.info(f'Found new term ID(s) in config: {new_term_ids}')
+        # Fetch new terms
+        url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/terms/'
+
+        new_term_dicts = []
+        for new_term_id in new_term_ids:
+            term_url_ending = url_ending_with_scope + str(new_term_id)
+            logger.info(f'Pulling data for Canvas term number {new_term_id}')
+            response = make_request_using_api_utils(term_url_ending)
+            term_dict = json.loads(response.text)
+            new_slim_term_dict = {
+                'canvas_id': term_dict['id'],
+                'name': term_dict['name'],
+                'sis_id': int(term_dict['sis_term_id']),
+                'start_at': pd.to_datetime(
+                    term_dict['start_at'],
+                    format=CANVAS_DATETIME_FORMAT
+                ),
+                'end_at': pd.to_datetime(
+                    term_dict['start_at'],
+                    format=CANVAS_DATETIME_FORMAT
+                )
+            }
+            new_term_dicts.append(new_slim_term_dict)
+        new_term_df = pd.DataFrame(new_term_dicts)
+        logger.debug(new_term_df)
+        return new_term_df
+
+
 def slim_down_course_data(course_data: List[Dict]) -> List[Dict]:
     slim_course_dicts = []
     for course_dict in course_data:
@@ -73,6 +122,7 @@ def slim_down_course_data(course_data: List[Dict]) -> List[Dict]:
             'sis_id': course_dict['sis_course_id'],
             'name': course_dict['name'],
             'account_id': course_dict['account_id'],
+            'term_id': course_dict['enrollment_term_id'],
             'created_at': course_dict['created_at'],
             'workflow_state': course_dict['workflow_state']
         }
@@ -183,10 +233,17 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
+
+    # Initialize DBCreator object
+    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
+
     logger.info('Making requests against the Canvas API')
 
+    # Gather new_term_data
+    new_term_df = gather_new_term_data_from_api(ACCOUNT_ID, TERM_IDS, db_creator_obj)
+
     # Gather course data
-    course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_ID)
+    course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS[0])
 
     logger.info("*** Fetching the published date ***")
     course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
@@ -198,11 +255,12 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
 
     logger.info("*** Checking for courses available and no published date ***")
     logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
+    
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
-                                             format="%Y-%m-%dT%H:%M:%SZ",
+                                             format=CANVAS_DATETIME_FORMAT,
                                              errors='coerce')
     course_df['published_at'] = pd.to_datetime(course_df['published_at'],
-                                               format="%Y-%m-%dT%H:%M:%SZ",
+                                               format=CANVAS_DATETIME_FORMAT,
                                                errors='coerce')
 
     logger.info("*** Fetching the canvas course usage data ***")
@@ -260,6 +318,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     }
 
     # Produce output
+    num_term_records = len(new_term_df)
     num_course_records = len(course_df)
     num_user_records = len(user_df)
     num_section_records = len(section_df)
@@ -268,6 +327,11 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
 
     if CREATE_CSVS:
         # Generate CSV Output
+        if len(new_term_df) > 0:
+            logger.info(f'Writing {num_term_records} term records to CSV')
+            new_term_df.to_csv(os.path.join('data', 'term.csv'), index=False)
+            logger.info('Wrote data to data/term.csv')
+
         logger.info(f'Writing {num_course_records} course records to CSV')
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
@@ -290,12 +354,16 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
 
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
-    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
     db_creator_obj.set_up()
     db_creator_obj.drop_records()
     db_creator_obj.tear_down()
 
     # Insert gathered data
+    if len(new_term_df) > 0:
+        logger.info(f'Inserting {num_term_records} term records to DB')
+        new_term_df.to_sql('term', db_creator_obj.engine, if_exists='append', index=False)
+        logger.info(f'Inserted data into term table in {db_creator_obj.db_name}')
+
     logger.info(f'Inserting {num_course_records} course records to DB')
     course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
