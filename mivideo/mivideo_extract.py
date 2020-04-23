@@ -125,7 +125,7 @@ class MiVideoExtract(object):
 
         return [{
             'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
-            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
+            'data_updated_at': pd.to_datetime(time.time(), utc=True)
         }]
 
 
