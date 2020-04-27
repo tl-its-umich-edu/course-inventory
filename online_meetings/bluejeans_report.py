@@ -27,14 +27,6 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# read configurations
-try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/secrets/env.json')) as env_file:
-        ENV = yaml.safe_load(env_file.read())
-except FileNotFoundError:
-    sys.exit(
-        'Configuration file could not be found; please add env.json to the config directory.')
-
 logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
 
 # output settings
@@ -165,19 +157,19 @@ def _3_download_report_file_read_into_dataframe(headers_dict: Dict,
             # remove zip file
             os.remove(zip_file_name)
             logger.info(f" {zip_file_name} file Removed!")
-        except OSError as err:
-            logger.error("OS error while opening downloaded zip file: {0}".format(err))
+        except OSError:
+            logger.error("OS error while opening downloaded zip file.")
         except ValueError:
-            logger.error("ValueError while opening downloaded zip file: {0}".format(err))
+            logger.error("ValueError while opening downloaded zip file.:")
         except:
-            logger.error("Unexpected error while opening downloaded zip file:: {0}".format(err), sys.exc_info()[0])
+            logger.error("Unexpected error while opening downloaded zip file.")
             raise
-    except OSError as err:
-        logger.error("OS error while downloading zip file: {0}".format(err))
+    except OSError:
+        logger.error("OS error while downloading zip file.")
     except ValueError:
-        logger.error("ValueError while downloading zip file: {0}".format(err))
+        logger.error("ValueError while downloading zip file.")
     except:
-        logger.error("Unexpected error while downloading zip file:: {0}".format(err), sys.exc_info()[0])
+        logger.error("Unexpected error while downloading zip file.")
         raise
 
     return df_param
@@ -211,6 +203,10 @@ def _4_clean_rename_columns (df: pd.DataFrame) -> pd.DataFrame:
 def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     logger.info("run_bluejeans_report")
 
+    # Insert gathered data
+    # logger.info('prepare to insert BlueJeans data into DB')
+    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
+
     total_df = pd.DataFrame()
 
     # 1: get the access token
@@ -228,27 +224,54 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
     }
 
     # get the start and end time for report
-    from_date = dateparser.parse(ENV.get('BLUEJEANS_FROM_DATE', '2020-03-31')).date()
-    to_date = dateparser.parse(ENV.get('BLUEJEANS_TO_DATE', '2020-04-09')).date()
+    # if the start and end dates are missing in ENV file, report for yesterday
+    yesterday_date_string = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
+    today_date_string = datetime.now().strftime('%Y-%m-%d')
+    from_date = dateparser.parse(ENV.get('BLUEJEANS_FROM_DATE', yesterday_date_string)).date()
+    to_date = dateparser.parse(ENV.get('BLUEJEANS_TO_DATE', today_date_string)).date()
+
+    # query to see whether there is any existing meeting record within this date range
+    from_date_string = from_date.strftime('%Y-%m-%d')
+    to_date_string = to_date.strftime('%Y-%m-%d')
+    meeting_results = db_creator_obj.engine.execute(f"""SELECT * FROM bluejeans_meeting where start_time > '{from_date_string}' and end_time < '{to_date_string}'""")
+    meeting_results_size = len(meeting_results.fetchall())
+    if meeting_results_size > 0:
+        # meeting records exist for the given timeframe
+        # stop and do not insert
+        logger.warning(f"there are {meeting_results_size} meetings for the date interval {from_date_string} to {to_date_string}. Stop the script.")
+        return []
 
     # Only use the date as a paramter
     # Loop until yesterday (this will go until now() -1)
     for i in range((to_date - from_date).days):
         param_date = from_date + timedelta(days=i)
-        start = datetime(param_date.year, param_date.month, param_date.day, 0, 0, 0)
-        end = datetime(param_date.year, param_date.month, param_date.day, 23, 59, 59)
+        start_date = datetime(param_date.year, param_date.month, param_date.day, 0, 0, 0)
+        end_date = datetime(param_date.year, param_date.month, param_date.day, 23, 59, 59)
         logger.info("start")
-        logger.info(start.astimezone().isoformat())
+        logger.info(start_date.astimezone().isoformat())
         logger.info("end")
-        logger.info(end.astimezone().isoformat())
+        logger.info(end_date.astimezone().isoformat())
+
         
         # post the report request job
-        report_url = ENV["BLUEJEANS_URL_REPORT"] + "?filter=\
-                    [{\"type\":\"date\",\"comparison\":\"lt\",\"value\":\"" + end.astimezone().isoformat() + "\",\"field\":\"end_time\"},\
-                        {\"type\":\"date\",\"comparison\":\"lt\",\"value\":\"" + end.astimezone().isoformat() + "\",\"field\":\"start_time\"},\
-                        {\"type\":\"date\",\"comparison\":\"gt\",\"value\":\"" + start.astimezone().isoformat() + "\",\"field\":\"start_time\"}\
-                    ]&fileName=meetings_30th-Mar-2020_30th-Mar-2020&userid=" + str(ENV.get("BLUEJEANS_USER_ID")) + "&app_name=command_center"
+        report_url = (
+            ENV['BLUEJEANS_URL_REPORT'] +
+            '?filter=[' +
+            '{"type":"date","comparison":"lt","value":"' +
+            end_date.astimezone().isoformat() +
+            '","field":"end_time"},' +
+            '{"type":"date","comparison":"lt","value":"' +
+            end_date.astimezone().isoformat() +
+            '","field":"start_time"},' +
+            '{"type":"date","comparison":"gt","value":"' +
+            start_date.astimezone().isoformat() +
+            '","field":"start_time"}' +
+            ']&fileName=meetings_date&userid=' +
+            str(ENV.get('BLUEJEANS_USER_ID')) +
+            '&app_name=command_center'
+        )
         reportJobs_response = bluejeans_api_call("POST", report_url, headers, payload)
+        logger.info(report_url)
 
         if reportJobs_response:
             reportJob_json = json.loads(reportJobs_response.text.encode('utf8'))
@@ -286,9 +309,6 @@ def run_bluejeans_report() -> Sequence[Dict[str, Union[str, pd.Timestamp]]]:
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
     }
 
-    # Insert gathered data
-    # logger.info('prepare to insert BlueJeans data into DB')
-    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
     logger.info(list(total_df.columns))
     logger.info(f'Inserting {num_bluejeans_meeting_records} bluejeans_meeting records to DB')
     total_df.to_sql('bluejeans_meeting', db_creator_obj.engine, if_exists='append', index=False)
