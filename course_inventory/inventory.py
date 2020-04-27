@@ -135,39 +135,44 @@ def slim_down_course_data(course_data: List[Dict]) -> List[Dict]:
     return slim_course_dicts
 
 
-def gather_course_data_from_api(account_id: int, term_id: int) -> pd.DataFrame:
+def gather_course_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.DataFrame:
     logger.info('** gather_course_data_from_api')
     url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
-    params = {
-        'with_enrollments': True,
-        'enrollment_type': ['student', 'teacher'],
-        'enrollment_term_id': term_id,
-        'per_page': 100,
-        'include': ['total_students']
-    }
 
-    # Make first course request
-    page_num = 1
-    logger.info(f'Course Page Number: {page_num}')
-    response = make_request_using_api_utils(url_ending_with_scope, params)
-    all_course_data = json.loads(response.text)
-    course_dicts = slim_down_course_data(all_course_data)
-    more_pages = True
+    course_dicts = []
+    for term_id in term_ids:
+        logger.info(f'Processing term {term_id}')
 
-    while more_pages:
-        next_params = API_UTIL.get_next_page(response)
-        if next_params:
-            page_num += 1
-            logger.info(f'Course Page Number: {page_num}')
-            response = make_request_using_api_utils(url_ending_with_scope, next_params)
-            all_course_data = json.loads(response.text)
-            course_dicts += slim_down_course_data(all_course_data)
-        else:
-            logger.info('No more pages!')
-            more_pages = False
+        params = {
+            'with_enrollments': True,
+            'enrollment_type': ['student', 'teacher'],
+            'enrollment_term_id': term_id,
+            'per_page': 100,
+            'include': ['total_students']
+        }
+
+        # Make first course request
+        page_num = 1
+        logger.info(f'Course Page Number: {page_num}')
+        response = make_request_using_api_utils(url_ending_with_scope, params)
+        all_course_data = json.loads(response.text)
+        course_dicts += slim_down_course_data(all_course_data)
+        more_pages = True
+
+        while more_pages:
+            next_params = API_UTIL.get_next_page(response)
+            if next_params:
+                page_num += 1
+                logger.info(f'Course Page Number: {page_num}')
+                response = make_request_using_api_utils(url_ending_with_scope, next_params)
+                all_course_data = json.loads(response.text)
+                course_dicts += slim_down_course_data(all_course_data)
+            else:
+                logger.info('No more pages!')
+                more_pages = False
 
     num_course_dicts = len(course_dicts)
-    logger.info(f'Total course records: {num_course_dicts}')
+    logger.info(f'Total course records for all active terms: {num_course_dicts}')
     course_dicts_with_students = []
     for course_dict in course_dicts:
         if course_dict['total_students'] > 0:
@@ -243,7 +248,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     new_term_df = gather_new_term_data_from_api(ACCOUNT_ID, TERM_IDS, db_creator_obj)
 
     # Gather course data
-    course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS[0])
+    course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS)
 
     logger.info("*** Fetching the published date ***")
     course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
