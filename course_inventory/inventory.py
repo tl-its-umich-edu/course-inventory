@@ -248,7 +248,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
 
     logger.info('Making requests against the Canvas API')
 
-    # Gather new_term_data
+    # Gather new term data
     new_term_df = gather_new_term_data_from_api(ACCOUNT_ID, TERM_IDS, db_creator_obj)
 
     # Gather course data
