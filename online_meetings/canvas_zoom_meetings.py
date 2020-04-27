@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional, Sequence
 
 import canvasapi
 import pandas as pd
@@ -160,16 +160,28 @@ class ZoomPlacements:
                 self.get_zoom_details(posturl, formdata, course.id)
         return None
 
-    def zoom_course_report(self, canvas_account: int = 1, enrollment_term_id: int = 0,
+    def zoom_course_report(self, canvas_account: int = 1, enrollment_term_ids: Sequence[int] = [0],
                            published: bool = True, add_course_ids: list = None) -> None:
 
         account = CANVAS.get_account(canvas_account)
         # Canvas has a limit of 100 per page on this API
         per_page = 100
-        # Get all published courses from the defined enrollment term
+
+        # Get all published courses from the defined enrollment terms
         courses = []
-        if enrollment_term_id:
-            courses = account.get_courses(enrollment_term_id=enrollment_term_id, published=published, per_page=per_page)
+        if enrollment_term_ids:
+            for enrollment_term_id in enrollment_term_ids:
+                list_of_courses = list(
+                    account.get_courses(
+                        enrollment_term_id=enrollment_term_id,
+                        published=published,
+                        per_page=per_page
+                    )
+                )
+                courses += list_of_courses
+
+        logger.info('Number of courses')
+        logger.info(len(courses))
 
         course_count = 0
         for course in courses:
@@ -191,7 +203,7 @@ class ZoomPlacements:
 start_time = datetime.now()
 logger.info(f"Script started at {start_time}")
 zoom_placements = ZoomPlacements()
-zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_ID", 0),
+zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_IDS", [0]),
                                    True, ENV.get("ADD_COURSE_IDS", []))
 
 zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
