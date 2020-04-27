@@ -123,7 +123,7 @@ def slim_down_course_data(course_data: List[Dict]) -> List[Dict]:
     for course_dict in course_data:
         slim_course_dict = {
             'canvas_id': course_dict['id'],
-            'sis_id': course_dict['sis_course_id'],
+            'sis_id': str(course_dict['sis_course_id']),
             'name': course_dict['name'],
             'account_id': course_dict['account_id'],
             'term_id': course_dict['enrollment_term_id'],
