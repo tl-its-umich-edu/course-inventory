@@ -23,5 +23,6 @@ class ValidDataSourceName(Enum):
     """
     
     CANVAS_API = auto()
+    KALTURA_API = auto()
     UNIZIN_DATA_PLATFORM_EVENTS = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
