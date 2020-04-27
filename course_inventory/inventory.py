@@ -107,7 +107,7 @@ def gather_new_term_data_from_api(
                     format=CANVAS_DATETIME_FORMAT
                 ),
                 'end_at': pd.to_datetime(
-                    term_dict['start_at'],
+                    term_dict['end_at'],
                     format=CANVAS_DATETIME_FORMAT
                 )
             }
