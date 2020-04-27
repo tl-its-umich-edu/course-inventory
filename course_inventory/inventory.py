@@ -74,26 +74,29 @@ def gather_new_term_data_from_api(
 ) -> pd.DataFrame:
 
     logger.info('** gather_new_term_data_from_api')
+
     # Find terms that don't already have records
     term_df = pd.read_sql('term', creator_obj.engine)
-    logger.debug(term_df.head(25))
-
     new_term_ids = [
-        term_id for term_id in term_ids if term_id not in term_df['canvas_id'].to_list()
+        term_id for term_id in term_ids
+        if term_id not in term_df['canvas_id'].to_list()
     ]
+
     if len(new_term_ids) == 0:
-        logger.info('No new term IDS were found; returning empty DataFrame')
+        logger.info('No new term IDs were found; returning empty DataFrame')
         return pd.DataFrame({})
     else:
         logger.info(f'Found new term ID(s) in config: {new_term_ids}')
-        # Fetch new terms
+
+        # Fetch data for new terms
         url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/terms/'
 
         new_term_dicts = []
         for new_term_id in new_term_ids:
-            term_url_ending = url_ending_with_scope + str(new_term_id)
             logger.info(f'Pulling data for Canvas term number {new_term_id}')
+            term_url_ending = url_ending_with_scope + str(new_term_id)
             response = make_request_using_api_utils(term_url_ending)
+
             term_dict = json.loads(response.text)
             new_slim_term_dict = {
                 'canvas_id': term_dict['id'],
@@ -109,8 +112,9 @@ def gather_new_term_data_from_api(
                 )
             }
             new_term_dicts.append(new_slim_term_dict)
+
         new_term_df = pd.DataFrame(new_term_dicts)
-        logger.debug(new_term_df)
+        logger.debug(new_term_df.head())
         return new_term_df
 
 
@@ -141,7 +145,7 @@ def gather_course_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.
 
     course_dicts = []
     for term_id in term_ids:
-        logger.info(f'Processing term {term_id}')
+        logger.info(f'Fetching course data for term {term_id}')
 
         params = {
             'with_enrollments': True,
