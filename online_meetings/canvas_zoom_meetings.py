@@ -180,9 +180,6 @@ class ZoomPlacements:
                 )
                 courses += list_of_courses
 
-        logger.info('Number of courses')
-        logger.info(len(courses))
-
         course_count = 0
         for course in courses:
             course_count += 1
