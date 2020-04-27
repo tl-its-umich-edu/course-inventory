@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from typing import Dict, Sequence, Union
 
 import pandas as pd
+import pytz
+from KalturaClient import *
+from KalturaClient.Plugins.Core import *
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from sqlalchemy.engine import ResultProxy
@@ -59,7 +62,7 @@ class MiVideoExtract(object):
         dbParams: Dict = ENV['INVENTORY_DB']
         appendTableNames: Sequence[str] = ENV.get('APPEND_TABLE_NAMES', [
             'job_run', 'data_source_status', 'mivideo_media_started_hourly',
-            'mivideo_media_creation'])
+            'mivideo_media_created'])
 
         self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
         self.appDb.set_up()
@@ -76,12 +79,12 @@ class MiVideoExtract(object):
 
         return lastTime
 
-    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    def mediaStartedHourly(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
         """
         :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
         """
 
-        tableName = 'mivideo_media_started_hourly'
+        tableName: str = 'mivideo_media_started_hourly'
 
         logger.info(f'"{tableName}" - Starting procedure...')
 
@@ -91,7 +94,7 @@ class MiVideoExtract(object):
         if (lastTime):
             logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # '2020-03-01'
+            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # 2020-03-01
             logger.info(
                 f'"{tableName}" - Last time not found in table; using default time: "{lastTime}"')
 
@@ -123,10 +126,95 @@ class MiVideoExtract(object):
 
         logger.info('End of extract')
 
-        return [{
+        return {
             'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
             'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-        }]
+        }
+
+    def mediaCreation(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
+        KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
+        # TIMESTAMP_TIME_ZONE: str = 'America/Detroit'
+        TIMESTAMP_TIME_ZONE: str = 'UTC'
+
+        kPartnerId: int = 1038472  # U of Michigan (KMC1)
+        kUserId: str = 'mivideot3@umich.edu'
+        kUserSecret: str = '95a4c677d53155fcb4ac441bd69bc0e9'
+        kUserType: int = KalturaSessionType.ADMIN
+
+        config = KalturaConfiguration(kPartnerId)
+        config.serviceUrl = 'https://www.kaltura.com/'
+        kClient: KalturaRequestConfiguration = KalturaClient(config)
+
+        kSessionKey = kClient.session.start(kUserSecret, kUserId, kUserType, kPartnerId)
+        kClient.setKs(kSessionKey)
+
+        procedureName: str = 'mediaCreation'
+
+        lastTime: Union[datetime, None] = self._readTableLastTime('mivideo_media_created',
+                                                                  'created_at')
+
+        if (lastTime):
+            logger.info(f'"{procedureName}" - Last time found in table: "{lastTime}"')
+        else:
+            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # 2020-03-01
+            logger.info(
+                f'"{procedureName}" - Last time not found in table; using default time: "{lastTime}"')
+
+        createdAtTimestamp: float = datetime.fromisoformat('2020-03-20 00:00:00-04:00').timestamp()
+
+        kFilter = KalturaMediaEntryFilter()
+        kFilter.createdAtGreaterThanOrEqual = createdAtTimestamp
+        kFilter.categoriesFullNameIn = 'Canvas_UMich'
+        kFilter.orderBy = KalturaMediaEntryOrderBy.CREATED_AT_ASC
+
+        kPager = KalturaFilterPager()
+        kPager.pageSize = 500  # 500 is maximum
+        kPager.pageIndex = 1
+
+        mediaCount: int = 0
+        results: Sequence[KalturaMediaEntry] = None
+        lastCreatedAtTimestamp: Union[float, int] = createdAtTimestamp
+
+        while True:
+            try:
+                results = kClient.media.list(kFilter, kPager).objects
+            except Exception as kException:
+                if (KALTURA_MAX_MATCHES_ERROR in kException.args):
+                    # set new filter timestamp and reset pager, then continue
+                    # add one second to avoid dupes, but could it skip media with similar timestamp?
+                    # maybe use DB functions to silently skip dupes instead
+                    kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp + 1
+                    kPager.pageIndex = 1
+                    continue
+                else:
+                    logger.debug(f'Other Kaltura API error: "{kException}"')
+                    break
+
+            for media in results:
+                mediaCount += 1
+                logger.debug([
+                    media.id,
+                    datetime.fromtimestamp(media.createdAt,
+                                           pytz.timezone(TIMESTAMP_TIME_ZONE)).isoformat(),
+                    media.name, media.duration, media.categories])
+
+            lastCreatedAtTimestamp = results[-1].createdAt
+
+            if (len(results) < kPager.pageSize):
+                break
+
+            kPager.pageIndex += 1
+
+        return {
+            'data_source_name': ValidDataSourceName.KALTURA_API,
+            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
+        }
+
+    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+        return [
+            # self.mediaStartedHourly(),
+            self.mediaCreation(),
+        ]
 
 
 def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
