@@ -19,7 +19,7 @@ steps = [
     '''),
     step('''
         ALTER TABLE course
-        ADD COLUMN term_id INTEGER NULL AFTER account_id;
+        ADD COLUMN term_id INTEGER NOT NULL AFTER account_id;
     '''),
     step('''
         ALTER TABLE course
