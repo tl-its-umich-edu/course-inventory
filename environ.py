@@ -51,5 +51,5 @@ try:
     validate(instance=ENV, schema=ENV_SCHEMA)
     logger.info('ENV is valid; the program will continue')
 except ValidationError:
-    logger.error('ENV in invalid; the program will exit')
+    logger.error('ENV is invalid; the program will exit')
     sys.exit(1)
