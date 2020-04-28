@@ -2,7 +2,7 @@
   "LOG_LEVEL": "DEBUG",
   "JOB_NAMES": ["COURSE_INVENTORY"],
   "CANVAS_ACCOUNT_ID": 1,
-  "CANVAS_TERM_ID": 164,
+  "CANVAS_TERM_IDS": [164],
   "ADD_COURSE_IDS": [],
   "API_BASE_URL": "https://apigw.it.umich.edu/um",
   "API_SCOPE_PREFIX": "",
