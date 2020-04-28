@@ -67,7 +67,7 @@ def make_request_using_api_utils(url: str, params: Dict[str, Any] = {}) -> Respo
     return response
 
 
-def gather_new_term_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.DataFrame:
+def gather_term_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.DataFrame:
     logger.info('** gather_new_term_data_from_api')
 
     # Fetch data for terms from config
@@ -229,7 +229,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     logger.info('Making requests against the Canvas API')
 
     # Gather term data
-    term_df = gather_new_term_data_from_api(ACCOUNT_ID, TERM_IDS)
+    term_df = gather_term_data_from_api(ACCOUNT_ID, TERM_IDS)
 
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS)
