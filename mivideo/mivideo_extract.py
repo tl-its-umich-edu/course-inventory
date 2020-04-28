@@ -57,12 +57,11 @@ class MiVideoExtract(object):
         logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
 
         dbParams: Dict = ENV['INVENTORY_DB']
-        appendTableNames: Sequence[str] = ENV.get('APPEND_TABLE_NAMES', [
-            'job_run', 'data_source_status', 'mivideo_media_started_hourly',
-            'mivideo_media_creation'])
+        appendTableNames: Sequence[str] = ENV.get(
+            'APPEND_TABLE_NAMES', ['mivideo_media_started_hourly']
+        )
 
         self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
-        self.appDb.set_up()
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
         lastTime: Union[datetime, None]
@@ -125,7 +124,7 @@ class MiVideoExtract(object):
 
         return [{
             'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
-            'data_updated_at': pd.to_datetime(time.time(), utc=True)
+            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
         }]
 
 
