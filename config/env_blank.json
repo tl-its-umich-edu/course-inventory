@@ -44,7 +44,6 @@
   "APPEND_TABLE_NAMES": [
     "job_run", 
     "data_source_status",
-    "term",
     "mivideo_media_started_hourly"
   ]
 }
