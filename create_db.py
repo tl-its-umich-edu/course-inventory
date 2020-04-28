@@ -10,7 +10,7 @@ from environ import ENV
 logger = logging.getLogger(__name__)
 
 DB_PARAMS = ENV['INVENTORY_DB']
-APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['job_run'])
+APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', [])
 
 
 # Main Program

@@ -291,9 +291,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Empty tables (if any) in database, then migrate
     logger.info('Emptying tables in DB')
     db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
-    db_creator_obj.set_up()
     db_creator_obj.drop_records()
-    db_creator_obj.tear_down()
 
     # Insert gathered data
     logger.info(f'Inserting {num_course_records} course records to DB')

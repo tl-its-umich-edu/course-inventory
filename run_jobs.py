@@ -116,8 +116,8 @@ if __name__ == '__main__':
         num_loops = 40
         for i in range(num_loops + 1):
             try:
-                db_creator_obj.set_up()
-                db_creator_obj.tear_down()
+                conn = db_creator_obj.engine.connect()
+                conn.close()
                 logger.info('MySQL caught up')
                 break
             except sqlalchemy.exc.OperationalError:
