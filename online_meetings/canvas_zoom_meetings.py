@@ -176,6 +176,7 @@ class ZoomPlacements:
         courses = []
         if enrollment_term_ids is not None:
             for enrollment_term_id in enrollment_term_ids:
+                logger.info(f'Fetching published course data for term {enrollment_term_id}')
                 courses_list = list(
                     account.get_courses(
                         enrollment_term_id=enrollment_term_id,
