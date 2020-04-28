@@ -42,7 +42,6 @@
     "password": ""
   },
   "APPEND_TABLE_NAMES": [
-    "job_run", "data_source_status",
     "mivideo_media_started_hourly"
   ]
 }
