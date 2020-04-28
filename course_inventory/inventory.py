@@ -343,7 +343,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Initialize DBCreator object
     db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
 
-    # Empty tables (if any) in database, then migrate
+    # Empty tables (if any) in database
     logger.info('Emptying tables in DB')
     db_creator_obj.set_up()
     db_creator_obj.drop_records()
