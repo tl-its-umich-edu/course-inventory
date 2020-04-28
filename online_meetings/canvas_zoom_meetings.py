@@ -160,8 +160,13 @@ class ZoomPlacements:
                 self.get_zoom_details(posturl, formdata, course.id)
         return None
 
-    def zoom_course_report(self, canvas_account: int = 1, enrollment_term_ids: Sequence[int] = [],
-                           published: bool = True, add_course_ids: list = None) -> None:
+    def zoom_course_report(
+        self,
+        canvas_account: int = 1,
+        enrollment_term_ids: Sequence[int] = [],
+        published: bool = True,
+        add_course_ids: list = None
+    ) -> None:
 
         account = CANVAS.get_account(canvas_account)
         # Canvas has a limit of 100 per page on this API
@@ -171,14 +176,14 @@ class ZoomPlacements:
         courses = []
         if len(enrollment_term_ids) > 0:
             for enrollment_term_id in enrollment_term_ids:
-                list_of_courses = list(
+                courses_list = list(
                     account.get_courses(
                         enrollment_term_id=enrollment_term_id,
                         published=published,
                         per_page=per_page
                     )
                 )
-                courses += list_of_courses
+                courses += courses_list
 
         course_count = 0
         for course in courses:
