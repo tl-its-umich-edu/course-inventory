@@ -11,13 +11,13 @@ from requests import Response
 from umich_api.api_utils import ApiUtil
 
 # local libraries
-from db.db_creator import DBCreator
-from environ import ENV
-from vocab import ValidDataSourceName
 from course_inventory.async_enroll_gatherer import AsyncEnrollGatherer
 from course_inventory.canvas_course_usage import CanvasCourseUsage
 from course_inventory.gql_queries import queries as QUERIES
 from course_inventory.published_date import FetchPublishedDate
+from db.db_creator import DBCreator
+from environ import ENV
+from vocab import ValidDataSourceName
 
 
 # Initialize settings and globals
