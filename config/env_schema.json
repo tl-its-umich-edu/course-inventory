@@ -1,0 +1,77 @@
+{
+    "id": "some_course_inventory_url",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "definitions": {
+        "db_cred_object": {
+            "type": "object",
+            "properties": {
+                "host": {"type": "string"},
+                "port": {"type": "string"},
+                "dbname": {"type": "string"},
+                "user": {"type": "string"},
+                "password": {"type": "string"}
+            },
+            "required": ["host", "port", "dbname", "user", "password"]
+        }             
+    },
+    "properties": {
+        "LOG_LEVEL": {"type": "string"},
+        "JOB_NAMES": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["COURSE_INVENTORY", "MIVIDEO"]
+            }
+        },
+        "CANVAS_ACCOUNT_ID": {"type": "integer"},
+        "CANVAS_TERM_IDS": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "minItems": 1
+        },
+        "API_BASE_URL": {"type": "string"},
+        "API_SCOPE_PREFIX": {"type": "string"},
+        "API_SUBSCRIPTION_NAME": {"type": "string"},
+        "API_CLIENT_ID": {"type": "string"},
+        "API_CLIENT_SECRET": {"type": "string"},
+        "MAX_REQ_ATTEMPTS": {"type": "integer"},
+        "CANVAS_TOKEN": {"type": "string"},
+        "CANVAS_URL": {"type": "string"},
+        "NUM_ASYNC_WORKERS": {"type": "integer"},
+        "ZOOM_CONFIG": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "EARLIEST_FROM": {"type": "string"},
+                    "BASE_URL": {"type": "string"},
+                    "API_KEY": {"type": "string"},
+                    "API_SECRET": {"type": "string"}
+                }
+            }
+        },
+        "DEFAULT_SLEEP_TIME": {"type": "integer"},
+        "WAREHOUSE_INCREMENT": {"type": "integer"},
+        "MIVIDEO": {
+            "type": "object",
+            "properties": {
+                "service_account_json_filename": {"type": "string"}
+            },
+            "required": ["service_account_json_filename"]
+        },
+        "UDW": {"$ref": "#/definitions/db_cred_object"},
+        "CREATE_CSVS": {"type": "boolean"},
+        "INVENTORY_DB": {"$ref": "#/definitions/db_cred_object"},
+        "APPEND_TABLE_NAMES": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["mivideo_media_started_hourly"]
+            }
+        }
+    },
+    "required": ["JOB_NAMES"]
+}

@@ -1,4 +1,5 @@
 {
+  # A blank version of env.hjson with blanks or suggested values when not sensitive
   "LOG_LEVEL": "DEBUG",
   "JOB_NAMES": ["COURSE_INVENTORY"],
   "CANVAS_ACCOUNT_ID": 1,
