@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Union
 
 import canvasapi
 import pandas as pd
@@ -163,7 +163,7 @@ class ZoomPlacements:
     def zoom_course_report(
         self,
         canvas_account: int = 1,
-        enrollment_term_ids: Sequence[int] = [],
+        enrollment_term_ids: Union[Sequence[int], None] = None,
         published: bool = True,
         add_course_ids: list = None
     ) -> None:
@@ -174,7 +174,7 @@ class ZoomPlacements:
 
         # Get all published courses from the defined enrollment terms
         courses = []
-        if len(enrollment_term_ids) > 0:
+        if enrollment_term_ids is not None:
             for enrollment_term_id in enrollment_term_ids:
                 courses_list = list(
                     account.get_courses(
