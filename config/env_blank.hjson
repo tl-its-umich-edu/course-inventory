@@ -1,19 +1,38 @@
 {
-  # A blank version of env.hjson with blanks or suggested values when not sensitive
+  # A blank version of env.hjson with null or empty values, or suggested ones when not sensitive
+  
+  # Global
   "LOG_LEVEL": "DEBUG",
   "JOB_NAMES": ["COURSE_INVENTORY"],
-  "CANVAS_ACCOUNT_ID": 1,
-  "CANVAS_TERM_IDS": [164],
+  "CREATE_CSVS": false,
+
+  # API request behavior
+  "MAX_REQ_ATTEMPTS": 3,
+  "NUM_ASYNC_WORKERS": 8,
+  "DEFAULT_SLEEP_TIME": 10, # We might be able to remove this with Zoom stuff
+
+  # Data sources
+
+  # (TO DO: should probably nest Canvas properties)
+  # Canvas filters
+  "ACCOUNT_ID": 1,
+  "TERM_IDS": [164],
   "ADD_COURSE_IDS": [],
+  # UM API Directory
   "API_BASE_URL": "https://apigw.it.umich.edu/um",
   "API_SCOPE_PREFIX": "",
   "API_SUBSCRIPTION_NAME": "",
   "API_CLIENT_ID": "",
   "API_CLIENT_SECRET": "",
-  "MAX_REQ_ATTEMPTS": 3,
+  # Canvas API
   "CANVAS_URL": "",
   "CANVAS_TOKEN": "",
-  "NUM_ASYNC_WORKERS": 8,
+
+  "MIVIDEO": {
+    "service_account_json_filename": ""
+  },
+
+  # (TO DO: Zoom can probably be removed soon)
   "ZOOM_CONFIG": [
     {
       "EARLIEST_FROM": "YYYY-MM-DD",
@@ -22,11 +41,8 @@
       "API_SECRET": "<ADD API SECRET>"
     }
   ],
-  "MIVIDEO": {
-    "service_account_json_filename": "umich-its-tl-reports-prod.json"
-  },
-  "DEFAULT_SLEEP_TIME": 10,
-  "WAREHOUSE_INCREMENT": 0,
+
+  "WAREHOUSE_INCREMENT": 0, # We don't really need this anymore.
   "UDW": {
     "host": "",
     "port": "",
@@ -34,7 +50,8 @@
     "user": "",
     "password": ""
   },
-  "CREATE_CSVS": false,
+
+  # Database
   "INVENTORY_DB": {
     "host": "",
     "port": "",

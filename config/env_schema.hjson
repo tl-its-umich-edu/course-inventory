@@ -1,6 +1,6 @@
 {
     # JSON Schema Docs: https://json-schema.org/understanding-json-schema/
-    "id": "course-inventory.tl.it.umich.edu",
+    "id": "course-inventory-env-schema.tl.it.umich.edu",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "definitions": {
@@ -17,6 +17,7 @@
         }             
     },
     "properties": {
+        # Global
         "LOG_LEVEL": {"type": "string"},
         "JOB_NAMES": {
             "type": "array",
@@ -25,23 +26,46 @@
                 "enum": ["COURSE_INVENTORY", "MIVIDEO"]
             }
         },
+        "CREATE_CSVS": {"type": "boolean"},
+
+        # API request behavior
+        "MAX_REQ_ATTEMPTS": {"type": "integer"},
+        "NUM_ASYNC_WORKERS": {"type": "integer"},
+        "DEFAULT_SLEEP_TIME": {"type": "integer"}, # We might be able to remove this with Zoom stuff
+
+        # Data sources
+
+        # (TO DO: should probably nest Canvas properties)
+        # Canvas filters
         "CANVAS_ACCOUNT_ID": {"type": "integer"},
         "CANVAS_TERM_IDS": {
             "type": "array",
-            "items": {
-                "type": "integer"
-            },
+            "items": {"type": "integer"},
             "minItems": 1
         },
+        "ADD_COURSE_IDS": {
+            "type": "array",
+            "items": {"type": "integer"},
+        }
+        # UM API Directory
         "API_BASE_URL": {"type": "string"},
         "API_SCOPE_PREFIX": {"type": "string"},
         "API_SUBSCRIPTION_NAME": {"type": "string"},
         "API_CLIENT_ID": {"type": "string"},
         "API_CLIENT_SECRET": {"type": "string"},
-        "MAX_REQ_ATTEMPTS": {"type": "integer"},
+        # Canvas API
         "CANVAS_TOKEN": {"type": "string"},
         "CANVAS_URL": {"type": "string"},
-        "NUM_ASYNC_WORKERS": {"type": "integer"},
+
+        "MIVIDEO": {
+            "type": "object",
+            "properties": {
+                "service_account_json_filename": {"type": "string"}
+            },
+            "required": ["service_account_json_filename"]
+        },
+
+        # (TO DO: Zoom can probably be removed soon)
         "ZOOM_CONFIG": {
             "type": "array",
             "items": {
@@ -54,17 +78,11 @@
                 }
             }
         },
-        "DEFAULT_SLEEP_TIME": {"type": "integer"},
-        "WAREHOUSE_INCREMENT": {"type": "integer"},
-        "MIVIDEO": {
-            "type": "object",
-            "properties": {
-                "service_account_json_filename": {"type": "string"}
-            },
-            "required": ["service_account_json_filename"]
-        },
+
+        "WAREHOUSE_INCREMENT": {"type": "integer"}, # We don't really need this anymore.
         "UDW": {"$ref": "#/definitions/db_cred_object"},
-        "CREATE_CSVS": {"type": "boolean"},
+
+        # Database
         "INVENTORY_DB": {"$ref": "#/definitions/db_cred_object"},
         "APPEND_TABLE_NAMES": {
             "type": "array",
@@ -74,5 +92,9 @@
             }
         }
     },
-    "required": ["JOB_NAMES"]
+    "required": [
+        "JOB_NAMES",
+        "INVENTORY_DB",
+        "APPEND_TABLE_NAMES"
+    ]
 }
