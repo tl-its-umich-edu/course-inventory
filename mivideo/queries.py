@@ -3,7 +3,7 @@
 SQL queries for MiVideo data extraction
 '''
 
-COURSE_EVENTS: str = f'''
+COURSE_EVENTS: str = '''
         SELECT
         DISTINCT event_hour_utc,
                  course_id,
