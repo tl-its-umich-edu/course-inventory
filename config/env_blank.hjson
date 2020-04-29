@@ -1,65 +1,65 @@
 {
-  # A blank version of env.hjson with null or empty values, or suggested ones when not sensitive
+    # A blank version of env.hjson with null or empty values, or suggested ones when not sensitive
   
-  # Global
-  "LOG_LEVEL": "DEBUG",
-  "JOB_NAMES": ["COURSE_INVENTORY"],
-  "CREATE_CSVS": false,
+    # Global
+    "LOG_LEVEL": "DEBUG",
+    "JOB_NAMES": ["COURSE_INVENTORY"],
+    "CREATE_CSVS": false,
 
-  # API request behavior
-  "MAX_REQ_ATTEMPTS": 3,
-  "NUM_ASYNC_WORKERS": 8,
-  "DEFAULT_SLEEP_TIME": 10, # We might be able to remove this with Zoom stuff
+    # API request behavior
+    "MAX_REQ_ATTEMPTS": 3,
+    "NUM_ASYNC_WORKERS": 8,
+    "DEFAULT_SLEEP_TIME": 10, # We might be able to remove this with Zoom stuff
 
-  # Data sources
+    # Data sources
 
-  # (TO DO: should probably nest Canvas properties)
-  # Canvas filters
-  "CANVAS_ACCOUNT_ID": 1,
-  "CANVAS_TERM_IDS": [164],
-  "ADD_COURSE_IDS": [],
-  # UM API Directory
-  "API_BASE_URL": "https://apigw.it.umich.edu/um",
-  "API_SCOPE_PREFIX": "",
-  "API_SUBSCRIPTION_NAME": "",
-  "API_CLIENT_ID": "",
-  "API_CLIENT_SECRET": "",
-  # Canvas API
-  "CANVAS_URL": "",
-  "CANVAS_TOKEN": "",
+    "CANVAS": {
+        # Filters
+        "CANVAS_ACCOUNT_ID": 1,
+        "CANVAS_TERM_IDS": [164],
+        "ADD_COURSE_IDS": [],
+        # UM API Directory
+        "API_BASE_URL": "https://apigw.it.umich.edu/um",
+        "API_SCOPE_PREFIX": "",
+        "API_SUBSCRIPTION_NAME": "",
+        "API_CLIENT_ID": "",
+        "API_CLIENT_SECRET": "",
+        # Canvas API
+        "CANVAS_URL": "",
+        "CANVAS_TOKEN": ""
+    },
 
-  "MIVIDEO": {
-    "service_account_json_filename": ""
-  },
+    "MIVIDEO": {
+        "service_account_json_filename": ""
+    },
 
-  # (TO DO: Zoom can probably be removed soon)
-  "ZOOM_CONFIG": [
-    {
-      "EARLIEST_FROM": "YYYY-MM-DD",
-      "BASE_URL": "<ADD zoom.us URL>",
-      "API_KEY": "<ADD API KEY>",
-      "API_SECRET": "<ADD API SECRET>"
-    }
-  ],
+    # (TO DO: Zoom can probably be removed soon)
+    "ZOOM_CONFIG": [
+        {
+            "EARLIEST_FROM": "YYYY-MM-DD",
+            "BASE_URL": "<ADD zoom.us URL>",
+            "API_KEY": "<ADD API KEY>",
+            "API_SECRET": "<ADD API SECRET>"
+        }
+    ],
 
-  "WAREHOUSE_INCREMENT": 0, # We don't really need this anymore.
-  "UDW": {
-    "host": "",
-    "port": "",
-    "dbname": "",
-    "user": "",
-    "password": ""
-  },
+    "UDW": {
+        "host": "",
+        "port": "",
+        "dbname": "",
+        "user": "",
+        "password": ""
+    },
 
-  # Database
-  "INVENTORY_DB": {
-    "host": "",
-    "port": "",
-    "dbname": "course_inventory",
-    "user": "",
-    "password": ""
-  },
-  "APPEND_TABLE_NAMES": [
-    "mivideo_media_started_hourly"
-  ]
+    # Database
+    "INVENTORY_DB": {
+        "host": "",
+        "port": "",
+        "dbname": "course_inventory",
+        "user": "",
+        "password": ""
+    },
+    "APPEND_TABLE_NAMES": [
+        "mivideo_media_started_hourly"
+    ]
 }
