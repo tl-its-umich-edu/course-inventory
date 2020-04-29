@@ -54,8 +54,8 @@
         "API_CLIENT_ID": {"type": "string"},
         "API_CLIENT_SECRET": {"type": "string"},
         # Canvas API
-        "CANVAS_TOKEN": {"type": "string"},
         "CANVAS_URL": {"type": "string"},
+        "CANVAS_TOKEN": {"type": "string"},
 
         "MIVIDEO": {
             "type": "object",
