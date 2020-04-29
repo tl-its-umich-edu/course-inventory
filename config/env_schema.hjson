@@ -1,5 +1,6 @@
 {
-    "id": "some_course_inventory_url",
+    # JSON Schema Docs: https://json-schema.org/understanding-json-schema/
+    "id": "course-inventory.tl.it.umich.edu",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "definitions": {

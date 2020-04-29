@@ -24,8 +24,8 @@ except FileNotFoundError:
         f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
     ENV = dict()
 
-with open(os.path.join(ROOT_DIR, 'config', 'env_schema.json')) as schema_file:
-    ENV_SCHEMA = json.loads(schema_file.read())
+with open(os.path.join(ROOT_DIR, 'config', 'env_schema.hjson')) as schema_file:
+    ENV_SCHEMA = hjson.loads(schema_file.read())
 
 LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
