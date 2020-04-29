@@ -13,7 +13,6 @@ class ValidJobName(Enum):
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
     MIVIDEO = 'mivideo.mivideo_extract.main'
     CANVAS_ZOOM_MEETINGS = 'online_meetings.canvas_zoom_meetings.main'
-    # ZOOM = 'online_meetings.report...'
 
 
 class ValidDataSourceName(Enum):

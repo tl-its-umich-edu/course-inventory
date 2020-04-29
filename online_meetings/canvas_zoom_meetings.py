@@ -147,7 +147,7 @@ class ZoomPlacements:
         canvas_account: int = 1,
         enrollment_term_ids: Union[Sequence[int], None] = None,
         published: bool = True,
-        add_course_ids: list = None
+        add_course_ids: Union[List[int], None] = None
     ) -> None:
 
         account = self.canvas.get_account(canvas_account)
