@@ -35,27 +35,37 @@
 
         # Data sources
 
-        # (TO DO: should probably nest Canvas properties)
-        # Canvas filters
-        "CANVAS_ACCOUNT_ID": {"type": "integer"},
-        "CANVAS_TERM_IDS": {
-            "type": "array",
-            "items": {"type": "integer"},
-            "minItems": 1
-        },
-        "ADD_COURSE_IDS": {
-            "type": "array",
-            "items": {"type": "integer"},
+        "CANVAS": {
+            "type": "object",
+            "properties": {
+                # Canvas filters
+                "CANVAS_ACCOUNT_ID": {"type": "integer"},
+                "CANVAS_TERM_IDS": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 1
+                },
+                "ADD_COURSE_IDS": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                }
+                # UM API Directory
+                "API_BASE_URL": {"type": "string"},
+                "API_SCOPE_PREFIX": {"type": "string"},
+                "API_SUBSCRIPTION_NAME": {"type": "string"},
+                "API_CLIENT_ID": {"type": "string"},
+                "API_CLIENT_SECRET": {"type": "string"},
+                # Canvas API
+                "CANVAS_URL": {"type": "string"},
+                "CANVAS_TOKEN": {"type": "string"},
+            },
+            "required": [
+                "CANVAS_ACCOUNT_ID",
+                "CANVAS_TERM_IDS",
+                "CANVAS_URL",
+                "CANVAS_TOKEN"
+            ]
         }
-        # UM API Directory
-        "API_BASE_URL": {"type": "string"},
-        "API_SCOPE_PREFIX": {"type": "string"},
-        "API_SUBSCRIPTION_NAME": {"type": "string"},
-        "API_CLIENT_ID": {"type": "string"},
-        "API_CLIENT_SECRET": {"type": "string"},
-        # Canvas API
-        "CANVAS_URL": {"type": "string"},
-        "CANVAS_TOKEN": {"type": "string"},
 
         "MIVIDEO": {
             "type": "object",
