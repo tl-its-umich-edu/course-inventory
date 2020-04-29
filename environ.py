@@ -6,7 +6,6 @@ from typing import Dict
 # third-party libraries
 import hjson
 from jsonschema import validate
-from jsonschema.exceptions import ValidationError
 
 
 # Set up ENV
@@ -50,6 +49,7 @@ logger.debug(ENV)
 try:
     validate(instance=ENV, schema=ENV_SCHEMA)
     logger.info('ENV is valid; the program will continue')
-except ValidationError:
+except Exception as e:
+    logger.error(e)
     logger.error('ENV is invalid; the program will exit')
     sys.exit(1)
