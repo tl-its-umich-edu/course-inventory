@@ -15,8 +15,8 @@
 
   # (TO DO: should probably nest Canvas properties)
   # Canvas filters
-  "ACCOUNT_ID": 1,
-  "TERM_IDS": [164],
+  "CANVAS_ACCOUNT_ID": 1,
+  "CANVAS_TERM_IDS": [164],
   "ADD_COURSE_IDS": [],
   # UM API Directory
   "API_BASE_URL": "https://apigw.it.umich.edu/um",
