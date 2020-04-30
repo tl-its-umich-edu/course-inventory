@@ -9,6 +9,7 @@ from typing import Dict
 # entry-level job modules need to be one-level beneath root
 ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
+DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
 CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.json'))
 
 logger = logging.getLogger(__name__)

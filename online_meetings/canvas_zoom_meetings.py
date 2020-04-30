@@ -3,6 +3,7 @@
 import json
 import logging
 import math
+import os
 import re
 import time
 from typing import Dict, List, Optional, Sequence, Union
@@ -12,7 +13,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup as bs
 
-from environ import ENV
+from environ import ENV, DATA_DIR
 from vocab import ValidDataSourceName
 
 logger = logging.getLogger(__name__)
@@ -198,8 +199,8 @@ def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
     zoom_courses_meetings_df.index.name = "id"
 
-    zoom_courses_df.to_csv("zoom_courses.csv")
-    zoom_courses_meetings_df.to_csv("zoom_courses_meetings.csv")
+    zoom_courses_df.to_csv(os.path.join(DATA_DIR + "zoom_courses.csv"))
+    zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
     return [{
         'data_source_name': ValidDataSourceName.CANVAS_ZOOM_MEETINGS,
         'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
