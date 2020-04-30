@@ -9,7 +9,7 @@
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, 
 enrollments, users, and course activity --
-as well as data about the usage of other technologies, including BlueJeans, Zoom, and MiVideo --
+as well as data about the usage of other technologies, including Zoom and MiVideo --
 in order to inform leadership at the University of Michigan about the usage of tools for teaching and learning.
 Currently, the application collects data from various APIs and data services managed by Unizin Consortium. 
 It then then stores the data in an external MySQL database.
@@ -317,13 +317,13 @@ All the changes described below (minus the configuration changes) should be incl
     This accepts a number of time formats and objects and will return a `pd.Timestamp` object for single values.
     See the `run_course_inventory` entry function for the COURSE_INVENTORY job for an example. 
 
-4. Add a new entry to the `ValidJobName` enumeration within `run_jobs.py`. 
+4. Add a new entry to the `ValidJobName` enumeration within `vocab.py`. 
    The name (on the left) should be in all capitals.
    The value (on the right) should be a period-delimited path string,
    where the first element is the package name,
    the second is the module or file name, 
    and the third is the name of the job's entry method or function.
-   See `run_jobs.py` for examples.
+   See `vocab.py` for examples.
 
 5. If you are introducing a new data source, you also need to add an entry to the `ValidDataSourceName` enumeration. 
    The name should be all capitals; the value has no meaning for the application, so `auto()` is sufficient.

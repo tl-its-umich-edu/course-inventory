@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 # Set up ENV and ENV_SCHEMA
 ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
-CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.hjson'))
+DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
+CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.json'))
 
 try:
     with open(CONFIG_PATH) as env_file:
