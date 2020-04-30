@@ -10,12 +10,13 @@ from jsonschema import validate
 
 logger = logging.getLogger(__name__)
 
-# Set up ENV and ENV_SCHEMA
+# Set up path
 ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
 DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
 CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.json'))
 
+# Set up ENV and ENV_SCHEMA
 try:
     with open(CONFIG_PATH) as env_file:
         ENV: Dict[str, Any] = hjson.loads(env_file.read())
@@ -29,7 +30,7 @@ with open(os.path.join(ROOT_DIR, 'config', 'env_schema.hjson')) as schema_file:
 LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 
-# Add ENV key-value pairs to environment, skipping if the key is already set
+# Override ENV key-value pairs with values from os.environ if set
 logger.debug(os.environ)
 for key, value in ENV.items():
     if key in os.environ:
