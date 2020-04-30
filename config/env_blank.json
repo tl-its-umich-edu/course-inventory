@@ -40,8 +40,5 @@
     "dbname": "course_inventory",
     "user": "",
     "password": ""
-  },
-  "APPEND_TABLE_NAMES": [
-    "mivideo_media_started_hourly"
-  ]
+  }
 }
