@@ -12,8 +12,7 @@ class ValidJobName(Enum):
     
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
     MIVIDEO = 'mivideo.mivideo_extract.main'
-    # ONLINE_MEETINGS = 'online_meetings.report...'
-    # ZOOM = 'online_meetings.canvas_zoom_meetings...'
+    CANVAS_ZOOM_MEETINGS = 'online_meetings.canvas_zoom_meetings.main'
 
 
 class ValidDataSourceName(Enum):
@@ -25,3 +24,4 @@ class ValidDataSourceName(Enum):
     CANVAS_API = auto()
     UNIZIN_DATA_PLATFORM_EVENTS = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
+    CANVAS_ZOOM_MEETINGS = auto()
