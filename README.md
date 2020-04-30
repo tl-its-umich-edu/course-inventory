@@ -9,7 +9,7 @@
 
 The course-inventory application is designed to gather current-term Canvas LMS data about courses, 
 enrollments, users, and course activity --
-as well as data about the usage of other technologies, including BlueJeans, Zoom, and MiVideo --
+as well as data about the usage of other technologies, including Zoom, and MiVideo --
 in order to inform leadership at the University of Michigan about the usage of tools for teaching and learning.
 Currently, the application collects data from various APIs and data services managed by Unizin Consortium. 
 It then then stores the data in an external MySQL database.
