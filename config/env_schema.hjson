@@ -23,7 +23,7 @@
             "type": "array",
             "items": {
                 "type": "string",
-                "enum": ["COURSE_INVENTORY", "MIVIDEO"]
+                "enum": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"]
             }
         },
         "CREATE_CSVS": {"type": "boolean"},
