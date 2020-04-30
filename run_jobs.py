@@ -107,7 +107,7 @@ class JobManager:
 
 
 if __name__ == '__main__':
-    db_creator_obj = DBCreator(ENV['INVENTORY_DB'], ENV['APPEND_TABLE_NAMES'])
+    db_creator_obj = DBCreator(ENV['INVENTORY_DB'])
     how_started = os.environ.get('HOW_STARTED', None)
 
     if how_started == 'DOCKER_COMPOSE':

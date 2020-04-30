@@ -10,12 +10,11 @@ from environ import ENV
 logger = logging.getLogger(__name__)
 
 DB_PARAMS = ENV['INVENTORY_DB']
-APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', [])
 
 
 # Main Program
 
 if __name__ == '__main__':
     logging.basicConfig(level=ENV.get('LOG_LEVEL', 'DEBUG'))
-    db_creator_obj = DBCreator(DB_PARAMS, APPEND_TABLE_NAMES)
-    db_creator_obj.set_up_database()
+    db_creator_obj = DBCreator(DB_PARAMS)
+    db_creator_obj.reset_database()
