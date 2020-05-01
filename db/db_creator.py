@@ -21,8 +21,9 @@ MIGRATIONS_PATH = os.path.join(PARENT_PATH, 'migrations')
 
 class DBCreator:
     '''
-    Utility class for managing the application's database.
-    Leverages SQLAlchemy and yoyo-migrations.
+    Utility class for managing the application's database. Leverages SQLAlchemy
+    and yoyo-migrations. The migrate, drop_records, and reset_database methods can be
+    used fluently, i.e. with method chaining (see reset_database for an example).
     '''
 
     def __init__(self, db_params: Dict[str, str]) -> None:
