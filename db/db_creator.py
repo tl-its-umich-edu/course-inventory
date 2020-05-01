@@ -73,9 +73,11 @@ class DBCreator:
 
         if spec_table_names is None:
             # Drop all non-yoyo tables
+            logger.info('Dropping all application (non-yoyo) tables')
             drop_table_names = app_table_names
         else:
             # Drop specified table names if they're valid (i.e. an application-managed table)
+            logger.info('Dropping specific provided tables if they are valid')
             drop_table_names = []
             for spec_table_name in spec_table_names:
                 if spec_table_name in app_table_names:
