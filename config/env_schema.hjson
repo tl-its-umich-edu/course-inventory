@@ -76,20 +76,6 @@
             "required": ["service_account_json_filename"]
         },
 
-        # (TO DO: Zoom can probably be removed soon)
-        "ZOOM_CONFIG": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "EARLIEST_FROM": {"type": "string"},
-                    "BASE_URL": {"type": "string"},
-                    "API_KEY": {"type": "string"},
-                    "API_SECRET": {"type": "string"}
-                }
-            }
-        },
-
         "UDW": {"$ref": "#/definitions/db_cred_object"},
 
         # Database

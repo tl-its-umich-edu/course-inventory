@@ -33,16 +33,6 @@
         "service_account_json_filename": ""
     },
 
-    # (TO DO: Zoom can probably be removed soon)
-    "ZOOM_CONFIG": [
-        {
-            "EARLIEST_FROM": "YYYY-MM-DD",
-            "BASE_URL": "<ADD zoom.us URL>",
-            "API_KEY": "<ADD API KEY>",
-            "API_SECRET": "<ADD API SECRET>"
-        }
-    ],
-
     "UDW": {
         "host": "",
         "port": "",
