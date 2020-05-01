@@ -20,7 +20,7 @@ steps = [
             # id BIGINT AUTO_INCREMENT NOT NULL UNIQUE,
     step('''
         CREATE TABLE IF NOT EXISTS mivideo_media_courses (
-            media_id VARCHAR(20) NOT NULL UNIQUE,
+            media_id VARCHAR(20) NOT NULL,
             course_id INTEGER NOT NULL,
             in_context TINYINT(1) NOT NULL DEFAULT 0,
             PRIMARY KEY (media_id, course_id, in_context)
