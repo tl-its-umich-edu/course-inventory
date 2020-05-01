@@ -76,8 +76,8 @@ This includes the creation of a configuration file called `env.json`. Complete t
     `NUM_ASYNC_WORKERS` |   |  Number of workers for asynchronous API calls; the default is 8.
     `DEFAULT_SLEEP_TIME` |   | Amount of time to sleep between re-tries when given an HTTP 429 error and no `Retry-After` in the response headers.
     `CANVAS` | `CANVAS_ACCOUNT_ID` | The Canvas instance root account ID number associated with the courses for which data will be collected.
-    `CANVAS` | `CANVAS_TERM_IDS` | The Canvas instance term ID numbers that will be used to limit queries for Canvas courses. Set to `[]` (empty array) to only use `ADD_COURSE_IDS` (see below).
-    `CANVAS` | `ADD_COURSE_IDS` | Additional Canvas course IDs to retrieve when using `online_meetings/canvas_zoom_meetings.py`. Duplicate courses found when using also `CANVAS_TERM_IDS` will be removed.
+    `CANVAS` | `CANVAS_TERM_IDS` | The Canvas instance term ID numbers that will be used to limit queries for Canvas courses.
+    `CANVAS` | `ADD_COURSE_IDS` | Additional Canvas course IDs to retrieve when using `online_meetings/canvas_zoom_meetings.py`. Duplicate courses found also using `CANVAS_TERM_IDS` will be removed.
     `CANVAS` | `API_BASE_URL` | The base URL for making requests using the U-M API Directory; the default value should be correct.
     `CANVAS` | `API_SCOPE_PREFIX` | The scope prefix that will be added after the `API_BASE_URL`; this is usually an acronym for the university location and the API Directory subscription name in CamelCase, separated by `/`.
     `CANVAS` | `API_SUBSCRIPTION_NAME` | The name of the API Directory subscription all in lowercase.
