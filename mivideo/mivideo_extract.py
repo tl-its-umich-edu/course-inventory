@@ -6,16 +6,19 @@ Module for setting up and running the MiVideo data extract.
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Sequence, Union
 
 import pandas as pd
-import pytz
-from KalturaClient import *
-from KalturaClient.Plugins.Core import *
+from KalturaClient import KalturaConfiguration, KalturaClient
+from KalturaClient.Plugins.Core import KalturaSessionType, KalturaRequestConfiguration, \
+    KalturaMediaEntryFilter, KalturaMediaEntryOrderBy, KalturaFilterPager, KalturaMediaEntry, \
+    KalturaSessionService, KalturaMediaService
+from KalturaClient.exceptions import KalturaException
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from sqlalchemy.engine import ResultProxy
+from sqlalchemy.exc import SQLAlchemyError
 
 import mivideo.queries as queries
 from db.db_creator import DBCreator
@@ -27,13 +30,15 @@ logger = logging.getLogger(__name__)
 SHAPE_ROWS: int = 0  # Index of row count in DataFrame.shape() array
 
 
-class MiVideoExtract(object):
+class MiVideoExtract:
     '''
     Initialize the MiVideo data extract process by instantiating the ``MiVideoExtract`` class,
     then invoke its ``run()`` method.
 
     For example, ``MiVideoExtract().run()``.
     '''
+
+    DEFAULT_LAST_TIMESTAMP: str = '2020-03-01 00:00:00+00:00'
 
     def __init__(self):
         udpKeyFileName: str = ENV.get('MIVIDEO', {}).get('service_account_json_filename')
@@ -73,14 +78,18 @@ class MiVideoExtract(object):
             sql: str = f'select max(t.{tableColumnName}) from {tableName} t'
             result: ResultProxy = self.appDb.engine.execute(sql)
             lastTime = result.fetchone()[0]
-        except(Exception):
+        except SQLAlchemyError:
+            logger.info(f'Error getting max "{tableColumnName}" from "{tableName}"; '
+                        'returning None')
             lastTime = None
 
         return lastTime
 
     def mediaStartedHourly(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
         """
-        :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
+        Update data from Kaltura Caliper events stored in UDP.
+
+        :return: a dictionary with ValidDataSourceName and last run timestamp
         """
 
         tableName: str = 'mivideo_media_started_hourly'
@@ -93,9 +102,9 @@ class MiVideoExtract(object):
         if (lastTime):
             logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # 2020-03-01
-            logger.info(
-                f'"{tableName}" - Last time not found in table; using default time: "{lastTime}"')
+            lastTime = datetime.fromisoformat(self.DEFAULT_LAST_TIMESTAMP)
+            logger.info(f'"{tableName}" - Last time not found in table; '
+                        f'using default time: "{lastTime}"')
 
         logger.debug(f'"{tableName}" - Running query...')
 
@@ -131,35 +140,37 @@ class MiVideoExtract(object):
         }
 
     def mediaCreation(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
-        KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
-        # TIMESTAMP_TIME_ZONE: str = 'America/Detroit'
-        TIMESTAMP_TIME_ZONE: str = 'UTC'
+        """
+        Update data with Kaltura media metadata from Kaltura API.
 
+        :return: a dictionary with ValidDataSourceName and last run timestamp
+        """
+
+        KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
+        procedureName: str = 'mediaCreation'
+
+        # TODO: get from ENV
         kPartnerId: int = 1038472  # U of Michigan (KMC1)
         kUserId: str = 'mivideot3@umich.edu'
         kUserSecret: str = '95a4c677d53155fcb4ac441bd69bc0e9'
-        kUserType: int = KalturaSessionType.ADMIN
 
-        config = KalturaConfiguration(kPartnerId)
-        config.serviceUrl = 'https://www.kaltura.com/'
-        kClient: KalturaRequestConfiguration = KalturaClient(config)
+        kClient: KalturaRequestConfiguration = KalturaClient(KalturaConfiguration())
+        kClient.setKs(  # pylint: disable=no-member
+            KalturaSessionService(kClient).start(kUserSecret, kUserId, KalturaSessionType.ADMIN,
+                                                 kPartnerId))
+        kMedia = KalturaMediaService(kClient)
 
-        kSessionKey = kClient.session.start(kUserSecret, kUserId, kUserType, kPartnerId)
-        kClient.setKs(kSessionKey)
-
-        procedureName: str = 'mediaCreation'
-
-        lastTime: Union[datetime, None] = self._readTableLastTime('mivideo_media_created',
-                                                                  'created_at')
+        lastTime: Union[datetime, None] = (
+            self._readTableLastTime('mivideo_media_created', 'created_at'))
 
         if (lastTime):
             logger.info(f'"{procedureName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = datetime(2020, 3, 1, tzinfo=timezone.utc)  # 2020-03-01
-            logger.info(
-                f'"{procedureName}" - Last time not found in table; using default time: "{lastTime}"')
+            lastTime = datetime.fromisoformat(self.DEFAULT_LAST_TIMESTAMP)
+            logger.info(f'"{procedureName}" - Last time not found in table; '
+                        f'using default time: "{lastTime}"')
 
-        createdAtTimestamp: float = datetime.fromisoformat('2020-03-20 00:00:00-04:00').timestamp()
+        createdAtTimestamp: float = lastTime.timestamp()
 
         kFilter = KalturaMediaEntryFilter()
         kFilter.createdAtGreaterThanOrEqual = createdAtTimestamp
@@ -170,39 +181,89 @@ class MiVideoExtract(object):
         kPager.pageSize = 500  # 500 is maximum
         kPager.pageIndex = 1
 
-        mediaCount: int = 0
         results: Sequence[KalturaMediaEntry] = None
         lastCreatedAtTimestamp: Union[float, int] = createdAtTimestamp
+        lastId: Union[str, None] = None
+        numberResults: int = 0
+        queryPageNumber: int = kPager.pageIndex  # for logging purposes
+        totalNumberResults: int = numberResults  # for logging purposes
 
         while True:
             try:
-                results = kClient.media.list(kFilter, kPager).objects
-            except Exception as kException:
+                results = kMedia.list(kFilter, kPager).objects
+            except KalturaException as kException:
                 if (KALTURA_MAX_MATCHES_ERROR in kException.args):
-                    # set new filter timestamp and reset pager, then continue
-                    # add one second to avoid dupes, but could it skip media with similar timestamp?
-                    # maybe use DB functions to silently skip dupes instead
-                    kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp + 1
+                    # set new filter timestamp, reset pager to page 1, then continue
+                    kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp
+                    logger.debug(f'new filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
+
+                    # to avoid dupes, also filter out the last ID returned by previous query
+                    # because Kaltura compares createdAt greater than *or equal* to timestamp
+                    kFilter.idNotIn = lastId
                     kPager.pageIndex = 1
                     continue
-                else:
-                    logger.debug(f'Other Kaltura API error: "{kException}"')
-                    break
 
-            for media in results:
-                mediaCount += 1
-                logger.debug([
-                    media.id,
-                    datetime.fromtimestamp(media.createdAt,
-                                           pytz.timezone(TIMESTAMP_TIME_ZONE)).isoformat(),
-                    media.name, media.duration, media.categories])
+                logger.debug(f'Other Kaltura API error: "{kException}"')
+                break
 
-            lastCreatedAtTimestamp = results[-1].createdAt
+            numberResults = len(results)
+            logger.debug(f'Query page ({queryPageNumber}); number of results: ({numberResults})')
 
-            if (len(results) < kPager.pageSize):
+            if (numberResults > 0):
+                resultDictionaries: Sequence[Dict] = tuple(r.__dict__ for r in results)
+
+                creationData: pd.DataFrame = pd.DataFrame.from_records(
+                    resultDictionaries, columns=('id', 'createdAt', 'name', 'duration',)
+                ).rename(columns={'createdAt': 'created_at'})
+
+                logger.debug(creationData)
+
+                creationData['created_at'] = pd.to_datetime(creationData['created_at'], unit='s')
+
+                # creationData.to_sql(
+                #     'mivideo_media_created', self.appDb.engine, if_exists='append', index=False)
+
+                courseData: pd.DataFrame = pd.DataFrame.from_records(
+                    resultDictionaries, columns=('id', 'categories',)
+                ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
+
+                courseData = courseData.assign(
+                    course_id=courseData['course_id'].str.split(',')).explode('course_id')
+
+                courseData['in_context'] = [
+                    c.endswith('>InContext') for c in courseData['course_id']]
+
+                logger.debug((courseData.iloc[75]['course_id']))
+                logger.debug((courseData.iloc[76]['course_id']))
+
+                courseData['course_id'] = (
+                    courseData['course_id'].str
+                        .replace('>InContext$', '', regex=True)
+                        .replace('^.*>', '', regex=True))
+
+                # drop non-decimal IDs
+                # (e.g., from category "Canvas_UMich>site>channels>Shared Repository")
+                courseData = courseData[courseData['course_id'].str.isdecimal()].drop_duplicates()
+
+                logger.debug(courseData)
+
+                courseData.to_sql(
+                    'mivideo_media_courses', self.appDb.engine, if_exists='append', index=False)
+
+                # TODO: figure out how to make subsequent DB updates skip existing course/media values
+                break
+
+                lastCreatedAtTimestamp = results[-1].createdAt
+                lastId = results[-1].id
+                totalNumberResults += numberResults
+
+            if (numberResults < kPager.pageSize):
                 break
 
             kPager.pageIndex += 1
+            queryPageNumber += 1
+
+        logger.info(f'Total number of results: ({totalNumberResults})')
 
         return {
             'data_source_name': ValidDataSourceName.KALTURA_API,
@@ -210,6 +271,11 @@ class MiVideoExtract(object):
         }
 
     def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+        '''
+        The main controller that runs each method required to update the data.
+
+        :return: List of dictionaries (keys 'data_source_name' and 'data_updated_at')
+        '''
         return [
             # self.mediaStartedHourly(),
             self.mediaCreation(),
