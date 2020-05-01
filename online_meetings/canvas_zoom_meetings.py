@@ -205,7 +205,7 @@ def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
     zoom_courses_meetings_df.index.name = "id"
 
-    zoom_courses_df.to_csv(os.path.join(DATA_DIR + "zoom_courses.csv"))
+    zoom_courses_df.to_csv(os.path.join(DATA_DIR, "zoom_courses.csv"))
     zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
     return [{
         'data_source_name': ValidDataSourceName.CANVAS_ZOOM_MEETINGS,
