@@ -32,7 +32,6 @@
         # API request behavior
         "MAX_REQ_ATTEMPTS": {"type": "integer"},
         "NUM_ASYNC_WORKERS": {"type": "integer"},
-        "DEFAULT_SLEEP_TIME": {"type": "integer"}, # We might be able to remove this with Zoom stuff
 
         # Data sources
 
