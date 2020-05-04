@@ -1,7 +1,7 @@
 # standard libraries
 import json, logging, os, sys
 from json.decoder import JSONDecodeError
-from typing import Dict, Any
+from typing import Any, Dict
 
 # third-party libraries
 import hjson
@@ -10,12 +10,11 @@ from jsonschema import validate
 
 logger = logging.getLogger(__name__)
 
-# Set up path
+# Set up path variables
 ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
 DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
 CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.hjson'))
-
 
 # Set up ENV and ENV_SCHEMA
 try:
