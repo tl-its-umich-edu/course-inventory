@@ -79,18 +79,10 @@
         "UDW": {"$ref": "#/definitions/db_cred_object"},
 
         # Database
-        "INVENTORY_DB": {"$ref": "#/definitions/db_cred_object"},
-        "APPEND_TABLE_NAMES": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "enum": ["mivideo_media_started_hourly"]
-            }
-        }
+        "INVENTORY_DB": {"$ref": "#/definitions/db_cred_object"}
     },
     "required": [
         "JOB_NAMES",
-        "INVENTORY_DB",
-        "APPEND_TABLE_NAMES"
+        "INVENTORY_DB"
     ]
 }
