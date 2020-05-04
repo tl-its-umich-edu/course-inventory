@@ -92,8 +92,6 @@ a more lenient and customizable variant of JSON. Complete the following items in
     `MIVIDEO` | `service_account_json_filename` | The name of the JSON credential file for accessing UDP's Google BigQuery service account.  This file name is appended to the value of `ENV_DIR` (which is `/config/secrets`, by default) to determine the full path to the file.<br/><br/>If this key's value is set to `umich-its-tl-reports-prod.json` and `ENV_DIR` has its default value, the full path to the file will be `/config/secrets/umich-its-tl-reports-prod.json`.
     `UDW` |   | An object containing the necessary credential information for connecting to the Unizin Data Warehouse, where data will be pulled from.
     `INVENTORY_DB` |   | An object containing the necessary credential information for connecting to a MySQL database, where output data will be inserted.
-    `APPEND_TABLE_NAMES` |   | An array of strings identifying tables that accumulate data and from which records should never be dropped programmatically.
-
 
 ### Installation & Usage
 

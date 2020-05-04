@@ -40,19 +40,23 @@ NUM_ASYNC_WORKERS = ENV.get('NUM_ASYNC_WORKERS', 8)
 CREATE_CSVS = ENV.get('CREATE_CSVS', False)
 
 INVENTORY_DB = ENV['INVENTORY_DB']
-APPEND_TABLE_NAMES = ENV.get('APPEND_TABLE_NAMES', ['mivideo_media_started_hourly'])
 
 CANVAS_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 
 # Function(s) - Canvas
 
-def make_request_using_api_utils(url: str, params: Dict[str, Any] = {}) -> Response:
+def make_request_using_api_utils(url: str, params: Union[Dict[str, Any], None] = None) -> Response:
+    if params is None:
+        request_params = {}
+    else:
+        request_params = params
+
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
         logger.debug(f'Attempt #{i}')
-        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=request_params)
         status_code = response.status_code
 
         if status_code != 200:
@@ -344,11 +348,13 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         logger.info('Wrote data to data/canvas_course_usage.csv')
 
     # Initialize DBCreator object
-    db_creator_obj = DBCreator(INVENTORY_DB, APPEND_TABLE_NAMES)
+    db_creator_obj = DBCreator(INVENTORY_DB)
 
-    # Empty tables (if any) in database
-    logger.info('Emptying tables in DB')
-    db_creator_obj.drop_records()
+    # Empty records from Canvas data tables in database
+    logger.info('Emptying Canvas data tables in DB')
+    db_creator_obj.drop_records(
+        ['course', 'canvas_course_usage', 'course_section', 'enrollment', 'term', 'user']
+    )
 
     # Insert gathered data
     logger.info(f'Inserting {num_term_records} term records to DB')

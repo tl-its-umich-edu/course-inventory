@@ -1,0 +1,44 @@
+{
+  "LOG_LEVEL": "DEBUG",
+  "JOB_NAMES": ["COURSE_INVENTORY"],
+  "CANVAS_ACCOUNT_ID": 1,
+  "CANVAS_TERM_IDS": [164],
+  "ADD_COURSE_IDS": [],
+  "API_BASE_URL": "https://apigw.it.umich.edu/um",
+  "API_SCOPE_PREFIX": "",
+  "API_SUBSCRIPTION_NAME": "",
+  "API_CLIENT_ID": "",
+  "API_CLIENT_SECRET": "",
+  "MAX_REQ_ATTEMPTS": 3,
+  "CANVAS_URL": "",
+  "CANVAS_TOKEN": "",
+  "NUM_ASYNC_WORKERS": 8,
+  "ZOOM_CONFIG": [
+    {
+      "EARLIEST_FROM": "YYYY-MM-DD",
+      "BASE_URL": "<ADD zoom.us URL>",
+      "API_KEY": "<ADD API KEY>",
+      "API_SECRET": "<ADD API SECRET>"
+    }
+  ],
+  "MIVIDEO": {
+    "service_account_json_filename": "umich-its-tl-reports-prod.json"
+  },
+  "DEFAULT_SLEEP_TIME": 10,
+  "WAREHOUSE_INCREMENT": 0,
+  "UDW": {
+    "host": "",
+    "port": "",
+    "dbname": "",
+    "user": "",
+    "password": ""
+  },
+  "CREATE_CSVS": false,
+  "INVENTORY_DB": {
+    "host": "",
+    "port": "",
+    "dbname": "course_inventory",
+    "user": "",
+    "password": ""
+  }
+}
