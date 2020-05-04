@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # standard libraries
 import logging, os
-from typing import Dict, List
+from typing import Dict, List, Union
 from urllib.parse import quote_plus
 
 # third-party libraries
@@ -27,7 +27,7 @@ class DBCreator:
     def __init__(
         self,
         db_params: Dict[str, str],
-        append_table_names: List[str] = []
+        append_table_names: Union[List[str], None] = None
     ) -> None:
 
         self.db_name: str = db_params['dbname']
@@ -41,8 +41,9 @@ class DBCreator:
         )
         self.engine: Engine = create_engine(self.conn_str)
 
-        self.append_table_names: List[str] = append_table_names
-        self.append_table_names += DEFAULT_APPEND_TABLE_NAMES
+        self.append_table_names: List[str] = DEFAULT_APPEND_TABLE_NAMES
+        if append_table_names is not None:
+            self.append_table_names += append_table_names
 
     def get_table_names(self) -> List[str]:
         logger.debug('get_table_names')
