@@ -5,36 +5,18 @@ import logging
 import math
 import os
 import re
-import sys
-from datetime import datetime
+import time
 from typing import Dict, List, Optional, Sequence, Union
 
 import canvasapi
 import pandas as pd
 import requests
-import yaml
 from bs4 import BeautifulSoup as bs
 
-# read configurations
-try:
-    with open(os.path.join(os.path.dirname(__file__), '../config/secrets/env.json')) as env_file:
-        ENV = yaml.safe_load(env_file.read())
-except FileNotFoundError:
-    sys.exit(
-        'Configuration file could not be found; please add env.json to the config directory.')
+from environ import ENV, DATA_DIR
+from vocab import ValidDataSourceName
 
-LOG_LEVEL = ENV.get('LOG_LEVEL', 'DEBUG')
-logging.basicConfig(level=LOG_LEVEL)
-
-# You must initialize logging, otherwise you'll not see debug output.
 logger = logging.getLogger(__name__)
-logger.setLevel(LOG_LEVEL)
-
-requests_log = logging.getLogger("requests.packages.urllib3")
-requests_log.setLevel(LOG_LEVEL)
-requests_log.propagate = True
-# Global variable to access Canvas
-CANVAS = canvasapi.Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
 
 
 class ZoomPlacements:
@@ -43,6 +25,7 @@ class ZoomPlacements:
 
     def __init__(self):
         self.zoom_session = requests.Session()
+        self.canvas = canvasapi.Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
 
     def get_zoom_json(self, **kwargs) -> Optional[Dict]:
         """Retrieves data directly from Zoom. You need to have zoom_session already setup
@@ -138,7 +121,7 @@ class ZoomPlacements:
             if (tab.label == "Zoom" and not hasattr(tab, "hidden")):
                 logger.info("Found a course with zoom as %s", tab.id)
 
-                r = CANVAS._Canvas__requester.request("GET", _url=tab.url)
+                r = self.canvas._Canvas__requester.request("GET", _url=tab.url)
                 external_url = r.json().get("url")
                 r = requests.get(external_url)
                 # Parse out the form from the response
@@ -165,15 +148,15 @@ class ZoomPlacements:
         canvas_account: int = 1,
         enrollment_term_ids: Union[Sequence[int], None] = None,
         published: bool = True,
-        add_course_ids: list = None
+        add_course_ids: Union[List[int], None] = None
     ) -> None:
 
-        account = CANVAS.get_account(canvas_account)
+        account = self.canvas.get_account(canvas_account)
         # Canvas has a limit of 100 per page on this API
         per_page = 100
 
         # Get all published courses from the defined enrollment terms
-        courses = []
+        courses: List[canvasapi.course.Course] = []
         if enrollment_term_ids is not None:
             for enrollment_term_id in enrollment_term_ids:
                 logger.info(f'Fetching published course data for term {enrollment_term_id}')
@@ -199,24 +182,30 @@ class ZoomPlacements:
         # If there are course_ids passed in, also process those
         if add_course_ids:
             for course_id in add_course_ids:
-                self.get_zoom_course(CANVAS.get_course(course_id))
+                self.get_zoom_course(self.canvas.get_course(course_id))
         return None
 
 
-start_time = datetime.now()
-logger.info(f"Script started at {start_time}")
-zoom_placements = ZoomPlacements()
-zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_IDS", []),
-                                   True, ENV.get("ADD_COURSE_IDS", []))
+def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    '''
+    This method is invoked when its module is executed as a standalone program.
+    '''
+    zoom_placements = ZoomPlacements()
+    zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_IDS", []),
+                                       True, ENV.get("ADD_COURSE_IDS", []))
 
-zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
-zoom_courses_df.index.name = "id"
-zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
-zoom_courses_meetings_df.index.name = "id"
+    zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
+    zoom_courses_df.index.name = "id"
+    zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
+    zoom_courses_meetings_df.index.name = "id"
 
-zoom_courses_df.to_csv("zoom_courses.csv")
-zoom_courses_meetings_df.to_csv("zoom_courses_meetings.csv")
+    zoom_courses_df.to_csv(os.path.join(DATA_DIR, "zoom_courses.csv"))
+    zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
+    return [{
+        'data_source_name': ValidDataSourceName.CANVAS_ZOOM_MEETINGS,
+        'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
+    }]
 
-end_time = datetime.now()
-logger.info(f"Script finished at {start_time}")
-logging.info('Duration: {}'.format(end_time - start_time))
+
+if '__main__' == __name__:
+    main()

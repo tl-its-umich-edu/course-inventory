@@ -43,12 +43,17 @@ CANVAS_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 # Function(s) - Canvas
 
-def make_request_using_api_utils(url: str, params: Dict[str, Any] = {}) -> Response:
+def make_request_using_api_utils(url: str, params: Union[Dict[str, Any], None] = None) -> Response:
+    if params is None:
+        request_params = {}
+    else:
+        request_params = params
+
     logger.debug('Making a request for data...')
 
     for i in range(1, MAX_REQ_ATTEMPTS + 1):
         logger.debug(f'Attempt #{i}')
-        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=params)
+        response = API_UTIL.api_call(url, SUBSCRIPTION_NAME, payload=request_params)
         status_code = response.status_code
 
         if status_code != 200:
