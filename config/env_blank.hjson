@@ -1,0 +1,56 @@
+{
+    # A blank version of env.hjson with null or empty values, or suggested ones when not sensitive
+  
+    # Global
+    "LOG_LEVEL": "INFO",
+    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"],
+    "CREATE_CSVS": false,
+
+    # API request behavior
+    "MAX_REQ_ATTEMPTS": 3,
+    "NUM_ASYNC_WORKERS": 8,
+
+    # Data sources
+
+    "CANVAS": {
+        # Filters
+        "CANVAS_ACCOUNT_ID": 1,
+        "CANVAS_TERM_IDS": [164],
+        "ADD_COURSE_IDS": [],
+        # UM API Directory
+        "API_BASE_URL": "https://apigw.it.umich.edu/um",
+        "API_SCOPE_PREFIX": "",
+        "API_SUBSCRIPTION_NAME": "",
+        "API_CLIENT_ID": "",
+        "API_CLIENT_SECRET": "",
+        # Canvas API
+        "CANVAS_URL": "",
+        "CANVAS_TOKEN": ""
+    },
+
+    "MIVIDEO": {
+        "default_last_timestamp": "2020-03-01 00:00:00+00:00",
+        "udp_service_account_json_filename": "umich-its-tl-reports-prod.json",
+        "kaltura_partner_id": -1,
+        "kaltura_user_id": "shared_kaltura_email_group_name_here@umich.edu",
+        "kaltura_user_secret": "kaltura_authentication_secret_here"
+    },
+
+
+    "UDW": {
+        "host": "",
+        "port": "",
+        "dbname": "",
+        "user": "",
+        "password": ""
+    },
+
+    # Database
+    "INVENTORY_DB": {
+        "host": "",
+        "port": "",
+        "dbname": "course_inventory",
+        "user": "",
+        "password": ""
+    }
+}

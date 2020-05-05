@@ -47,15 +47,17 @@ class MiVideoExtract:
 
         dbParams: Dict = ENV['INVENTORY_DB']
         appendTableNames: List[str] = ENV.get(
-            'APPEND_TABLE_NAMES', ['mivideo_media_started_hourly']
-        )
+            'APPEND_TABLE_NAMES', [
+                'mivideo_media_started_hourly',
+                'mivideo_media_created', 'mivideo_media_courses',
+            ])
 
         self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
 
     def __udpInit(self):
-        udpKeyFileName: str = self.mivideoEnv.get('service_account_json_filename')
+        udpKeyFileName: str = self.mivideoEnv.get('udp_service_account_json_filename')
         if (udpKeyFileName is None):
-            errorMessage: str = (f'"MIVIDEO.service_account_json_filename" '
+            errorMessage: str = (f'"MIVIDEO.udp_service_account_json_filename" '
                                  f'was not found in {CONFIG_PATH}')
             logger.error(errorMessage)
             raise ValueError(errorMessage)

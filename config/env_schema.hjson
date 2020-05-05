@@ -1,0 +1,87 @@
+{
+    # JSON Schema Docs: https://json-schema.org/understanding-json-schema/
+    "id": "course-inventory-env-schema.tl.it.umich.edu",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "definitions": {
+        # Schema for database credential objects
+        "db_cred_object": {
+            "type": "object",
+            "properties": {
+                "host": {"type": "string"},
+                "port": {"type": "string"},
+                "dbname": {"type": "string"},
+                "user": {"type": "string"},
+                "password": {"type": "string"}
+            },
+            "required": ["host", "port", "dbname", "user", "password"]
+        }             
+    },
+    "properties": {
+        # Global
+        "LOG_LEVEL": {"type": "string"},
+        "JOB_NAMES": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"]
+            }
+        },
+        "CREATE_CSVS": {"type": "boolean"},
+
+        # API request behavior
+        "MAX_REQ_ATTEMPTS": {"type": "integer"},
+        "NUM_ASYNC_WORKERS": {"type": "integer"},
+
+        # Data sources
+
+        "CANVAS": {
+            "type": "object",
+            "properties": {
+                # Canvas filters
+                "CANVAS_ACCOUNT_ID": {"type": "integer"},
+                "CANVAS_TERM_IDS": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 1
+                },
+                "ADD_COURSE_IDS": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                }
+                # UM API Directory
+                "API_BASE_URL": {"type": "string"},
+                "API_SCOPE_PREFIX": {"type": "string"},
+                "API_SUBSCRIPTION_NAME": {"type": "string"},
+                "API_CLIENT_ID": {"type": "string"},
+                "API_CLIENT_SECRET": {"type": "string"},
+                # Canvas API
+                "CANVAS_URL": {"type": "string"},
+                "CANVAS_TOKEN": {"type": "string"},
+            },
+            "required": [
+                "CANVAS_ACCOUNT_ID",
+                "CANVAS_TERM_IDS",
+                "CANVAS_URL",
+                "CANVAS_TOKEN"
+            ]
+        }
+
+        "MIVIDEO": {
+            "type": "object",
+            "properties": {
+                "service_account_json_filename": {"type": "string"}
+            },
+            "required": ["service_account_json_filename"]
+        },
+
+        "UDW": {"$ref": "#/definitions/db_cred_object"},
+
+        # Database
+        "INVENTORY_DB": {"$ref": "#/definitions/db_cred_object"}
+    },
+    "required": [
+        "JOB_NAMES",
+        "INVENTORY_DB"
+    ]
+}
