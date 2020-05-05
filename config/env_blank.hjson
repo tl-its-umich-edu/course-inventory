@@ -1,0 +1,51 @@
+{
+    # A blank version of env.hjson with null or empty values, or suggested ones when not sensitive
+  
+    # Global
+    "LOG_LEVEL": "INFO",
+    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"],
+    "CREATE_CSVS": false,
+
+    # API request behavior
+    "MAX_REQ_ATTEMPTS": 3,
+    "NUM_ASYNC_WORKERS": 8,
+
+    # Data sources
+
+    "CANVAS": {
+        # Filters
+        "CANVAS_ACCOUNT_ID": 1,
+        "CANVAS_TERM_IDS": [164],
+        "ADD_COURSE_IDS": [],
+        # UM API Directory
+        "API_BASE_URL": "https://apigw.it.umich.edu/um",
+        "API_SCOPE_PREFIX": "",
+        "API_SUBSCRIPTION_NAME": "",
+        "API_CLIENT_ID": "",
+        "API_CLIENT_SECRET": "",
+        # Canvas API
+        "CANVAS_URL": "",
+        "CANVAS_TOKEN": ""
+    },
+
+    "MIVIDEO": {
+        "service_account_json_filename": "umich-its-tl-reports-prod.json"
+    },
+
+    "UDW": {
+        "host": "",
+        "port": "",
+        "dbname": "",
+        "user": "",
+        "password": ""
+    },
+
+    # Database
+    "INVENTORY_DB": {
+        "host": "",
+        "port": "",
+        "dbname": "course_inventory",
+        "user": "",
+        "password": ""
+    }
+}

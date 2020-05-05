@@ -1,31 +1,36 @@
 # standard libraries
-import json
-import logging
-import os
+import json, logging, os, sys
 from json.decoder import JSONDecodeError
-from typing import Dict
+from typing import Any, Dict
 
-# Set up ENV
-# entry-level job modules need to be one-level beneath root
-ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
-CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
-DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
-CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.json'))
+# third-party libraries
+import hjson
+from jsonschema import validate
+
 
 logger = logging.getLogger(__name__)
 
+# Set up path variables
+ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
+CONFIG_DIR: str = os.path.join(ROOT_DIR, os.getenv('ENV_DIR', os.path.join('config', 'secrets')))
+DATA_DIR: str = os.path.join(ROOT_DIR, os.path.join("data"))
+CONFIG_PATH: str = os.path.join(CONFIG_DIR, os.getenv('ENV_FILE', 'env.hjson'))
+
+# Set up ENV and ENV_SCHEMA
 try:
     with open(CONFIG_PATH) as env_file:
-        ENV: Dict = json.loads(env_file.read())
+        ENV: Dict[str, Any] = hjson.loads(env_file.read())
 except FileNotFoundError:
-    logger.error(
-        f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
+    logger.error(f'Configuration file could not be found; please add file "{CONFIG_PATH}".')
     ENV = dict()
+
+with open(os.path.join(ROOT_DIR, 'config', 'env_schema.hjson')) as schema_file:
+    ENV_SCHEMA: Dict[str, Any] = hjson.loads(schema_file.read())
 
 LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(level=LOG_LEVEL)
 
-# Add ENV key-value pairs to environment, skipping if the key is already set
+# Override ENV key-value pairs with values from os.environ if set
 logger.debug(os.environ)
 for key, value in ENV.items():
     if key in os.environ:
@@ -40,3 +45,12 @@ for key, value in ENV.items():
         logger.info(f'key: {key}; os_value: {os_value}')
 
 logger.debug(ENV)
+
+# Validate ENV using ENV_SCHEMA
+try:
+    validate(instance=ENV, schema=ENV_SCHEMA)
+    logger.info('ENV is valid; the program will continue')
+except Exception as e:
+    logger.error(e)
+    logger.error('ENV is invalid; the program will exit')
+    sys.exit(1)

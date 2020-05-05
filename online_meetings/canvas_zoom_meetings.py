@@ -18,6 +18,8 @@ from vocab import ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
+CANVAS_ENV = ENV.get('CANVAS', {})
+
 
 class ZoomPlacements:
     zoom_courses: List[Dict] = []
@@ -25,7 +27,7 @@ class ZoomPlacements:
 
     def __init__(self):
         self.zoom_session = requests.Session()
-        self.canvas = canvasapi.Canvas(ENV.get("CANVAS_URL"), ENV.get("CANVAS_TOKEN"))
+        self.canvas = canvasapi.Canvas(CANVAS_ENV.get("CANVAS_URL"), CANVAS_ENV.get("CANVAS_TOKEN"))
 
     def get_zoom_json(self, **kwargs) -> Optional[Dict]:
         """Retrieves data directly from Zoom. You need to have zoom_session already setup
@@ -191,8 +193,12 @@ def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     This method is invoked when its module is executed as a standalone program.
     '''
     zoom_placements = ZoomPlacements()
-    zoom_placements.zoom_course_report(ENV.get("CANVAS_ACCOUNT_ID", 1), ENV.get("CANVAS_TERM_IDS", []),
-                                       True, ENV.get("ADD_COURSE_IDS", []))
+    zoom_placements.zoom_course_report(
+        CANVAS_ENV.get("CANVAS_ACCOUNT_ID", 1),
+        CANVAS_ENV.get("CANVAS_TERM_IDS", []),
+        True,
+        CANVAS_ENV.get("ADD_COURSE_IDS", [])
+    )
 
     zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
     zoom_courses_df.index.name = "id"
