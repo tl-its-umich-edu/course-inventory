@@ -2,22 +2,22 @@
 '''
 Module for setting up and running the MiVideo data extract.
 '''
-
 import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, Sequence, Union
+from typing import Dict, Iterable, List, Sequence, Union
 
 import pandas as pd
-from KalturaClient import KalturaConfiguration, KalturaClient
-from KalturaClient.Plugins.Core import KalturaSessionType, KalturaRequestConfiguration, \
-    KalturaMediaEntryFilter, KalturaMediaEntryOrderBy, KalturaFilterPager, KalturaMediaEntry, \
-    KalturaSessionService, KalturaMediaService
+from KalturaClient import KalturaClient, KalturaConfiguration
+from KalturaClient.Plugins.Core import KalturaFilterPager, KalturaMediaEntry, \
+    KalturaMediaEntryFilter, KalturaMediaEntryOrderBy, KalturaMediaService, \
+    KalturaRequestConfiguration, KalturaSessionService, KalturaSessionType
 from KalturaClient.exceptions import KalturaException
 from google.cloud import bigquery
 from google.oauth2 import service_account
-from sqlalchemy.engine import ResultProxy
+from pandas.io.sql import SQLTable
+from sqlalchemy.engine import Connection, ResultProxy
 from sqlalchemy.exc import SQLAlchemyError
 
 import mivideo.queries as queries
@@ -38,10 +38,22 @@ class MiVideoExtract:
     For example, ``MiVideoExtract().run()``.
     '''
 
-    DEFAULT_LAST_TIMESTAMP: str = '2020-03-01 00:00:00+00:00'
-
     def __init__(self):
-        udpKeyFileName: str = ENV.get('MIVIDEO', {}).get('service_account_json_filename')
+        self.mivideoEnv: Dict = ENV.get('MIVIDEO', {})
+        self.__udpInit()
+        self.__kalturaInit()
+        self.defaultLastTimestamp: str = \
+            self.mivideoEnv.get('default_last_timestamp', '2020-03-01 00:00:00+00:00')
+
+        dbParams: Dict = ENV['INVENTORY_DB']
+        appendTableNames: List[str] = ENV.get(
+            'APPEND_TABLE_NAMES', ['mivideo_media_started_hourly']
+        )
+
+        self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
+
+    def __udpInit(self):
+        udpKeyFileName: str = self.mivideoEnv.get('service_account_json_filename')
         if (udpKeyFileName is None):
             errorMessage: str = (f'"MIVIDEO.service_account_json_filename" '
                                  f'was not found in {CONFIG_PATH}')
@@ -64,14 +76,18 @@ class MiVideoExtract:
 
         logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
 
-        dbParams: Dict = ENV['INVENTORY_DB']
-        appendTableNames: Sequence[str] = ENV.get(
-            'APPEND_TABLE_NAMES', ['mivideo_media_started_hourly']
-        )
+    def __kalturaInit(self):
+        self.kPartnerId: int = self.mivideoEnv.get('kaltura_partner_id')
+        self.kUserId: str = self.mivideoEnv.get('kaltura_user_id')
+        self.kUserSecret: str = self.mivideoEnv.get('kaltura_user_secret')
+        if (None in (self.kPartnerId, self.kUserId, self.kUserSecret)):
+            errorMessage: str = (
+                f'"kaltura_partner_id", "kaltura_user_id", and "kaltura_user_secret" '
+                f'must be set under the "MIVIDEO" property in {CONFIG_PATH}')
+            logger.error(errorMessage)
+            raise ValueError(errorMessage)
 
-        self.appDb: DBCreator = DBCreator(dbParams, appendTableNames)
-
-    def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
+    def __readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
         lastTime: Union[datetime, None]
 
         try:
@@ -96,13 +112,13 @@ class MiVideoExtract:
 
         logger.info(f'"{tableName}" - Starting procedure...')
 
-        lastTime: Union[datetime, None] = self._readTableLastTime(tableName,
-                                                                  'event_time_utc_latest')
+        lastTime: Union[datetime, None] = self.__readTableLastTime(tableName,
+                                                                   'event_time_utc_latest')
 
         if (lastTime):
             logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = datetime.fromisoformat(self.DEFAULT_LAST_TIMESTAMP)
+            lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
             logger.info(f'"{tableName}" - Last time not found in table; '
                         f'using default time: "{lastTime}"')
 
@@ -139,6 +155,28 @@ class MiVideoExtract:
             'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
         }
 
+    @staticmethod
+    def __queryRunner(
+            pandasTable: SQLTable,
+            dbConn: Connection,
+            columnNameList: Sequence[str],
+            data: Iterable):
+        '''
+        This handles the fairly rare occurrence of conflicting keys when
+        inserting data into a table.
+        '''
+
+        tableFullName = pandasTable.name
+        if (pandasTable.schema):
+            tableFullName = f'{pandasTable.schema}.{tableFullName}'
+        columnNames = ', '.join(columnNameList)
+        valuePlaceholders = ', '.join(['%s'] * len(columnNameList))
+
+        sql = f'INSERT INTO {tableFullName} ({columnNames}) VALUES ({valuePlaceholders}) ' \
+              f'ON DUPLICATE KEY UPDATE {columnNameList[0]}={columnNameList[0]}'  # magic
+
+        dbConn.execute(sql, list(data))
+
     def mediaCreation(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
         """
         Update data with Kaltura media metadata from Kaltura API.
@@ -149,24 +187,19 @@ class MiVideoExtract:
         KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
         procedureName: str = 'mediaCreation'
 
-        # TODO: get from ENV
-        kPartnerId: int = 1038472  # U of Michigan (KMC1)
-        kUserId: str = 'mivideot3@umich.edu'
-        kUserSecret: str = '95a4c677d53155fcb4ac441bd69bc0e9'
-
         kClient: KalturaRequestConfiguration = KalturaClient(KalturaConfiguration())
         kClient.setKs(  # pylint: disable=no-member
-            KalturaSessionService(kClient).start(kUserSecret, kUserId, KalturaSessionType.ADMIN,
-                                                 kPartnerId))
+            KalturaSessionService(kClient).start(
+                self.kUserSecret, self.kUserId, KalturaSessionType.ADMIN, self.kPartnerId))
         kMedia = KalturaMediaService(kClient)
 
         lastTime: Union[datetime, None] = (
-            self._readTableLastTime('mivideo_media_created', 'created_at'))
+            self.__readTableLastTime('mivideo_media_created', 'created_at'))
 
         if (lastTime):
             logger.info(f'"{procedureName}" - Last time found in table: "{lastTime}"')
         else:
-            lastTime = datetime.fromisoformat(self.DEFAULT_LAST_TIMESTAMP)
+            lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
             logger.info(f'"{procedureName}" - Last time not found in table; '
                         f'using default time: "{lastTime}"')
 
@@ -212,46 +245,15 @@ class MiVideoExtract:
             if (numberResults > 0):
                 resultDictionaries: Sequence[Dict] = tuple(r.__dict__ for r in results)
 
-                creationData: pd.DataFrame = pd.DataFrame.from_records(
-                    resultDictionaries, columns=('id', 'createdAt', 'name', 'duration',)
-                ).rename(columns={'createdAt': 'created_at'})
+                creationData: pd.DataFrame = self.__makeCreationData(resultDictionaries)
 
-                logger.debug(creationData)
+                creationData.to_sql(
+                    'mivideo_media_created', self.appDb.engine, if_exists='append', index=False)
 
-                creationData['created_at'] = pd.to_datetime(creationData['created_at'], unit='s')
+                courseData: pd.DataFrame = self.__makeCourseData(resultDictionaries)
 
-                # creationData.to_sql(
-                #     'mivideo_media_created', self.appDb.engine, if_exists='append', index=False)
-
-                courseData: pd.DataFrame = pd.DataFrame.from_records(
-                    resultDictionaries, columns=('id', 'categories',)
-                ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
-
-                courseData = courseData.assign(
-                    course_id=courseData['course_id'].str.split(',')).explode('course_id')
-
-                courseData['in_context'] = [
-                    c.endswith('>InContext') for c in courseData['course_id']]
-
-                logger.debug((courseData.iloc[75]['course_id']))
-                logger.debug((courseData.iloc[76]['course_id']))
-
-                courseData['course_id'] = (
-                    courseData['course_id'].str
-                        .replace('>InContext$', '', regex=True)
-                        .replace('^.*>', '', regex=True))
-
-                # drop non-decimal IDs
-                # (e.g., from category "Canvas_UMich>site>channels>Shared Repository")
-                courseData = courseData[courseData['course_id'].str.isdecimal()].drop_duplicates()
-
-                logger.debug(courseData)
-
-                courseData.to_sql(
-                    'mivideo_media_courses', self.appDb.engine, if_exists='append', index=False)
-
-                # TODO: figure out how to make subsequent DB updates skip existing course/media values
-                break
+                courseData.to_sql('mivideo_media_courses', self.appDb.engine, if_exists='append',
+                                  index=False, method=self.__queryRunner)
 
                 lastCreatedAtTimestamp = results[-1].createdAt
                 lastId = results[-1].id
@@ -269,6 +271,42 @@ class MiVideoExtract:
             'data_source_name': ValidDataSourceName.KALTURA_API,
             'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
         }
+
+    @staticmethod
+    def __makeCourseData(resultDictionaries) -> pd.DataFrame:
+        courseData: pd.DataFrame = pd.DataFrame.from_records(
+            resultDictionaries, columns=('id', 'categories',)
+        ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
+
+        courseData = courseData.assign(
+            course_id=courseData['course_id'].str.split(',')).explode('course_id')
+
+        courseData['in_context'] = [
+            c.endswith('>InContext') for c in courseData['course_id']]
+
+        courseData['course_id'] = courseData['course_id'].str \
+            .replace(r'^.*>([0-9]+).*$', lambda m: m.groups()[0], regex=True)
+
+        # find and drop non-decimal course IDs
+        # (e.g., like category "Canvas_UMich>site>channels>Shared Repository")
+        badCourseIds = \
+            courseData[courseData['course_id'].str.contains('[^0-9]', regex=True)]
+        if (badCourseIds.any):
+            logger.debug(f'Non-numeric course IDs to be removed:\n{badCourseIds}')
+
+        courseData = courseData[courseData['course_id'].str.isdecimal()].drop_duplicates()
+
+        return courseData
+
+    @staticmethod
+    def __makeCreationData(resultDictionaries) -> pd.DataFrame:
+        creationData: pd.DataFrame = pd.DataFrame.from_records(
+            resultDictionaries, columns=('id', 'createdAt', 'name', 'duration',)
+        ).rename(columns={'createdAt': 'created_at'})
+
+        creationData['created_at'] = pd.to_datetime(creationData['created_at'], unit='s')
+
+        return creationData
 
     def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
         '''
