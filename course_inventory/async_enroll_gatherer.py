@@ -1,6 +1,6 @@
 # standard libraries
 import copy, json, logging
-from typing import Dict, Sequence, Tuple
+from typing import Any, Dict, Sequence, Tuple
 from json.decoder import JSONDecodeError
 
 # third-party libraries
@@ -22,18 +22,12 @@ def unnest_enrollment(enroll_dict: Dict) -> Tuple[Dict, ...]:
         'workflow_state': enroll_dict['state']
     }
 
-    user_data = enroll_dict['user']
-    flat_user_dict = {
-        'canvas_id': int(user_data['_id']),
-        'name': user_data['name']
-    }
-
     section_data = enroll_dict['section']
     flat_section_dict = {
         'canvas_id': int(section_data['_id']),
         'name': section_data['name'],
     }
-    return (flat_enroll_dict, flat_user_dict, flat_section_dict)
+    return (flat_enroll_dict, flat_section_dict)
 
 
 class AsyncEnrollGatherer:
@@ -47,11 +41,11 @@ class AsyncEnrollGatherer:
         enroll_page_size: int = 75,
         num_workers: int = 8
     ):
-        self.course_ids = sorted(course_ids)
-        self.complete_url = complete_url
-        self.gql_query = gql_query
-        self.num_workers = num_workers
-        self.default_params = {
+        self.course_ids: Sequence[int] = sorted(course_ids)
+        self.complete_url: str = complete_url
+        self.gql_query: str = gql_query
+        self.num_workers: int = num_workers
+        self.default_params: Dict[str, Any] = {
             'access_token': access_token,
             'query': gql_query,
             'variables': {
@@ -72,7 +66,7 @@ class AsyncEnrollGatherer:
         #         'num_pages': some_integer
         #     }
         # }
-        self.course_enrollments = {}
+        self.course_enrollments: Dict[int, Dict[str, Any]] = {}
 
     def get_complete_course_ids(self) -> Sequence[int]:
         complete_course_ids = []
@@ -163,15 +157,13 @@ class AsyncEnrollGatherer:
     def generate_output(self) -> Tuple[pd.DataFrame, ...]:
         logger.debug('generate_output')
         enrollment_records = []
-        user_records = []
         section_records = []
 
         for course_id in self.course_enrollments.keys():
             enrollment_dicts = self.course_enrollments[course_id]['enrollments']
             for enrollment_dict in enrollment_dicts:
-                enrollment_record, user_record, section_record = unnest_enrollment(enrollment_dict)
+                enrollment_record, section_record = unnest_enrollment(enrollment_dict)
                 enrollment_records.append(enrollment_record)
-                user_records.append(user_record)
                 section_records.append(section_record)
 
         # Seems like we shouldn't have to drop duplicates for enrollments, but once one
@@ -181,9 +173,8 @@ class AsyncEnrollGatherer:
         enrollment_df = enrollment_df.drop_duplicates(subset=['canvas_id'], keep='last')
         logger.info(f'{orig_enrollment_count - len(enrollment_df)} enrollment records were dropped')
 
-        user_df = pd.DataFrame(user_records).drop_duplicates(subset=['canvas_id'], keep='last')
         section_df = pd.DataFrame(section_records).drop_duplicates(subset=['canvas_id'], keep='last')
-        return (enrollment_df, user_df, section_df)
+        return (enrollment_df, section_df)
 
     def gather(self) -> None:
         logger.info('** AsyncEnrollGatherer')

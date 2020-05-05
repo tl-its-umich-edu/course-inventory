@@ -193,26 +193,6 @@ def process_sis_id(orig_sis_id: str) -> Union[int, None]:
         return None
 
 
-def pull_sis_user_data_from_udw(user_ids: Sequence[int], conn: connection) -> pd.DataFrame:
-    user_ids_tup = tuple(user_ids)
-    user_query = f'''
-        SELECT u.canvas_id AS canvas_id,
-               p.sis_user_id AS sis_id,
-               p.unique_name AS uniqname
-        FROM user_dim u
-        JOIN pseudonym_dim p
-            ON u.id=p.user_id
-        WHERE u.canvas_id in %s;
-    '''
-    logger.info('Making user_dim and pseudonym_dim query against UDW')
-    udw_user_df = pd.read_sql(user_query, conn, params=(user_ids_tup,))
-    udw_user_df['sis_id'] = udw_user_df['sis_id'].map(process_sis_id, na_action='ignore')
-    # Found that the IDs are not necessarily unique, so dropping duplicates
-    udw_user_df = udw_user_df.drop_duplicates(subset=['canvas_id'])
-    logger.debug(udw_user_df.head())
-    return udw_user_df
-
-
 def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection) -> pd.DataFrame:
     section_ids_tup = tuple(section_ids)
     section_query = f'''
@@ -263,7 +243,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
     canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
-    # Gather enrollment, user, and section data
+    # Gather enrollment and section data
     course_ids = course_df['canvas_id'].to_list()
 
     enroll_start = time.time()
@@ -276,7 +256,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         num_workers=NUM_ASYNC_WORKERS
     )
     enroll_gatherer.gather()
-    enrollment_df, user_df, section_df = enroll_gatherer.generate_output()
+    enrollment_df, section_df = enroll_gatherer.generate_output()
     enroll_delta = time.time() - enroll_start
     logger.info(f'Duration of process (seconds): {enroll_delta}')
 
@@ -287,11 +267,6 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     }
 
     udw_conn = psycopg2.connect(**ENV['UDW'])
-
-    # Pull SIS user data from UDW
-    udw_user_ids = user_df['canvas_id'].to_list()
-    sis_user_df = pull_sis_user_data_from_udw(udw_user_ids, udw_conn)
-    user_df = pd.merge(user_df, sis_user_df, on='canvas_id', how='left')
 
     # Pull SIS course section data from UDW
     udw_section_ids = section_df['canvas_id'].to_list()
@@ -316,7 +291,6 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Produce output
     num_term_records = len(term_df)
     num_course_records = len(course_df)
-    num_user_records = len(user_df)
     num_section_records = len(section_df)
     num_enrollment_records = len(enrollment_df)
     num_canvas_usage_records = len(canvas_course_usage_df)
@@ -330,10 +304,6 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         logger.info(f'Writing {num_course_records} course records to CSV')
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
-
-        logger.info(f'Writing {num_user_records} user records to CSV')
-        user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
-        logger.info('Wrote data to data/user.csv')
 
         logger.info(f'Writing {num_section_records} section records to CSV')
         section_df.to_csv(os.path.join('data', 'section.csv'), index=False)
@@ -353,7 +323,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Empty records from Canvas data tables in database
     logger.info('Emptying Canvas data tables in DB')
     db_creator_obj.drop_records(
-        ['course', 'canvas_course_usage', 'course_section', 'enrollment', 'term', 'user']
+        ['course', 'canvas_course_usage', 'course_section', 'enrollment', 'term']
     )
 
     # Insert gathered data
@@ -364,10 +334,6 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     logger.info(f'Inserting {num_course_records} course records to DB')
     course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into course table in {db_creator_obj.db_name}')
-
-    logger.info(f'Inserting {num_user_records} user records to DB')
-    user_df.to_sql('user', db_creator_obj.engine, if_exists='append', index=False)
-    logger.info(f'Inserted data into user table in {db_creator_obj.db_name}')
 
     logger.info(f'Inserting {num_section_records} section records to DB')
     section_df.to_sql('course_section', db_creator_obj.engine, if_exists='append', index=False)
