@@ -156,25 +156,30 @@ To completely reset the database, delete the `.data` directory.
     docker-compose build
     ```  
 
-2. Run the DB service, `mysql`, in the background…
+    * *(Optional)* Run the DB service, `mysql`, in the background…
 
-    ```sh
-    docker-compose up -d mysql
-    ```
-    
-    The `-d` option (short for `--detach`), detaches the process from
-    the terminal, and will "Run containers in the background, print
-    new container names."
+        > Note that if this optional step is skipped, docker-compose will *automatically* run  
+        the DB service in the background when the main application service is started.  That's  
+        because the application depends on the DB, so docker-compose will conveniently run it
+        based on the dependencies described in `docker-compose.yaml`.
 
-    * If you need to see the console output of the `mysql` service 
-        while it runs in the background, use the `logs` command and
-        the service name…
-        
         ```sh
-        docker-compose logs mysql
+        docker-compose up -d mysql
         ```
-
-3. Run the main application service, `job`, in the foreground…
+        
+        The `-d` option (short for `--detach`), detaches the process from
+        the terminal, and will "Run containers in the background, print
+        new container names."
+    
+        * If you need to see the console output of the `mysql` service 
+            while it runs in the background, use the `logs` command and
+            the service name…
+            
+            ```sh
+            docker-compose logs mysql
+            ```
+        
+2. Run the main application service, `job`, in the foreground…
 
     ```sh
     docker-compose up job
@@ -183,9 +188,9 @@ To completely reset the database, delete the `.data` directory.
     That will show the output from `job`, then return you to the
     shell prompt.
 
-4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
+3. Do some development of `job`'s code.  (Go ahead, we'll wait.)
 
-5. When ready to run `job` again, use the same command as before…
+4. When ready to run `job` again, use the same command as before…
 
     ```sh
     docker-compose up job
@@ -206,7 +211,7 @@ To completely reset the database, delete the `.data` directory.
         docker-compose up --build job
         ```
 
-6. Repeat the previous two steps (4 and 5) as necessary.
+5. Repeat the previous two steps (3 and 4) as necessary.
 
 #### With a Virtual Environment
 
