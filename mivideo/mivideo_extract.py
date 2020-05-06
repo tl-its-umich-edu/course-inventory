@@ -114,7 +114,7 @@ class MiVideoExtract:
 
         if (lastTime):
             localLogger.info(
-                'Last time found in table: "{lastTime.isoformat()}"')
+                f'Last time found in table: "{lastTime.isoformat()}"')
         else:
             lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
             localLogger.info('Last time not found in table; '
@@ -134,7 +134,7 @@ class MiVideoExtract:
 
         if (not dfCourseEvents.empty):
             localLogger.info(
-                'Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
+                f'Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
 
             localLogger.debug('Saving to table...')
 
@@ -201,7 +201,7 @@ class MiVideoExtract:
 
         if (lastTime):
             localLogger.info(
-                'Last time found in table: "{lastTime.isoformat()}"')
+                f'Last time found in table: "{lastTime.isoformat()}"')
         else:
             lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
             localLogger.info('Last time not found in table; '
@@ -233,7 +233,7 @@ class MiVideoExtract:
                     # set new filter timestamp, reset pager to page 1, then continue
                     kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp
                     localLogger.debug(
-                        'New filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
+                        f'New filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
 
                     # to avoid dupes, also filter out the last ID returned by previous query
                     # because Kaltura compares createdAt greater than *or equal* to timestamp
@@ -241,12 +241,12 @@ class MiVideoExtract:
                     kPager.pageIndex = 1
                     continue
 
-                localLogger.debug('Other Kaltura API error: "{kException}"')
+                localLogger.info(f'Other Kaltura API error: "{kException}"')
                 break
 
             numberResults = len(results)
             localLogger.debug(
-                'Query page ({queryPageNumber}); number of results: ({numberResults})')
+                f'Query page ({queryPageNumber}); number of results: ({numberResults})')
 
             if (numberResults > 0):
                 resultDictionaries: Sequence[Dict] = tuple(r.__dict__ for r in results)
@@ -271,7 +271,7 @@ class MiVideoExtract:
             kPager.pageIndex += 1
             queryPageNumber += 1
 
-        localLogger.info('Total number of results: ({totalNumberResults})')
+        localLogger.info(f'Total number of results: ({totalNumberResults})')
 
         localLogger.info('Procedure complete.')
 
