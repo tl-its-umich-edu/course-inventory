@@ -41,38 +41,43 @@ class MiVideoExtract:
     '''
 
     def __init__(self):
-        self.mivideoConfig: Dict = ENV.get('MIVIDEO', {})
+        self.mivideoConfig: Dict = ENV['MIVIDEO']
         self.defaultLastTimestamp: str = self.mivideoConfig.get(
             'default_last_timestamp', '2020-03-01T00:00:00+00:00'
         )
 
         dbParams: Dict = ENV['INVENTORY_DB']
-
         self.appDb: DBCreator = DBCreator(dbParams)
 
-    def _udpInit(self):
-        udpKeyFileName: str = self.mivideoConfig.get('udp_service_account_json_filename')
+        self.kPartnerId: int
+        self.kUserId: str
+        self.kUserSecret: str
 
-        self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, udpKeyFileName)
-        logger.debug(f'udpKeyFilePath: "{self.udpKeyFilePath}"')
+    def _udpConnect(self) -> bigquery.Client:
+        udpKeyFileName: str = self.mivideoConfig['udp_service_account_json_filename']
 
-        self.credentials: service_account.Credentials = (
+        udpKeyFilePath: str = os.path.join(CONFIG_DIR, udpKeyFileName)
+        logger.debug(f'udpKeyFilePath: "{udpKeyFilePath}"')
+
+        udpCredentials: service_account.Credentials = (
             service_account.Credentials.from_service_account_file(
-                self.udpKeyFilePath,
+                udpKeyFilePath,
                 scopes=['https://www.googleapis.com/auth/cloud-platform'])
         )
 
-        self.udpDb: bigquery.Client = bigquery.Client(
-            credentials=self.credentials,
-            project=self.credentials.project_id
+        udpDb: bigquery.Client = bigquery.Client(
+            credentials=udpCredentials,
+            project=udpCredentials.project_id
         )
 
-        logger.info(f'Connected to BigQuery project: "{self.udpDb.project}"')
+        logger.info(f'Connected to BigQuery project: "{udpDb.project}"')
+
+        return udpDb
 
     def _kalturaInit(self):
-        self.kPartnerId: int = self.mivideoConfig.get('kaltura_partner_id')
-        self.kUserId: str = self.mivideoConfig.get('kaltura_user_id')
-        self.kUserSecret: str = self.mivideoConfig.get('kaltura_user_secret')
+        self.kPartnerId = self.mivideoConfig['kaltura_partner_id']
+        self.kUserId = self.mivideoConfig['kaltura_user_id']
+        self.kUserSecret = self.mivideoConfig['kaltura_user_secret']
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
         lastTime: Union[datetime, None]
@@ -95,7 +100,7 @@ class MiVideoExtract:
         :return: a dictionary with ValidDataSourceName and last run timestamp
         """
 
-        self._udpInit()
+        udpDb: bigquery.Client = self._udpConnect()
 
         tableName: str = 'mivideo_media_started_hourly'
 
@@ -117,7 +122,7 @@ class MiVideoExtract:
 
         localLogger.debug('Running query...')
 
-        dfCourseEvents: pd.DataFrame = self.udpDb.query(
+        dfCourseEvents: pd.DataFrame = udpDb.query(
             queries.COURSE_EVENTS, job_config=bigquery.QueryJobConfig(
                 query_parameters=[
                     bigquery.ScalarQueryParameter('startTime', 'DATETIME', lastTime),
