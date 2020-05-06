@@ -45,7 +45,7 @@ class MiVideoExtract:
         self._udpInit()
         self._kalturaInit()
         self.defaultLastTimestamp: str = self.mivideoConfig.get(
-            'default_last_timestamp', '2020-03-01 00:00:00+00:00'
+            'default_last_timestamp', '2020-03-01T00:00:00+00:00'
         )
 
         dbParams: Dict = ENV['INVENTORY_DB']
@@ -117,11 +117,12 @@ class MiVideoExtract:
         )
 
         if (lastTime):
-            logger.info(f'"{tableName}" - Last time found in table: "{lastTime}"')
+            localLogger.info(
+                'Last time found in table: "{lastTime.isoformat()}"')
         else:
             lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
-            logger.info(f'"{tableName}" - Last time not found in table; '
-                        f'using default time: "{lastTime}"')
+            localLogger.info('Last time not found in table; '
+                             f'using default time: "{lastTime.isoformat()}"')
 
         logger.debug(f'"{tableName}" - Running query...')
 
@@ -200,11 +201,12 @@ class MiVideoExtract:
             self._readTableLastTime('mivideo_media_created', 'created_at'))
 
         if (lastTime):
-            logger.info(f'"{procedureName}" - Last time found in table: "{lastTime}"')
+            localLogger.info(
+                'Last time found in table: "{lastTime.isoformat()}"')
         else:
             lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
-            logger.info(f'"{procedureName}" - Last time not found in table; '
-                        f'using default time: "{lastTime}"')
+            localLogger.info('Last time not found in table; '
+                             f'using default time: "{lastTime.isoformat()}"')
 
         createdAtTimestamp: float = lastTime.timestamp()
 

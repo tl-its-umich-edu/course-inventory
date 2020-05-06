@@ -29,7 +29,7 @@
     },
 
     "MIVIDEO": {
-        "default_last_timestamp": "2020-03-01 00:00:00+00:00",
+        "default_last_timestamp": "2020-03-01T00:00:00+00:00",
         "udp_service_account_json_filename": "umich-its-tl-reports-prod.json",
         "kaltura_partner_id": -1,
         "kaltura_user_id": "shared_kaltura_email_group_name_here@umich.edu",
