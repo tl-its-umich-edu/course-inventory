@@ -5,8 +5,7 @@ from typing import Any, Dict
 
 # third-party libraries
 import hjson
-from jsonschema import validate
-
+from jsonschema import draft7_format_checker, validate
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ logger.debug(ENV)
 
 # Validate ENV using ENV_SCHEMA
 try:
-    validate(instance=ENV, schema=ENV_SCHEMA)
+    validate(instance=ENV, schema=ENV_SCHEMA, format_checker=draft7_format_checker)
     logger.info('ENV is valid; the program will continue')
 except Exception as e:
     logger.error(e)

@@ -70,7 +70,7 @@
         "MIVIDEO": {
             "type": "object",
             "properties": {
-                "default_last_timestamp": {"type": "string"}, # should be "date-time", but fails!
+                "default_last_timestamp": {"type": "string", "format": "date-time"},
                 "udp_service_account_json_filename": {"type": "string"},
                 "kaltura_partner_id": {"type": "integer"},
                 "kaltura_user_secret": {"type": "string"},
