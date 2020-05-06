@@ -158,10 +158,10 @@ To completely reset the database, delete the `.data` directory.
 
     * *(Optional)* Run the DB service, `mysql`, in the background…
 
-        > Note that if this optional step is skipped, docker-compose will *automatically* run  
-        the DB service in the background when the main application service is started.  That's  
-        because the application depends on the DB, so docker-compose will conveniently run it
-        based on the dependencies described in `docker-compose.yaml`.
+        > Note that if this optional step is skipped, docker-compose will *automatically* run
+        > the DB service in the background when the main application service is started.  That's
+        > because the application depends on the DB, so docker-compose will conveniently run it
+        > based on the dependencies described in `docker-compose.yaml`.
 
         ```sh
         docker-compose up -d mysql
@@ -171,14 +171,14 @@ To completely reset the database, delete the `.data` directory.
         the terminal, and will "Run containers in the background, print
         new container names."
     
-        * If you need to see the console output of the `mysql` service 
-            while it runs in the background, use the `logs` command and
-            the service name…
-            
-            ```sh
-            docker-compose logs mysql
-            ```
-        
+      * If you need to see the console output of the `mysql` service
+          while it runs in the background, use the `logs` command and
+          the service name…
+
+          ```sh
+          docker-compose logs mysql
+          ```
+
 2. Run the main application service, `job`, in the foreground…
 
     ```sh
@@ -205,7 +205,7 @@ To completely reset the database, delete the `.data` directory.
     
     * If the container is not running with the project source code
         mounted as `/app`, then most code changes will require you
-        to _specify that the service needs to be rebuilt_…
+        to *specify that the service needs to be rebuilt*…
 
         ```sh
         docker-compose up --build job
