@@ -1,18 +1,15 @@
+beautifulsoup4==4.8.2
+canvasapi==0.15.0
+google-cloud-bigquery==1.24.0
 hjson==3.0.1
 jsonschema==3.2.0
+KalturaApiClient==15.20.0
 mysqlclient==1.4.6
-pandas==1.0.1
-psycopg2-binary==2.8.4
-SQLAlchemy==1.3.15
+pandas==1.0.3
+psycopg2-binary==2.8.5
+requests==2.22.0
+requests-futures==1.0.0
+SQLAlchemy==1.3.16
 strict-rfc3339==0.7
 -e git+https://github.com/tl-its-umich-edu/api-utils-python@v1.3#egg=umich-api
 yoyo-migrations==7.0.2
-requests-futures==1.0.0
-
-canvasapi==0.15.0
-beautifulsoup4==4.8.2
-dateparser==0.7.4
-pyjwt==1.7.1
-pyyaml==5.3.1
-google-cloud-bigquery==1.24.0
-KalturaApiClient==15.20.0
