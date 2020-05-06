@@ -17,7 +17,6 @@ steps = [
             PRIMARY KEY (id)
         ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
     '''),
-            # id BIGINT AUTO_INCREMENT NOT NULL UNIQUE,
     step('''
         CREATE TABLE IF NOT EXISTS mivideo_media_courses (
             media_id VARCHAR(20) NOT NULL,
