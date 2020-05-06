@@ -24,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 import mivideo.queries as queries
 from db.db_creator import DBCreator
-from environ import CONFIG_DIR, CONFIG_PATH, ENV
+from environ import CONFIG_DIR, ENV
 from vocab import ValidDataSourceName
 
 logger = logging.getLogger(__name__)
@@ -42,8 +42,6 @@ class MiVideoExtract:
 
     def __init__(self):
         self.mivideoConfig: Dict = ENV.get('MIVIDEO', {})
-        self._udpInit()
-        self._kalturaInit()
         self.defaultLastTimestamp: str = self.mivideoConfig.get(
             'default_last_timestamp', '2020-03-01T00:00:00+00:00'
         )
@@ -54,11 +52,6 @@ class MiVideoExtract:
 
     def _udpInit(self):
         udpKeyFileName: str = self.mivideoConfig.get('udp_service_account_json_filename')
-        if (udpKeyFileName is None):
-            errorMessage: str = (f'"MIVIDEO.udp_service_account_json_filename" '
-                                 f'was not found in {CONFIG_PATH}')
-            logger.error(errorMessage)
-            raise ValueError(errorMessage)
 
         self.udpKeyFilePath: str = os.path.join(CONFIG_DIR, udpKeyFileName)
         logger.debug(f'udpKeyFilePath: "{self.udpKeyFilePath}"')
@@ -80,12 +73,6 @@ class MiVideoExtract:
         self.kPartnerId: int = self.mivideoConfig.get('kaltura_partner_id')
         self.kUserId: str = self.mivideoConfig.get('kaltura_user_id')
         self.kUserSecret: str = self.mivideoConfig.get('kaltura_user_secret')
-        if (None in (self.kPartnerId, self.kUserId, self.kUserSecret)):
-            errorMessage: str = (
-                f'"kaltura_partner_id", "kaltura_user_id", and "kaltura_user_secret" '
-                f'must be set under the "MIVIDEO" property in {CONFIG_PATH}')
-            logger.error(errorMessage)
-            raise ValueError(errorMessage)
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
         lastTime: Union[datetime, None]
@@ -108,9 +95,13 @@ class MiVideoExtract:
         :return: a dictionary with ValidDataSourceName and last run timestamp
         """
 
+        self._udpInit()
+
         tableName: str = 'mivideo_media_started_hourly'
 
-        logger.info(f'"{tableName}" - Starting procedure...')
+        localLogger = logging.getLogger(f'{logger.name}.mediaStartedHourly')
+
+        localLogger.info('Starting procedure...')
 
         lastTime: Union[datetime, None] = self._readTableLastTime(
             tableName, 'event_time_utc_latest'
@@ -124,7 +115,7 @@ class MiVideoExtract:
             localLogger.info('Last time not found in table; '
                              f'using default time: "{lastTime.isoformat()}"')
 
-        logger.debug(f'"{tableName}" - Running query...')
+        localLogger.debug('Running query...')
 
         dfCourseEvents: pd.DataFrame = self.udpDb.query(
             queries.COURSE_EVENTS, job_config=bigquery.QueryJobConfig(
@@ -134,23 +125,21 @@ class MiVideoExtract:
             )
         ).to_dataframe()
 
-        logger.debug(f'"{tableName}" - Completed query.')
+        localLogger.debug('Completed query.')
 
         if (not dfCourseEvents.empty):
-            logger.info(
-                f'"{tableName}" - Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
+            localLogger.info(
+                'Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
 
-            logger.debug(f'"{tableName}" - Saving to table...')
+            localLogger.debug('Saving to table...')
 
             dfCourseEvents.to_sql(tableName, self.appDb.engine, if_exists='append', index=False)
 
-            logger.debug(f'"{tableName}" - Saved.')
+            localLogger.debug('Saved.')
         else:
-            logger.info(f'"{tableName}" - No rows returned.')
+            localLogger.info('No rows returned.')
 
-        logger.info(f'"{tableName}" - Procedure complete.')
-
-        logger.info('End of extract')
+        localLogger.info('Procedure complete.')
 
         return {
             'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
@@ -188,8 +177,13 @@ class MiVideoExtract:
         :return: a dictionary with ValidDataSourceName and last run timestamp
         """
 
+        self._kalturaInit()
+
         KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
-        procedureName: str = 'mediaCreation'
+        tableName: str = 'mivideo_media_created'
+
+        localLogger = logging.getLogger(f'{logger.name}.mediaCreation')
+        localLogger.info('Starting procedure...')
 
         kClient: KalturaRequestConfiguration = KalturaClient(KalturaConfiguration())
         kClient.setKs(  # pylint: disable=no-member
@@ -198,7 +192,7 @@ class MiVideoExtract:
         kMedia = KalturaMediaService(kClient)
 
         lastTime: Union[datetime, None] = (
-            self._readTableLastTime('mivideo_media_created', 'created_at'))
+            self._readTableLastTime(tableName, 'created_at'))
 
         if (lastTime):
             localLogger.info(
@@ -233,7 +227,8 @@ class MiVideoExtract:
                 if (KALTURA_MAX_MATCHES_ERROR in kException.args):
                     # set new filter timestamp, reset pager to page 1, then continue
                     kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp
-                    logger.debug(f'new filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
+                    localLogger.debug(
+                        'New filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
 
                     # to avoid dupes, also filter out the last ID returned by previous query
                     # because Kaltura compares createdAt greater than *or equal* to timestamp
@@ -241,11 +236,12 @@ class MiVideoExtract:
                     kPager.pageIndex = 1
                     continue
 
-                logger.debug(f'Other Kaltura API error: "{kException}"')
+                localLogger.debug('Other Kaltura API error: "{kException}"')
                 break
 
             numberResults = len(results)
-            logger.debug(f'Query page ({queryPageNumber}); number of results: ({numberResults})')
+            localLogger.debug(
+                'Query page ({queryPageNumber}); number of results: ({numberResults})')
 
             if (numberResults > 0):
                 resultDictionaries: Sequence[Dict] = tuple(r.__dict__ for r in results)
@@ -253,7 +249,7 @@ class MiVideoExtract:
                 creationData: pd.DataFrame = self._makeCreationData(resultDictionaries)
 
                 creationData.to_sql(
-                    'mivideo_media_created', self.appDb.engine, if_exists='append', index=False)
+                    tableName, self.appDb.engine, if_exists='append', index=False)
 
                 courseData: pd.DataFrame = self._makeCourseData(resultDictionaries)
 
@@ -270,7 +266,9 @@ class MiVideoExtract:
             kPager.pageIndex += 1
             queryPageNumber += 1
 
-        logger.info(f'Total number of results: ({totalNumberResults})')
+        localLogger.info('Total number of results: ({totalNumberResults})')
+
+        localLogger.info('Procedure complete.')
 
         return {
             'data_source_name': ValidDataSourceName.KALTURA_API,
@@ -320,7 +318,7 @@ class MiVideoExtract:
         :return: List of dictionaries (keys 'data_source_name' and 'data_updated_at')
         '''
         return [
-            # self.mediaStartedHourly(),
+            self.mediaStartedHourly(),
             self.mediaCreation(),
         ]
 
