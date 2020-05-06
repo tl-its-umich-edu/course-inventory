@@ -73,13 +73,11 @@
                 "default_last_timestamp": {"type": "string"}, # should be "date-time", but fails!
                 "udp_service_account_json_filename": {"type": "string"},
                 "kaltura_partner_id": {"type": "integer"},
-                "kaltura_user_id": {"type": "string"}, # should be "email", but fails!
                 "kaltura_user_secret": {"type": "string"},
             },
             "required": [
                 "udp_service_account_json_filename",
                 "kaltura_partner_id",
-                "kaltura_user_id",
                 "kaltura_user_secret",
             ]
         },

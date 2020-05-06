@@ -76,7 +76,6 @@ class MiVideoExtract:
 
     def _kalturaInit(self):
         self.kPartnerId = self.mivideoConfig['kaltura_partner_id']
-        self.kUserId = self.mivideoConfig['kaltura_user_id']
         self.kUserSecret = self.mivideoConfig['kaltura_user_secret']
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
@@ -193,7 +192,7 @@ class MiVideoExtract:
         kClient: KalturaRequestConfiguration = KalturaClient(KalturaConfiguration())
         kClient.setKs(  # pylint: disable=no-member
             KalturaSessionService(kClient).start(
-                self.kUserSecret, self.kUserId, KalturaSessionType.ADMIN, self.kPartnerId))
+                self.kUserSecret, type=KalturaSessionType.ADMIN, partnerId=self.kPartnerId))
         kMedia = KalturaMediaService(kClient)
 
         lastTime: Union[datetime, None] = (
