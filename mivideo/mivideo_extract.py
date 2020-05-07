@@ -5,7 +5,6 @@ Module for setting up and running the MiVideo data extract.
 
 import logging
 import os
-import time
 from datetime import datetime, timezone
 from typing import Dict, Sequence, Union
 
@@ -17,7 +16,7 @@ from sqlalchemy.engine import ResultProxy
 import mivideo.queries as queries
 from db.db_creator import DBCreator
 from environ import CONFIG_DIR, CONFIG_PATH, ENV
-from vocab import ValidDataSourceName
+from vocab import DataSourceTimestamp, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +71,9 @@ class MiVideoExtract(object):
 
         return lastTime
 
-    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    def run(self) -> DataSourceTimestamp:
         """
-        :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
+        :return: DataSourceTimestamp
         """
 
         tableName = 'mivideo_media_started_hourly'
@@ -119,19 +118,16 @@ class MiVideoExtract(object):
 
         logger.info('End of extract')
 
-        return [{
-            'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
-            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-        }]
+        return DataSourceTimestamp(ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS)
 
 
-def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+def main() -> Sequence[DataSourceTimestamp]:
     '''
     This method is invoked when its module is executed as a standalone program.
 
-    :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
+    :return: List of DataSourceTimestamp
     '''
-    return MiVideoExtract().run()
+    return [MiVideoExtract().run()]
 
 
 if '__main__' == __name__:
