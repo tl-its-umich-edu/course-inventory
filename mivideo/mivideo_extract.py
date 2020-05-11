@@ -52,6 +52,7 @@ class MiVideoExtract:
         self.kPartnerId: int
         self.kUserId: str
         self.kUserSecret: str
+        self.categoriesFullNameIn: str
 
     def _udpConnect(self) -> bigquery.Client:
         udpKeyFileName: str = self.mivideoConfig['udp_service_account_json_filename']
@@ -77,6 +78,8 @@ class MiVideoExtract:
     def _kalturaInit(self):
         self.kPartnerId = self.mivideoConfig['kaltura_partner_id']
         self.kUserSecret = self.mivideoConfig['kaltura_user_secret']
+        self.categoriesFullNameIn = self.mivideoConfig.get(
+            'kaltura_categories_full_name_in', 'Canvas_UMich')
 
     def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
         lastTime: Union[datetime, None]
@@ -210,7 +213,7 @@ class MiVideoExtract:
 
         kFilter = KalturaMediaEntryFilter()
         kFilter.createdAtGreaterThanOrEqual = createdAtTimestamp
-        kFilter.categoriesFullNameIn = 'Canvas_UMich'
+        kFilter.categoriesFullNameIn = self.categoriesFullNameIn
         kFilter.orderBy = KalturaMediaEntryOrderBy.CREATED_AT_ASC
 
         kPager = KalturaFilterPager()
@@ -223,8 +226,9 @@ class MiVideoExtract:
         numberResults: int = 0
         queryPageNumber: int = kPager.pageIndex  # for logging purposes
         totalNumberResults: int = numberResults  # for logging purposes
+        endOfResults = False
 
-        while True:
+        while not endOfResults:
             try:
                 results = kMedia.list(kFilter, kPager).objects
             except KalturaException as kException:
@@ -255,7 +259,8 @@ class MiVideoExtract:
                 creationData.to_sql(
                     tableName, self.appDb.engine, if_exists='append', index=False)
 
-                courseData: pd.DataFrame = self._makeCourseData(resultDictionaries)
+                courseData: pd.DataFrame = self._makeCourseData(
+                    resultDictionaries, kFilter.categoriesFullNameIn)
 
                 courseData.to_sql('mivideo_media_courses', self.appDb.engine, if_exists='append',
                                   index=False, method=self._queryRunner)
@@ -264,8 +269,7 @@ class MiVideoExtract:
                 lastId = results[-1].id
                 totalNumberResults += numberResults
 
-            if (numberResults < kPager.pageSize):
-                break
+            endOfResults = (numberResults < kPager.pageSize)
 
             kPager.pageIndex += 1
             queryPageNumber += 1
@@ -280,7 +284,7 @@ class MiVideoExtract:
         }
 
     @staticmethod
-    def _makeCourseData(resultDictionaries) -> pd.DataFrame:
+    def _makeCourseData(resultDictionaries: Sequence[Dict], categoryFilter: str) -> pd.DataFrame:
         courseData: pd.DataFrame = pd.DataFrame.from_records(
             resultDictionaries, columns=('id', 'categories',)
         ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
@@ -292,7 +296,8 @@ class MiVideoExtract:
             c.endswith('>InContext') for c in courseData['course_id']]
 
         courseData['course_id'] = courseData['course_id'].str.replace(
-            r'^.*>([0-9]+).*$', lambda m: m.groups()[0], regex=True
+            r'^' + categoryFilter + r'.*>([0-9]+).*$',
+            lambda m: m.groups()[0], regex=True
         )
 
         # find and drop non-decimal course IDs
