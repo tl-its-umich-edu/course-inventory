@@ -344,8 +344,8 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
 
     # Produce output
     num_term_records = len(term_df)
-    num_course_records = len(course_df)
     num_account_records = len(account_df)
+    num_course_records = len(course_df)
     num_user_records = len(user_df)
     num_section_records = len(section_df)
     num_enrollment_records = len(enrollment_df)
@@ -357,13 +357,13 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         term_df.to_csv(os.path.join('data', 'term.csv'), index=False)
         logger.info('Wrote data to data/term.csv')
 
-        logger.info(f'Writing {num_course_records} course records to CSV')
-        course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
-        logger.info('Wrote data to data/course.csv')
-
         logger.info(f'Writing {num_account_records} account records to CSV')
         account_df.to_csv(os.path.join('data', 'account.csv'), index=False)
         logger.info('Wrote data to data/account.csv')
+
+        logger.info(f'Writing {num_course_records} course records to CSV')
+        course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+        logger.info('Wrote data to data/course.csv')
 
         logger.info(f'Writing {num_user_records} user records to CSV')
         user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
