@@ -81,17 +81,42 @@ class MiVideoExtract:
         self.categoriesFullNameIn = self.mivideoConfig.get(
             'kaltura_categories_full_name_in', 'Canvas_UMich')
 
-    def _readTableLastTime(self, tableName: str, tableColumnName: str) -> Union[datetime, None]:
+    def _readTableLastTime(
+            self,
+            tableName: str,
+            tableColumnName: str,
+            defaultTime: Union[str, None] = None
+    ) -> datetime:
+        '''
+        :param tableName: Name of table to search for timestamp.
+        :param tableColumnName: Column of table to contain timestamp.
+        :param defaultTime: Default timestamp to use if not found in table.
+        :raises ValueError: When `defaultTime` is needed, but is set to `None`.
+        :return:
+        '''
         lastTime: Union[datetime, None]
+
+        if (defaultTime is None):
+            logger.warning('received defaultTime argument of (None)')
 
         try:
             sql: str = f'select max(t.{tableColumnName}) from {tableName} t'
             result: ResultProxy = self.appDb.engine.execute(sql)
             lastTime = result.fetchone()[0]
+            if (lastTime):
+                logger.info(f'Last time found in table "{tableName}": "{lastTime.isoformat()}"')
         except SQLAlchemyError:
-            logger.info(f'Error getting max "{tableColumnName}" from "{tableName}"; '
-                        'returning None')
+            logger.info(f'Error getting max "{tableColumnName}" from "{tableName}"')
             lastTime = None
+
+        if (lastTime is None):
+            if (defaultTime is not None):
+                lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
+                logger.info(
+                    f'Last time not found in table "{tableName}"; '
+                    f'returning default time, "{lastTime.isoformat()}"')
+            else:
+                raise ValueError('Unable to use defaultTime value of (None)')
 
         return lastTime
 
@@ -110,17 +135,9 @@ class MiVideoExtract:
 
         localLogger.info('Starting procedure...')
 
-        lastTime: Union[datetime, None] = self._readTableLastTime(
-            tableName, 'event_time_utc_latest'
+        lastTime: datetime = self._readTableLastTime(
+            tableName, 'event_time_utc_latest', self.defaultLastTimestamp
         )
-
-        if (lastTime):
-            localLogger.info(
-                f'Last time found in table: "{lastTime.isoformat()}"')
-        else:
-            lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
-            localLogger.info('Last time not found in table; '
-                             f'using default time: "{lastTime.isoformat()}"')
 
         localLogger.debug('Running query...')
 
@@ -198,16 +215,8 @@ class MiVideoExtract:
                 self.kUserSecret, type=KalturaSessionType.ADMIN, partnerId=self.kPartnerId))
         kMedia = KalturaMediaService(kClient)
 
-        lastTime: Union[datetime, None] = (
-            self._readTableLastTime(tableName, 'created_at'))
-
-        if (lastTime):
-            localLogger.info(
-                f'Last time found in table: "{lastTime.isoformat()}"')
-        else:
-            lastTime = datetime.fromisoformat(self.defaultLastTimestamp)
-            localLogger.info('Last time not found in table; '
-                             f'using default time: "{lastTime.isoformat()}"')
+        lastTime: datetime = self._readTableLastTime(
+            tableName, 'created_at', self.defaultLastTimestamp)
 
         createdAtTimestamp: float = lastTime.timestamp()
 
