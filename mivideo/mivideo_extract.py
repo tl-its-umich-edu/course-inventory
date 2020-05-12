@@ -23,7 +23,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 import mivideo.queries as queries
 from db.db_creator import DBCreator
-from environ import CONFIG_DIR, CONFIG_PATH, ENV
+from environ import CONFIG_DIR, ENV
 from vocab import DataSourceStatus, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
@@ -190,7 +190,7 @@ class MiVideoExtract:
 
         dbConn.execute(sql, list(data))
 
-    def mediaCreation(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
+    def mediaCreation(self) -> DataSourceStatus:
         """
         Update data with Kaltura media metadata from Kaltura API.
 
@@ -283,10 +283,7 @@ class MiVideoExtract:
 
         localLogger.info('Procedure complete.')
 
-        return {
-            'data_source_name': ValidDataSourceName.KALTURA_API,
-            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-        }
+        return DataSourceStatus(ValidDataSourceName.KALTURA_API)
 
     @staticmethod
     def _makeCourseData(resultDictionaries: Sequence[Dict], categoryFilter: str) -> pd.DataFrame:
@@ -325,7 +322,7 @@ class MiVideoExtract:
 
         return creationData
 
-    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    def run(self) -> Sequence[DataSourceStatus]:
         '''
         The main controller that runs each method required to update the data.
 
@@ -343,7 +340,7 @@ def main() -> Sequence[DataSourceStatus]:
 
     :return: List of DataSourceStatus
     '''
-    return [MiVideoExtract().run()]
+    return MiVideoExtract().run()
 
 
 if '__main__' == __name__:
