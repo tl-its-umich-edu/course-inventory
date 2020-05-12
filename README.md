@@ -88,7 +88,11 @@ a more lenient and customizable variant of JSON. Complete the following items in
     `CANVAS` | `API_CLIENT_SECRET` | The client secret for authenticating to the API Directory.
     `CANVAS` | `CANVAS_URL` | The Canvas instance URL to be used as the base URL for API requests that use the `CANVAS TOKEN`.
     `CANVAS` | `CANVAS_TOKEN` | The Canvas token used for authenticating to the API when not using the U-M API Directory.
-    `MIVIDEO` | `service_account_json_filename` | The name of the JSON credential file for accessing UDP's Google BigQuery service account.  This file name is appended to the value of `ENV_DIR` (which is `/config/secrets`, by default) to determine the full path to the file.<br/><br/>If this key's value is set to `umich-its-tl-reports-prod.json` and `ENV_DIR` has its default value, the full path to the file will be `/config/secrets/umich-its-tl-reports-prod.json`.
+    `MIVIDEO` | `udp_service_account_json_filename` | The name of the JSON credential file for accessing UDP's Google BigQuery service account.  It should be the `umich-its-tl-reports-prod.json` credential file for UMich ITS TL.  This file name is appended to the value of `ENV_DIR` (which is `/config/secrets`, by default) to determine the full path to the file.<br/><br/>If this key's value is set to `umich-its-tl-reports-prod.json` and `ENV_DIR` has its default value, the full path to the file will be `/config/secrets/umich-its-tl-reports-prod.json`.
+    `MIVIDEO` | `default_last_timestamp` | The MiVideo procedures use the last timestamp found in its tables in this application's DB to query for data newer than that time.  If that timestamp isn't found (e.g., the first time the application runs) the value of this property will be used.  This must be a valid ISO 8601 timestamp in the UTC time zone.  The recommended value is `2020-03-01T00:00:00+00:00`.
+    `MIVIDEO` | `kaltura_partner_id` | This is an integer that represents the Kaltura account number.  UMich ITS TL users can find this value in the usual security files folder.
+    `MIVIDEO` | `kaltura_user_secret` | This is a string that represents an administrator's key for the Kaltura account.  UMich ITS TL users can find this value in the usual security files folder.
+    `MIVIDEO` | `kaltura_categories_full_name_in' | Filter for the Kaltura API to return media that have at least one category that begins with the string value of this key.  The default value is "`Canvas_UMich`".
     `UDW` |   | An object containing the necessary credential information for connecting to the Unizin Data Warehouse, where data will be pulled from.
     `INVENTORY_DB` |   | An object containing the necessary credential information for connecting to a MySQL database, where output data will be inserted.
 
@@ -156,25 +160,30 @@ To completely reset the database, delete the `.data` directory.
     docker-compose build
     ```  
 
-2. Run the DB service, `mysql`, in the background…
+    * *(Optional)* Run the DB service, `mysql`, in the background…
 
-    ```sh
-    docker-compose up -d mysql
-    ```
-    
-    The `-d` option (short for `--detach`), detaches the process from
-    the terminal, and will "Run containers in the background, print
-    new container names."
+        > Note that if this optional step is skipped, docker-compose will *automatically* run
+        > the DB service in the background when the main application service is started.  That's
+        > because the application depends on the DB, so docker-compose will conveniently run it
+        > based on the dependencies described in `docker-compose.yaml`.
 
-    * If you need to see the console output of the `mysql` service 
-        while it runs in the background, use the `logs` command and
-        the service name…
-        
         ```sh
-        docker-compose logs mysql
+        docker-compose up -d mysql
         ```
+        
+        The `-d` option (short for `--detach`), detaches the process from
+        the terminal, and will "Run containers in the background, print
+        new container names."
+    
+      * If you need to see the console output of the `mysql` service
+          while it runs in the background, use the `logs` command and
+          the service name…
 
-3. Run the main application service, `job`, in the foreground…
+          ```sh
+          docker-compose logs mysql
+          ```
+
+2. Run the main application service, `job`, in the foreground…
 
     ```sh
     docker-compose up job
@@ -183,9 +192,9 @@ To completely reset the database, delete the `.data` directory.
     That will show the output from `job`, then return you to the
     shell prompt.
 
-4. Do some development of `job`'s code.  (Go ahead, we'll wait.)
+3. Do some development of `job`'s code.  (Go ahead, we'll wait.)
 
-5. When ready to run `job` again, use the same command as before…
+4. When ready to run `job` again, use the same command as before…
 
     ```sh
     docker-compose up job
@@ -200,13 +209,13 @@ To completely reset the database, delete the `.data` directory.
     
     * If the container is not running with the project source code
         mounted as `/app`, then most code changes will require you
-        to _specify that the service needs to be rebuilt_…
+        to *specify that the service needs to be rebuilt*…
 
         ```sh
         docker-compose up --build job
         ```
 
-6. Repeat the previous two steps (4 and 5) as necessary.
+5. Repeat the previous two steps (3 and 4) as necessary.
 
 #### With a Virtual Environment
 

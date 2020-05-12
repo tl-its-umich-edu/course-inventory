@@ -29,7 +29,11 @@
     },
 
     "MIVIDEO": {
-        "service_account_json_filename": "umich-its-tl-reports-prod.json"
+        "default_last_timestamp": "2020-03-01T00:00:00+00:00",
+        "udp_service_account_json_filename": "umich-its-tl-reports-prod.json",
+        "kaltura_partner_id": -1,
+        "kaltura_user_secret": ""
+        "kaltura_categories_full_name_in": "Canvas_UMich"
     },
 
     "UDW": {
