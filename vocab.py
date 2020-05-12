@@ -34,7 +34,7 @@ class ValidDataSourceName(Enum):
     CANVAS_ZOOM_MEETINGS = auto()
 
 
-class DataSourceTimestamp:
+class DataSourceStatus:
     def __init__(
             self,
             dataSource: ValidDataSourceName = NotImplemented,
@@ -48,7 +48,7 @@ class DataSourceTimestamp:
     def setDataSource(
             self,
             dataSource: ValidDataSourceName = NotImplemented
-    ) -> DataSourceTimestamp:
+    ) -> DataSourceStatus:
         if (dataSource is NotImplemented):
             raise ValueError('dataSource must be specified')
         self.dataSource = dataSource
@@ -57,7 +57,7 @@ class DataSourceTimestamp:
     def getDataSource(self) -> ValidDataSourceName:
         return self.dataSource
 
-    def setTimestamp(self, timestamp: datetime = NotImplemented) -> DataSourceTimestamp:
+    def setTimestamp(self, timestamp: datetime = NotImplemented) -> DataSourceStatus:
         if (timestamp is NotImplemented):
             self.timestamp = pd.to_datetime(time.time(), unit='s', utc=True)
         elif (timestamp.tzinfo is not UTC):

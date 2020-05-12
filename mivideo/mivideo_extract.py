@@ -16,7 +16,7 @@ from sqlalchemy.engine import ResultProxy
 import mivideo.queries as queries
 from db.db_creator import DBCreator
 from environ import CONFIG_DIR, CONFIG_PATH, ENV
-from vocab import DataSourceTimestamp, ValidDataSourceName
+from vocab import DataSourceStatus, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +71,9 @@ class MiVideoExtract(object):
 
         return lastTime
 
-    def run(self) -> DataSourceTimestamp:
+    def run(self) -> DataSourceStatus:
         """
-        :return: DataSourceTimestamp
+        :return: DataSourceStatus
         """
 
         tableName = 'mivideo_media_started_hourly'
@@ -118,14 +118,14 @@ class MiVideoExtract(object):
 
         logger.info('End of extract')
 
-        return DataSourceTimestamp(ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS)
+        return DataSourceStatus(ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS)
 
 
-def main() -> Sequence[DataSourceTimestamp]:
+def main() -> Sequence[DataSourceStatus]:
     '''
     This method is invoked when its module is executed as a standalone program.
 
-    :return: List of DataSourceTimestamp
+    :return: List of DataSourceStatus
     '''
     return [MiVideoExtract().run()]
 
