@@ -182,6 +182,31 @@ def gather_course_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.
     return course_df
 
 
+def gather_account_data_from_api(account_ids: Sequence[int]) -> pd.DataFrame:
+    logger.info('** gather_account_data_from_api')
+    url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/'
+
+    account_dicts = []
+    for account_id in account_ids:
+        logger.info(f'Account number {account_id}')
+        account_url_ending = url_ending_with_scope + str(account_id)
+        response = make_request_using_api_utils(account_url_ending)
+        account_data = json.loads(response.text)
+        slim_account_dict = {
+            'canvas_id': account_data['id'],
+            'name': account_data['name']
+        }
+        if 'sis_account_id' in account_data.keys():
+            slim_account_dict['sis_id'] = account_data['sis_account_id']
+        else:
+            slim_account_dict['sis_id'] = None
+        account_dicts.append(slim_account_dict)
+
+    account_df = pd.DataFrame(account_dicts)
+    logger.debug(account_df.head())
+    return account_df
+
+
 # Function(s) - UDW
 
 def process_sis_id(orig_sis_id: str) -> Union[int, None]:
@@ -263,6 +288,10 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
     canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
+    # Gather account data
+    account_ids = sorted(course_df['account_id'].drop_duplicates().to_list())
+    account_df = gather_account_data_from_api(account_ids)
+
     # Gather enrollment, user, and section data
     course_ids = course_df['canvas_id'].to_list()
 
@@ -316,13 +345,14 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Produce output
     num_term_records = len(term_df)
     num_course_records = len(course_df)
+    num_account_records = len(account_df)
     num_user_records = len(user_df)
     num_section_records = len(section_df)
     num_enrollment_records = len(enrollment_df)
     num_canvas_usage_records = len(canvas_course_usage_df)
 
     if CREATE_CSVS:
-        # Generate CSV Output
+        # Generate CSV output
         logger.info(f'Writing {num_term_records} term records to CSV')
         term_df.to_csv(os.path.join('data', 'term.csv'), index=False)
         logger.info('Wrote data to data/term.csv')
@@ -330,6 +360,10 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         logger.info(f'Writing {num_course_records} course records to CSV')
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
+
+        logger.info(f'Writing {num_account_records} account records to CSV')
+        account_df.to_csv(os.path.join('data', 'account.csv'), index=False)
+        logger.info('Wrote data to data/account.csv')
 
         logger.info(f'Writing {num_user_records} user records to CSV')
         user_df.to_csv(os.path.join('data', 'user.csv'), index=False)
@@ -353,13 +387,17 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     # Empty records from Canvas data tables in database
     logger.info('Emptying Canvas data tables in DB')
     db_creator_obj.drop_records(
-        ['course', 'canvas_course_usage', 'course_section', 'enrollment', 'term', 'user']
+        ['account', 'canvas_course_usage', 'course', 'course_section', 'enrollment', 'term', 'user']
     )
 
-    # Insert gathered data
+    # Insert gathered data into DB
     logger.info(f'Inserting {num_term_records} term records to DB')
     term_df.to_sql('term', db_creator_obj.engine, if_exists='append', index=False)
     logger.info(f'Inserted data into term table in {db_creator_obj.db_name}')
+
+    logger.info(f'Inserting {num_account_records} account records to DB')
+    account_df.to_sql('account', db_creator_obj.engine, if_exists='append', index=False)
+    logger.info(f'Inserted data into account table in {db_creator_obj.db_name}')
 
     logger.info(f'Inserting {num_course_records} course records to DB')
     course_df.to_sql('course', db_creator_obj.engine, if_exists='append', index=False)
