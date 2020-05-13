@@ -133,7 +133,7 @@ def gather_course_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.
     logger.info('** gather_course_data_from_api')
     url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/{account_id}/courses'
 
-    course_dicts = []
+    course_dicts: List[Dict[str, Any]] = []
     for term_id in term_ids:
         logger.info(f'Fetching course data for term {term_id}')
 
@@ -305,9 +305,9 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
         course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
 
-        logger.info(f'Writing {num_section_records} section records to CSV')
-        section_df.to_csv(os.path.join('data', 'section.csv'), index=False)
-        logger.info('Wrote data to data/section.csv')
+        logger.info(f'Writing {num_section_records} course_section records to CSV')
+        section_df.to_csv(os.path.join('data', 'course_section.csv'), index=False)
+        logger.info('Wrote data to data/course_section.csv')
 
         logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
         enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
