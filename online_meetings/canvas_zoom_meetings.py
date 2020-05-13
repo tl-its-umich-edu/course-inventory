@@ -12,8 +12,9 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup as bs
 
+from db.db_creator import DBCreator
 from environ import ENV, DATA_DIR
-from vocab import DataSourceStatus, ValidDataSourceName
+from vocab import DataSourceStatus, PlacementType, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +102,9 @@ class ZoomPlacements:
                         self.zoom_courses_meetings.append({
                             'course_id': course_id,
                             'meeting_id': meeting['meetingId'],
-                            'meeting_number': meeting['meetingNumber'],
                             'host_id': meeting['hostId'],
-                            'topic': meeting['topic'],
-                            'join_url': meeting['joinUrl'],
                             'start_time': meeting['startTime'],
                             'status': meeting['status'],
-                            'timezone': meeting['timezone']
                         })
 
         else:
@@ -133,9 +130,11 @@ class ZoomPlacements:
                     logger.info("Could not find a form to launch this zoom page, skipping")
                     break
 
-                self.zoom_courses.append({'account_id': course.account_id,
-                                          'course_id': course.id,
-                                          'course_name': course.name})
+                self.zoom_courses.append({'id': course.id,
+                                          'account_id': course.account_id,
+                                          'course_name': course.name,
+                                          'placement_type_id':  PlacementType.ZOOM
+                                          })
 
                 fields = form.findAll('input')
                 formdata = dict((field.get('name'), field.get('value')) for field in fields)
@@ -191,6 +190,8 @@ def main() -> Sequence[DataSourceStatus]:
     '''
     This method is invoked when its module is executed as a standalone program.
     '''
+
+    db_creator: DBCreator = DBCreator(ENV['INVENTORY_DB'])
     zoom_placements = ZoomPlacements()
     zoom_placements.zoom_course_report(
         CANVAS_ENV.get("CANVAS_ACCOUNT_ID", 1),
@@ -200,12 +201,24 @@ def main() -> Sequence[DataSourceStatus]:
     )
 
     zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
-    zoom_courses_df.index.name = "id"
+    zoom_courses_df = zoom_courses_df.set_index(["id", "placement_type_id"])
+
     zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
     zoom_courses_meetings_df.index.name = "id"
 
-    zoom_courses_df.to_csv(os.path.join(DATA_DIR, "zoom_courses.csv"))
-    zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
+    if ENV.get('CREATE_CSVS', False):
+        zoom_courses_df.to_csv(os.path.join(DATA_DIR, "zoom_courses.csv"))
+        zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
+
+    # For now until this process is improved just remove all the previous records
+    logger.info('Emptying Canvas LTI data tables in DB')
+    db_creator.drop_records(
+        ['lti_placement', 'lti_zoom_meeting']
+    )
+
+    zoom_courses_df.to_sql("lti_placement", db_creator.engine, if_exists="append", index=True)
+    zoom_courses_meetings_df.to_sql("lti_zoom_meeting", db_creator.engine, if_exists="append", index=True)
+
     return [DataSourceStatus(ValidDataSourceName.CANVAS_ZOOM_MEETINGS)]
 
 
