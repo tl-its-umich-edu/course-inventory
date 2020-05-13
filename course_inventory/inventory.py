@@ -304,7 +304,8 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
-    udw_data_source = DataSourceStatus(ValidDataSourceName.UNIZIN_DATA_WAREHOUSE)
+    udw_data_source = DataSourceStatus(
+        ValidDataSourceName.UNIZIN_DATA_WAREHOUSE, udw_update_datetime)
 
     # Produce output
     num_term_records = len(term_df)
