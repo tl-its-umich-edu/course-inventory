@@ -17,8 +17,7 @@ from course_inventory.gql_queries import queries as QUERIES
 from course_inventory.published_date import FetchPublishedDate
 from db.db_creator import DBCreator
 from environ import ENV
-from vocab import ValidDataSourceName
-
+from vocab import DataSourceStatus, ValidDataSourceName
 
 # Initialize settings and globals
 
@@ -230,7 +229,7 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 # Entry point for run_jobs.py
 
-def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info("* run_course_inventory")
 
     logger.info('Making requests against the Canvas API')
@@ -281,10 +280,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     logger.info(f'Duration of process (seconds): {enroll_delta}')
 
     # Record data source info for Canvas API
-    canvas_data_source = {
-        'data_source_name': ValidDataSourceName.CANVAS_API,
-        'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-    }
+    canvas_data_source = DataSourceStatus(ValidDataSourceName.CANVAS_API)
 
     udw_conn = psycopg2.connect(**ENV['UDW'])
 
@@ -308,10 +304,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
-    udw_data_source = {
-        'data_source_name': ValidDataSourceName.UNIZIN_DATA_WAREHOUSE,
-        'data_updated_at': udw_update_datetime
-    }
+    udw_data_source = DataSourceStatus(ValidDataSourceName.UNIZIN_DATA_WAREHOUSE)
 
     # Produce output
     num_term_records = len(term_df)
