@@ -10,8 +10,7 @@ import sqlalchemy
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-from vocab import ValidJobName, ValidDataSourceName
-
+from vocab import DataSourceStatus, ValidDataSourceName, ValidJobName
 
 # Initialize settings and global variables
 logger = logging.getLogger(__name__)
@@ -52,16 +51,14 @@ class Job:
         if len(self.data_sources) == 0:
             logger.warning('No valid data sources were identified')
         else:
-            db_ready_data_sources = []
-            for data_source in self.data_sources:
-                db_ready_data_source = data_source.copy()
-                db_ready_data_source['data_source_name'] = db_ready_data_source['data_source_name'].name
-                db_ready_data_sources.append(db_ready_data_source)
-                
-            data_source_status_df = pd.DataFrame(db_ready_data_sources)
-            data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
-            data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
-            logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
+            data_source_status_df = (
+                pd.DataFrame.from_records(
+                    data_source.copy() for data_source in self.data_sources)
+                    .assign(**{'job_run_id': job_run_id}))
+
+            data_source_status_df.to_sql(
+                'data_source_status', db_creator_obj.engine, if_exists='append', index=False)
+            logger.info(f'Inserted ({len(data_source_status_df)}) data_source_status records')
 
     def run(self) -> None:
         leaf_module = import_module(self.import_path)
@@ -69,7 +66,7 @@ class Job:
 
         # Until we have a decorator for this
         self.started_at = time.time()
-        data_sources = start_method()
+        data_sources: Sequence[DataSourceStatus] = start_method()
         self.finished_at = time.time()
 
         delta = self.finished_at - self.started_at
@@ -78,7 +75,7 @@ class Job:
 
         valid_data_sources = []
         for data_source in data_sources:
-            data_source_name_mem = data_source['data_source_name']
+            data_source_name_mem = data_source.getDataSourceName()
             if isinstance(data_source_name_mem, ValidDataSourceName):
                 valid_data_sources.append(data_source)
             else:
