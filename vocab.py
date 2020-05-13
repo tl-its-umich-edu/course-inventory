@@ -37,11 +37,20 @@ class ValidDataSourceName(Enum):
 
 
 class DataSourceStatus:
+    '''
+    Each data source process must return an instance of this class, which tells the name of the
+    data source and the time at which data from it was last updated.
+    '''
     def __init__(
             self,
             dataSourceName: ValidDataSourceName = NotImplemented,
             dataUpdatedAt: datetime = NotImplemented
     ) -> None:
+        '''
+
+        :param dataSourceName: `ValidDataSourceName` - Name of data source
+        :param dataUpdatedAt: `datetime` - Time at which data from the source was updated
+        '''
         self.dataSourceName: ValidDataSourceName
         self.dataUpdatedAt: datetime
         self.setDataSourceName(dataSourceName)
@@ -51,6 +60,12 @@ class DataSourceStatus:
             self,
             dataSourceName: ValidDataSourceName = NotImplemented
     ) -> DataSourceStatus:
+        '''
+        Set name of data source
+
+        :param dataSourceName: `ValidDataSourceName` - Name of data source
+        :return: `DataSourceStatus`
+        '''
         if (dataSourceName is NotImplemented):
             raise ValueError('dataSourceName must be specified')
         if (not isinstance(dataSourceName, ValidDataSourceName)):
@@ -60,9 +75,20 @@ class DataSourceStatus:
         return self
 
     def getDataSourceName(self) -> ValidDataSourceName:
+        '''
+        Get name of data source
+
+        :return: `ValidDataSourceName` - Name of data source
+        '''
         return self.dataSourceName
 
     def setDataUpdatedAt(self, dataUpdatedAt: datetime = NotImplemented) -> DataSourceStatus:
+        '''
+        Set time data source updated
+
+        :param dataUpdatedAt: `datetime` - Time data source updated
+        :return: `DataSourceStatus`
+        '''
         if (dataUpdatedAt is NotImplemented):
             self.dataUpdatedAt = pd.to_datetime(time.time(), unit='s', utc=True)
         elif (dataUpdatedAt.tzinfo is not UTC):
@@ -72,6 +98,11 @@ class DataSourceStatus:
         return self
 
     def getDataUpdatedAt(self) -> datetime:
+        '''
+        Get time data source updated
+
+        :return: `datetime` -  Time data source updated
+        '''
         return self.dataUpdatedAt
 
     def copy(self) -> Dict:
@@ -79,7 +110,7 @@ class DataSourceStatus:
         Typical Pythonic method to return a dictionary representation of an object.  Note that the
         `data_source_name` key contains `dataSourceName.name`, not a `ValidDataSourceName` object.
 
-        :return: Dict of object properties
+        :return: `Dict` of object properties
         '''
 
         return {
