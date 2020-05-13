@@ -326,7 +326,7 @@ class MiVideoExtract:
         '''
         The main controller that runs each method required to update the data.
 
-        :return: List of dictionaries (keys 'data_source_name' and 'data_updated_at')
+        :return: List of DataSourceStatus
         '''
         return [
             self.mediaStartedHourly(),
