@@ -12,5 +12,5 @@ steps = [
     '''),
     step('''
         DROP TABLE user;
-    '''),
+    ''')
 ]
