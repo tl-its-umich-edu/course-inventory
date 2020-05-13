@@ -1,5 +1,5 @@
 #
-# file: migrations/0017.remove_user_table.py
+# file: migrations/0016.remove_user_table.py
 #
 from yoyo import step
 
