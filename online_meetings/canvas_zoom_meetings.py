@@ -188,7 +188,7 @@ class ZoomPlacements:
         return None
 
 
-def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+def main() -> Sequence[DataSourceStatus]:
     '''
     This method is invoked when its module is executed as a standalone program.
     '''
