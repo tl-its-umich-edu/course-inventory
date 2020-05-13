@@ -20,9 +20,6 @@ course_enrollments_query = '''
                     type
                     user {
                         _id
-                        name
-                        email
-                        createdAt
                     }
                     course {
                         _id
