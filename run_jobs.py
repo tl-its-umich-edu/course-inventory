@@ -16,11 +16,6 @@ from vocab import ValidJobName, ValidDataSourceName
 # Initialize settings and global variables
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(
-    level=ENV.get('LOG_LEVEL', 'DEBUG'),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
 
 # Class(es)
 
