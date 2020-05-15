@@ -30,7 +30,7 @@ with open(os.path.join(ROOT_DIR, 'config', 'env_schema.hjson')) as schema_file:
 LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
 logging.basicConfig(
     level=LOG_LEVEL,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s  - %(message)s'
 )
 
 # Override ENV key-value pairs with values from os.environ if set
