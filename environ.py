@@ -7,6 +7,7 @@ from typing import Any, Dict
 import hjson
 from jsonschema import draft7_format_checker, validate
 
+
 logger = logging.getLogger(__name__)
 
 # Set up path variables
@@ -27,7 +28,10 @@ with open(os.path.join(ROOT_DIR, 'config', 'env_schema.hjson')) as schema_file:
     ENV_SCHEMA: Dict[str, Any] = hjson.loads(schema_file.read())
 
 LOG_LEVEL: str = ENV.get('LOG_LEVEL', 'INFO')
-logging.basicConfig(level=LOG_LEVEL)
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s  - %(message)s'
+)
 
 # Override ENV key-value pairs with values from os.environ if set
 logger.debug(os.environ)
