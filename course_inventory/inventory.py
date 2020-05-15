@@ -186,9 +186,10 @@ def gather_account_data_from_api(account_ids: Sequence[int]) -> pd.DataFrame:
     logger.info('** gather_account_data_from_api')
     url_ending_with_scope = f'{API_SCOPE_PREFIX}/accounts/'
 
+    logger.info(f'Fetching account data')
     account_dicts = []
     for account_id in account_ids:
-        logger.info(f'Account number {account_id}')
+        logger.debug(f'Account number {account_id}')
         account_url_ending = url_ending_with_scope + str(account_id)
         response = make_request_using_api_utils(account_url_ending)
         account_data = json.loads(response.text)
@@ -201,6 +202,7 @@ def gather_account_data_from_api(account_ids: Sequence[int]) -> pd.DataFrame:
         else:
             slim_account_dict['sis_id'] = None
         account_dicts.append(slim_account_dict)
+    logger.info('Gathered account data')
 
     account_df = pd.DataFrame(account_dicts)
     logger.debug(account_df.head())
