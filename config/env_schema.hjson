@@ -42,8 +42,7 @@
                 "CANVAS_ACCOUNT_ID": {"type": "integer"},
                 "CANVAS_TERM_IDS": {
                     "type": "array",
-                    "items": {"type": "integer"},
-                    "minItems": 1
+                    "items": {"type": "integer"}
                 },
                 "ADD_COURSE_IDS": {
                     "type": "array",
