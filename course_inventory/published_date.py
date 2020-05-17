@@ -1,6 +1,7 @@
 import logging
 import time
 import json
+import requests
 from json.decoder import JSONDecodeError
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
@@ -11,13 +12,17 @@ logger = logging.getLogger(__name__)
 
 class FetchPublishedDate:
 
-    def __init__(self, canvas_url, canvas_token, num_workers, canvas_ids):
+    def __init__(self, canvas_url, canvas_token, num_workers, canvas_ids, retry_attempts):
         self.canvas_url = canvas_url
         self.canvas_token = canvas_token
         self.canvas_ids = canvas_ids
+        self.retry_attempts = retry_attempts
         self.num_workers = num_workers
         self.published_course_date = {}
-        self.published_course_next_page_list = []
+        # {332371: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/332371?page=bookmark:WzE1Nzg1Mjan&per_page=100', 'count': 0},
+        # 343033: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343033?per_page=100', 'count': 1},
+        # 343043: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343043?per_page=100', 'count': 1}}
+        self.published_date_retry_bucket = {}
 
     def get_next_page_url(self, response):
         """
@@ -33,26 +38,61 @@ class FetchPublishedDate:
             logging.debug('The api call do not have Link headers')
             return None
 
+        course_id = int(response.result().url.split('?')[0].split('/')[-1])
         if 'next' in results:
             url_ = results['next']['url']
-            self.published_course_next_page_list.append(url_)
-            logger.info(f"Pagination size {len(self.published_course_next_page_list)} for published_at date")
+            logger.debug('Fetching the next page URL')
+            # This update and add to the retry bucket
+            self.published_date_retry_bucket[course_id] = {
+                    'url': url_,
+                    'count': 0,
+            }
+            logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
+        else:
+            if course_id in self.published_date_retry_bucket:
+                logger.info(f"Removing the course {course_id} from the list as this as course don't have a date {results}")
+                self.published_date_retry_bucket.pop(course_id)
+            else:
+                # This is the case when canvas sends no Date for a course
+                logger.info(f"Course {course_id} don't have more pages")
 
     def published_date_resp_parsing(self, response):
-
         logger.info("published_date_resp_parsing Call")
 
         if response is None:
             logger.info(f"Published course date response is None ")
             return
 
-        start_time = time.time()
-
         logger.info(f"published courses date collected so far : {len(self.published_course_date)}")
+        start_time = time.time()
+        course_id = int(response.result().url.split('?')[0].split('/')[-1])
+
+        logger.info(f"Parsing the response for CourseId: {course_id}")
+        logger.info(f"Pagination info {course_id} {response.result().links}")
+        logger.info(f"Time taken to get the response for {course_id} : {response.result().elapsed}")
         status = response.result().status_code
         published_date_found = False
         if status != 200:
-            logger.info(f"Response not successful with status code {status} due to {response.result().text}")
+            url = response.result().url
+            logger.info(f"""Response unsuccessful for {course_id} status: {status} and time taken:{response.result().elapsed}  
+                        due to {response.result().text}""")
+            if course_id in self.published_date_retry_bucket:
+                retry_count = self.published_date_retry_bucket[course_id]['count']
+                if retry_count > self.retry_attempts - 1:
+                    # Don't want to retry more
+                    logger.info(f"Logging exceeded for {course_id} with count {retry_count}, Removing ")
+                    self.published_date_retry_bucket.pop(course_id)
+                else:
+                    # We will give one more chance to retry
+                    logger.info(f" Trying more {course_id}  ")
+                    self.published_date_retry_bucket[course_id]['count'] += 1
+            else:
+                logger.info(f"Putting course {course_id} to retry list")
+                self.published_date_retry_bucket[course_id] = {
+                    'url': url,
+                    'count': 1,
+                }
+            logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
             return
 
         try:
@@ -75,30 +115,32 @@ class FetchPublishedDate:
                 published_date_found = True
                 self.published_course_date.update({course_id: event['created_at']})
                 logger.info(f"Published Date {event['created_at']} for course {course_id}")
-                break
+                if course_id in self.published_date_retry_bucket:
+                    logger.info(f"Going to remove {course_id} from retry list {self.published_date_retry_bucket}")
+                    self.published_date_retry_bucket.pop(course_id)
+                    logger.info(f"Removed {course_id} removed from retry list {self.published_date_retry_bucket}")
+            break
         if not published_date_found:
             self.get_next_page_url(response)
 
         seconds = time.time() - start_time
         str_time = time.strftime("%H:%M:%S", time.gmtime(seconds))
-        logger.debug(f"Parsing the published date took {str_time} ")
+        logger.info(f"Parsing the published date took {str_time} ")
         return
 
-    def get_published_course_date(self, course_ids, next_page_links=None):
+    def get_published_course_date(self, course_ids, retry_list=None):
         logger.info("Starting of get_published_course_date call")
-        with FuturesSession(max_workers=self.num_workers) as session:
+
+        with FuturesSession(max_workers=self.num_workers) as future_session:
             headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
-            if next_page_links is not None:
-                logger.info("Going through Next page URL set")
-                responses = []
-                for next_page_link in next_page_links:
-                    response = session.get(next_page_link, headers=headers)
-                    self.published_course_next_page_list.remove(next_page_link)
-                    responses.append(response)
+            if retry_list is not None:
+                logger.info("Going through error and pagination list")
+                responses = [future_session.get(retry_list[course]['url'], headers=headers)
+                             for course in retry_list]
             else:
                 logger.info("Initial Round of Fetching course published date")
                 responses = [
-                    session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100',
+                    future_session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100',
                                 headers=headers)
                     for course_id in course_ids
                 ]
@@ -106,9 +148,9 @@ class FetchPublishedDate:
             for response in as_completed(responses):
                 self.published_date_resp_parsing(response)
 
-        if len(self.published_course_next_page_list) != 0:
-            logger.info(f"""Pagination size {len(self.published_course_next_page_list)} with published_at date items
-                         {self.published_course_next_page_list}""")
-            self.get_published_course_date(course_ids, self.published_course_next_page_list)
+        if len(self.published_date_retry_bucket) != 0:
+            logger.info(f"""Retrying now with list {len(self.published_date_retry_bucket)} 
+                        {self.published_date_retry_bucket}""")
+            self.get_published_course_date(course_ids, self.published_date_retry_bucket)
 
         return self.published_course_date
