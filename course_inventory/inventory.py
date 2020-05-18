@@ -262,55 +262,53 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info(f"Size of courses when workflow state available {course_available_df.shape}")
 
     course_copy_df = course_df.copy(deep=True)
-    logger.info(f"Size of courses from API  {course_copy_df.shape}")
-    logger.info(f"Size of courses from API with workflow state available  {course_copy_df[(course_copy_df['workflow_state'] == 'available')].shape}")
-
+    logger.info(f"Size of courses data from API routine:  {course_copy_df.shape}")
+    logger.info(f"""Size of Published courses from API:
+                {course_copy_df[(course_copy_df['workflow_state'] == 'available')].shape}""")
     course_from_db_df = get_course_info_from_DB(db_creator_obj)
-
-    logger.info(f"Size of courses set from DB with workflow state available {course_from_db_df.shape}")
+    logger.info(f"Size of Published courses from DB with:  {course_from_db_df.shape}")
+    published_date_in_db = course_from_db_df[(course_from_db_df['published_at'].notnull())].shape
+    logger.info(f"Size of Published courses from DB with published date: {published_date_in_db}")
     course_copy_df = pd.merge(course_copy_df, course_from_db_df, on='canvas_id', how='left')
-    logger.info(f"Size of course_copy_df after merging from Database data {course_copy_df.shape}")
+    logger.info(f"Size of course data after merging from DB data {course_copy_df.shape}")
 
     course_available_pub_date_null_df = course_copy_df.loc[(course_copy_df['workflow_state'] == 'available') &
                                                            (course_copy_df['published_at'].isnull())].copy(deep=True)
     course_ids_available_with_no_pub_date = course_available_pub_date_null_df['canvas_id'].to_list()
-    logger.info(f"published date are going to be fetched for {len(course_ids_available_with_no_pub_date)}")
+    logger.info(f"Published dates going to be fetched are: {len(course_ids_available_with_no_pub_date)}")
 
     if len(course_ids_available_with_no_pub_date) > 0:
         logger.info("*** Fetching the published date ***")
         published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS,
                                              course_ids_available_with_no_pub_date, MAX_REQ_ATTEMPTS)
+        start_time = time.time()
         published_course_date = published_dates.get_published_course_date(course_ids_available_with_no_pub_date)
-        logger.info("###########################################")
-        logger.info(f"Size Published dates fetched: {len(published_course_date)}")
+        delta = time.time() - start_time
+        str_time = time.strftime("%H:%M:%S", time.gmtime(delta))
+        logger.info(f"Published date Process took {str_time}")
+
+        newly_published_date_size = len(published_course_date)
+        logger.info(f"Size Published dates fetched from API: {newly_published_date_size}")
+        logger.info(f"Database should have {published_date_in_db[0] + newly_published_date_size} published dates ")
         if len(published_course_date) > 0:
-            pd.set_option('display.max_columns', None)
-            pd.set_option('display.max_rows', None)
             course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
             course_published_date_df['published_at'] = pd.to_datetime(course_published_date_df['published_at'],
                                                         format=CANVAS_DATETIME_FORMAT,
                                                         errors='coerce')
-            logger.info(course_published_date_df)
             course_copy_df = pd.merge(course_copy_df, course_published_date_df, on='canvas_id', how='left')
-            logger.info(course_copy_df)
             if course_from_db_df.empty:
                 course_copy_df['published_at'] = course_copy_df['published_at_y']
             else:
                 course_copy_df['published_at'] = course_copy_df['published_at_x'].fillna(course_copy_df['published_at_y'])
             course_copy_df = course_copy_df.drop(['published_at_x', 'published_at_y'], axis=1)
-            course_final_df = course_copy_df[['canvas_id','published_at']]
-            logger.info(f"GRABBED: {course_final_df}")
-            course_df = pd.merge(course_df, course_final_df, on='canvas_id', how='left')
-            logger.info(course_df)
+            course_copy_df = course_copy_df[['canvas_id','published_at']]
+            course_df = pd.merge(course_df, course_copy_df, on='canvas_id', how='left')
         else:
             logger.info(f"No more published date fetched than what is stored in DB")
             course_df = pd.merge(course_df, course_from_db_df, on='canvas_id', how='left')
     else:
         logger.info(f"All courses seems to have Published dates, so fetching Published dates routine not needed")
-    #
-    logger.info("*** Checking for courses available and no published date ***")
-    logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
-    #
+        logger.info(f"Database should have {published_date_in_db[0]} published dates ")
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
                                              format=CANVAS_DATETIME_FORMAT,
                                              errors='coerce')

@@ -19,7 +19,8 @@ class FetchPublishedDate:
         self.retry_attempts = retry_attempts
         self.num_workers = num_workers
         self.published_course_date = {}
-        # {332371: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/332371?page=bookmark:WzE1Nzg1Mjan&per_page=100', 'count': 0},
+        #{332371: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/332371?page=bookmark:WzE1Nzg1Mjan
+        #           &per_page=100', 'count': 0},
         # 343033: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343033?per_page=100', 'count': 1},
         # 343043: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343043?per_page=100', 'count': 1}}
         self.published_date_retry_bucket = {}
@@ -42,7 +43,7 @@ class FetchPublishedDate:
         if 'next' in results:
             url_ = results['next']['url']
             logger.debug('Fetching the next page URL')
-            # This update and add to the retry bucket
+            # This update or add to the retry bucket
             self.published_date_retry_bucket[course_id] = {
                     'url': url_,
                     'count': 0,
@@ -54,51 +55,33 @@ class FetchPublishedDate:
                 self.published_date_retry_bucket.pop(course_id)
             else:
                 # This is the case when canvas sends no Date for a course
-                logger.info(f"Course {course_id} don't have publihsed date")
+                logger.info(f"Course {course_id} don't have published date")
 
     def published_date_resp_parsing(self, response):
-        logger.info("published_date_resp_parsing Call")
-
         if response is None:
             logger.info(f"Published course date response is None ")
             return
 
         logger.info(f"published courses date collected so far : {len(self.published_course_date)}")
-        start_time = time.time()
-        course_id = int(response.result().url.split('?')[0].split('/')[-1])
+        url = response.result().url
+        course_id = int(url.split('?')[0].split('/')[-1])
 
-        logger.info(f"Parsing the response for CourseId: {course_id}")
+        logger.info(f"Parsing the response for Course: {course_id}")
         logger.info(f"Pagination info {course_id} {response.result().links}")
         logger.info(f"Time taken to get the response for {course_id} : {response.result().elapsed}")
         status = response.result().status_code
         published_date_found = False
         if status != 200:
-            url = response.result().url
             logger.info(f"""Response unsuccessful for {course_id} status: {status} and time taken:{response.result().elapsed}  
                         due to {response.result().text}""")
-            if course_id in self.published_date_retry_bucket:
-                retry_count = self.published_date_retry_bucket[course_id]['count']
-                if retry_count > self.retry_attempts - 1:
-                    # Don't want to retry more
-                    logger.info(f"Logging exceeded for {course_id} with count {retry_count}, Removing ")
-                    self.published_date_retry_bucket.pop(course_id)
-                else:
-                    # We will give one more chance to retry
-                    logger.info(f" Trying more {course_id}  ")
-                    self.published_date_retry_bucket[course_id]['count'] += 1
-            else:
-                logger.info(f"Putting course {course_id} to retry list")
-                self.published_date_retry_bucket[course_id] = {
-                    'url': url,
-                    'count': 1,
-                }
-            logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
+            self.retry_logic_with_error(course_id, url)
             return
 
         try:
             audit_events = json.loads(response.result().text)
         except JSONDecodeError as e:
             logger.error(f"Error in parsing the response {e.msg}")
+            self.retry_logic_with_error(course_id, url)
             return
 
         if not audit_events:
@@ -123,10 +106,26 @@ class FetchPublishedDate:
         if not published_date_found:
             self.get_next_page_url(response)
 
-        seconds = time.time() - start_time
-        str_time = time.strftime("%H:%M:%S", time.gmtime(seconds))
-        logger.info(f"Parsing the published date took {str_time} ")
         return
+
+    def retry_logic_with_error(self, course_id, url):
+        if course_id in self.published_date_retry_bucket:
+            retry_count = self.published_date_retry_bucket[course_id]['count']
+            if retry_count > self.retry_attempts - 1:
+                # Don't want to retry more
+                logger.info(f"Reached max retry attempts for {course_id} with count {retry_count}, Removing... ")
+                self.published_date_retry_bucket.pop(course_id)
+            else:
+                # We will give one more chance to retry
+                logger.info(f"Retry more for {course_id}  ")
+                self.published_date_retry_bucket[course_id]['count'] += 1
+        else:
+            logger.info(f"Putting course {course_id} to retry list")
+            self.published_date_retry_bucket[course_id] = {
+                'url': url,
+                'count': 1,
+            }
+        logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
 
     def get_published_course_date(self, course_ids, retry_list=None):
         logger.info("Starting of get_published_course_date call")
