@@ -228,10 +228,28 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
     return udw_section_df
 
 
+def get_course_info_from_DB(db_creator_obj: DBCreator) -> pd.DataFrame:
+    logger.info("getting the course info from Database")
+    course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
+                            where workflow_state = 'available' ;''',
+                            db_creator_obj.engine)
+    logger.info(course_from_db_df.head())
+    return course_from_db_df
+
+
+def get_course_from_db_without_pub_date(df) -> List[int]:
+    course_without_pub_date_df = df[df['published_at'].isnull()]
+    course_id_with_no_pub = course_without_pub_date_df['canvas_id'].tolist()
+    logger.info(f"Courses list from Database with out published date{len(course_id_with_no_pub)}: {course_id_with_no_pub}")
+    return course_id_with_no_pub
+
+
 # Entry point for run_jobs.py
 
 def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info("* run_course_inventory")
+    # Initialize DBCreator object
+    db_creator_obj = DBCreator(INVENTORY_DB)
 
     logger.info('Making requests against the Canvas API')
 
@@ -240,27 +258,65 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
 
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS)
+    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy(deep=True)
+    logger.info(f"Size of courses when workflow state available {course_available_df.shape}")
 
-    logger.info("*** Fetching the published date ***")
-    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
-    course_available_ids = course_available_df['canvas_id'].to_list()
-    published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS, course_available_ids)
-    published_course_date = published_dates.get_published_course_date(course_available_ids)
-    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
-    course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+    course_copy_df = course_df.copy(deep=True)
+    logger.info(f"Size of courses from API  {course_copy_df.shape}")
+    logger.info(f"Size of courses from API with workflow state available  {course_copy_df[(course_copy_df['workflow_state'] == 'available')].shape}")
 
+    course_from_db_df = get_course_info_from_DB(db_creator_obj)
+
+    logger.info(f"Size of courses set from DB with workflow state available {course_from_db_df.shape}")
+    course_copy_df = pd.merge(course_copy_df, course_from_db_df, on='canvas_id', how='left')
+    logger.info(f"Size of course_copy_df after merging from Database data {course_copy_df.shape}")
+
+    course_available_pub_date_null_df = course_copy_df.loc[(course_copy_df['workflow_state'] == 'available') &
+                                                           (course_copy_df['published_at'].isnull())].copy(deep=True)
+    course_ids_available_with_no_pub_date = course_available_pub_date_null_df['canvas_id'].to_list()
+    logger.info(f"published date are going to be fetched for {len(course_ids_available_with_no_pub_date)}")
+
+    if len(course_ids_available_with_no_pub_date) > 0:
+        logger.info("*** Fetching the published date ***")
+        published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS,
+                                             course_ids_available_with_no_pub_date, MAX_REQ_ATTEMPTS)
+        published_course_date = published_dates.get_published_course_date(course_ids_available_with_no_pub_date)
+        logger.info("###########################################")
+        logger.info(f"Size Published dates fetched: {len(published_course_date)}")
+        if len(published_course_date) > 0:
+            pd.set_option('display.max_columns', None)
+            pd.set_option('display.max_rows', None)
+            course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
+            course_published_date_df['published_at'] = pd.to_datetime(course_published_date_df['published_at'],
+                                                        format=CANVAS_DATETIME_FORMAT,
+                                                        errors='coerce')
+            logger.info(course_published_date_df)
+            course_copy_df = pd.merge(course_copy_df, course_published_date_df, on='canvas_id', how='left')
+            logger.info(course_copy_df)
+            if course_from_db_df.empty:
+                course_copy_df['published_at'] = course_copy_df['published_at_y']
+            else:
+                course_copy_df['published_at'] = course_copy_df['published_at_x'].fillna(course_copy_df['published_at_y'])
+            course_copy_df = course_copy_df.drop(['published_at_x', 'published_at_y'], axis=1)
+            course_final_df = course_copy_df[['canvas_id','published_at']]
+            logger.info(f"GRABBED: {course_final_df}")
+            course_df = pd.merge(course_df, course_final_df, on='canvas_id', how='left')
+            logger.info(course_df)
+        else:
+            logger.info(f"No more published date fetched than what is stored in DB")
+            course_df = pd.merge(course_df, course_from_db_df, on='canvas_id', how='left')
+    else:
+        logger.info(f"All courses seems to have Published dates, so fetching Published dates routine not needed")
+    #
     logger.info("*** Checking for courses available and no published date ***")
     logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
-    
+    #
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
                                              format=CANVAS_DATETIME_FORMAT,
                                              errors='coerce')
-    course_df['published_at'] = pd.to_datetime(course_df['published_at'],
-                                               format=CANVAS_DATETIME_FORMAT,
-                                               errors='coerce')
 
     logger.info("*** Fetching the canvas course usage data ***")
-    canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
+    canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_df['canvas_id'].tolist())
     canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
     # Gather account data
@@ -283,6 +339,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     enrollment_df, section_df = enroll_gatherer.generate_output()
     enroll_delta = time.time() - enroll_start
     logger.info(f'Duration of process (seconds): {enroll_delta}')
+
 
     # Record data source info for Canvas API
     canvas_data_source = DataSourceStatus(ValidDataSourceName.CANVAS_API)
@@ -307,6 +364,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
 
     udw_data_source = DataSourceStatus(
         ValidDataSourceName.UNIZIN_DATA_WAREHOUSE, udw_update_datetime)
+
 
     # Produce output
     num_term_records = len(term_df)
@@ -342,8 +400,6 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
         canvas_course_usage_df.to_csv(os.path.join('data', 'canvas_course_usage.csv'), index=False)
         logger.info('Wrote data to data/canvas_course_usage.csv')
 
-    # Initialize DBCreator object
-    db_creator_obj = DBCreator(INVENTORY_DB)
 
     # Empty records from Canvas data tables in database
     logger.info('Emptying Canvas data tables in DB')
