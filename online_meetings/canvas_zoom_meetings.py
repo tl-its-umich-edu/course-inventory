@@ -5,7 +5,6 @@ import logging
 import math
 import os
 import re
-import time
 from typing import Dict, List, Optional, Sequence, Union
 
 import canvasapi
