@@ -54,7 +54,7 @@ class FetchPublishedDate:
                 self.published_date_retry_bucket.pop(course_id)
             else:
                 # This is the case when canvas sends no Date for a course
-                logger.info(f"Course {course_id} don't have more pages")
+                logger.info(f"Course {course_id} don't have publihsed date")
 
     def published_date_resp_parsing(self, response):
         logger.info("published_date_resp_parsing Call")
@@ -149,7 +149,7 @@ class FetchPublishedDate:
                 self.published_date_resp_parsing(response)
 
         if len(self.published_date_retry_bucket) != 0:
-            logger.info(f"""Retrying now with list {len(self.published_date_retry_bucket)} 
+            logger.info(f"""Retrying now with list size {len(self.published_date_retry_bucket)} 
                         {self.published_date_retry_bucket}""")
             self.get_published_course_date(course_ids, self.published_date_retry_bucket)
 
