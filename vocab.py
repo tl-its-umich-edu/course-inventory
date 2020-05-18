@@ -35,13 +35,13 @@ class ValidDataSourceName(Enum):
     UNIZIN_DATA_PLATFORM_EVENTS = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
 
-    def __str__(self):
+    def __str__(self) -> str:
         '''
         Return value name without `ValidDataSourceName` class name.
 
         :return: Name of enum value.
         '''
-        return self.name
+        return str(self.name)
 
 
 

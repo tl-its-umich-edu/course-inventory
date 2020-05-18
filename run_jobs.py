@@ -1,7 +1,7 @@
 # standard libraries
 import logging, os, sys, time
 from importlib import import_module
-from typing import Dict, Sequence, Union
+from typing import Sequence, Union
 
 # third-party libraries
 import pandas as pd
@@ -10,7 +10,7 @@ import sqlalchemy
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-from vocab import DataSourceStatus, ValidDataSourceName, ValidJobName
+from vocab import DataSourceStatus, ValidJobName
 
 # Initialize settings and global variables
 logger = logging.getLogger(__name__)
