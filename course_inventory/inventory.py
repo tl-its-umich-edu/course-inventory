@@ -259,7 +259,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS)
     course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy(deep=True)
-    logger.info(f"Size of courses when workflow state available {course_available_df.shape}")
+    logger.info(f"Size of courses with available workflow state: {course_available_df.shape}")
 
     course_copy_df = course_df.copy(deep=True)
     logger.info(f"Size of courses data from API routine:  {course_copy_df.shape}")
