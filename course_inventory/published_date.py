@@ -1,10 +1,9 @@
 import logging
-import time
 import json
-import requests
 from json.decoder import JSONDecodeError
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
+from typing import Any, Dict
 
 
 logger = logging.getLogger(__name__)
@@ -19,11 +18,8 @@ class FetchPublishedDate:
         self.retry_attempts = retry_attempts
         self.num_workers = num_workers
         self.published_course_date = {}
-        #{332371: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/332371?page=bookmark:WzE1Nzg1Mjan
-        #           &per_page=100', 'count': 0},
-        # 343033: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343033?per_page=100', 'count': 1},
-        # 343043: {'url': 'https://umich.instructure.com/api/v1/audit/course/courses/343043?per_page=100', 'count': 1}}
-        self.published_date_retry_bucket = {}
+        # { course_id: {'url': 'https://instructure.com','count': 0} }
+        self.published_date_retry_bucket: Dict[int, Dict[str, Any]] = {}
 
     def get_next_page_url(self, response):
         """
@@ -34,24 +30,25 @@ class FetchPublishedDate:
         :rtype: str
         """
         logging.debug(self.get_next_page_url.__name__ + '() called')
-        results = response.result().links
-        if not results:
+        result = response.result()
+        links = result.links
+        if not links:
             logging.debug('The api call do not have Link headers')
             return None
 
-        course_id = int(response.result().url.split('?')[0].split('/')[-1])
-        if 'next' in results:
-            url_ = results['next']['url']
+        course_id = int(result.url.split('?')[0].split('/')[-1])
+        if 'next' in links:
+            url_ = links['next']['url']
             logger.debug('Fetching the next page URL')
             # This update or add to the retry bucket
             self.published_date_retry_bucket[course_id] = {
-                    'url': url_,
-                    'count': 0,
+                'url': url_,
+                'count': 0,
             }
             logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
         else:
             if course_id in self.published_date_retry_bucket:
-                logger.info(f"Removing the course {course_id} from the list as this as course don't have a date {results}")
+                logger.info(f"Removing the course {course_id} from the list as course don't have a date {links}")
                 self.published_date_retry_bucket.pop(course_id)
             else:
                 # This is the case when canvas sends no Date for a course
@@ -72,7 +69,8 @@ class FetchPublishedDate:
         status = response.result().status_code
         published_date_found = False
         if status != 200:
-            logger.info(f"""Response unsuccessful for {course_id} status: {status} and time taken:{response.result().elapsed}  
+            logger.info(
+                f"""Response unsuccessful for {course_id} status: {status} and time taken:{response.result().elapsed}  
                         due to {response.result().text}""")
             self.retry_logic_with_error(course_id, url)
             return
@@ -140,7 +138,7 @@ class FetchPublishedDate:
                 logger.info("Initial Round of Fetching course published date")
                 responses = [
                     future_session.get(f'{self.canvas_url}/api/v1/audit/course/courses/{course_id}?per_page=100',
-                                headers=headers)
+                                       headers=headers)
                     for course_id in course_ids
                 ]
 
