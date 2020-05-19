@@ -109,7 +109,9 @@ class DataSourceStatus:
         '''
         if (data_updated_at is None):
             self._data_updated_at = datetime.fromtimestamp(time.time(), pytz.UTC)
-        elif (type(data_updated_at) is not datetime):
+        elif (type(data_updated_at) is not datetime): # pylint: disable=unidiomatic-typecheck
+            # Prevent use of pandas.Timestamp, which is incompatible with SQLAlchemy.
+            # Note: This kind of type check may be unpythonic because it defeats duck typing.
             raise TypeError('data_updated_at must be of type datetime')
         elif (data_updated_at.tzinfo is not pytz.UTC):
             raise ValueError('data_updated_at must have UTC time zone')
