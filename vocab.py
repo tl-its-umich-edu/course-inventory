@@ -4,9 +4,8 @@ from __future__ import annotations
 import time
 from datetime import datetime
 from enum import auto, Enum
-from typing import Dict
+from typing import Dict, Union
 
-import pandas as pd
 import pytz
 
 
@@ -52,8 +51,8 @@ class DataSourceStatus:
 
     def __init__(
             self,
-            data_source_name: ValidDataSourceName = NotImplemented,
-            data_updated_at: datetime = NotImplemented
+            data_source_name: ValidDataSourceName = None,
+            data_updated_at: datetime = None
     ) -> None:
         '''
         Create a data source status object with name and update timestamp.
@@ -71,7 +70,7 @@ class DataSourceStatus:
         return self._data_source_name
 
     @data_source_name.setter
-    def data_source_name(self, data_source_name: ValidDataSourceName = NotImplemented):
+    def data_source_name(self, data_source_name: ValidDataSourceName = None):
         self.set_data_source_name(data_source_name)
 
     @property
@@ -85,7 +84,7 @@ class DataSourceStatus:
 
     def set_data_source_name(
             self,
-            data_source_name: ValidDataSourceName = NotImplemented
+            data_source_name: ValidDataSourceName = None
     ) -> DataSourceStatus:
         '''
         Set name of data source.  Main logic and fluent interface.
@@ -93,7 +92,7 @@ class DataSourceStatus:
         :param data_source_name: `ValidDataSourceName` - Name of data source
         :return: `DataSourceStatus`
         '''
-        if (data_source_name is NotImplemented):
+        if (data_source_name is None):
             raise ValueError('data_source_name must be specified')
         if (not isinstance(data_source_name, ValidDataSourceName)):
             raise ValueError('data_source_name must be of type ValidDataSourceName')
@@ -101,22 +100,22 @@ class DataSourceStatus:
         self._data_source_name = data_source_name
         return self
 
-    def set_data_updated_at(self, data_updated_at: datetime = NotImplemented) -> DataSourceStatus:
+    def set_data_updated_at(self, data_updated_at: datetime = None) -> DataSourceStatus:
         '''
         Set time data source updated.  Main logic and fluent interface.
 
         :param data_updated_at: `datetime` - Time data source updated
         :return: `DataSourceStatus`
         '''
-        if (data_updated_at is NotImplemented):
-            self._data_updated_at = pd.to_datetime(time.time(), unit='s', utc=True)
+        if (data_updated_at is None):
+            self._data_updated_at = datetime.fromtimestamp(time.time(), pytz.UTC)
         elif (data_updated_at.tzinfo is not pytz.UTC):
             raise ValueError('_data_updated_at must have UTC time zone')
         else:
             self._data_updated_at = data_updated_at
         return self
 
-    def copy(self) -> Dict:
+    def copy(self) -> Dict[str, Union[ValidDataSourceName, datetime]]:
         '''
         Return dictionary representation of DataSourceStatus object.
 
