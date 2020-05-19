@@ -270,7 +270,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     published_date_in_db = course_from_db_df[(course_from_db_df['published_at'].notnull())].shape
     logger.info(f"Size of published courses from DB with published date: {published_date_in_db}")
     course_copy_df = pd.merge(course_copy_df, course_from_db_df, on='canvas_id', how='left')
-    logger.info(f"Size of course data after merging from DB data {course_copy_df.shape}")
+    logger.info(f"Size of course data after merging from DB data: {course_copy_df.shape}")
 
     course_available_pub_date_null_df = course_copy_df.loc[(course_copy_df['workflow_state'] == 'available') &
                                                            (course_copy_df['published_at'].isnull())].copy(deep=True)
