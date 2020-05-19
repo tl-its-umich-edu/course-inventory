@@ -194,7 +194,7 @@ class MiVideoExtract:
         """
         Update data with Kaltura media metadata from Kaltura API.
 
-        :return: a dictionary with ValidDataSourceName and last run timestamp
+        :return: DataSourceStatus
         """
 
         self._kalturaInit()
