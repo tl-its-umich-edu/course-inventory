@@ -238,7 +238,8 @@ def get_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
 
 # Entry point for run_jobs.py
 
-def run_course_inventory() -> Sequence[DataSourceStatus]:
+
+def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
     logger.info("* run_course_inventory")
     # Initialize DBCreator object
     db_creator_obj = DBCreator(INVENTORY_DB)
@@ -330,7 +331,6 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     enroll_delta = time.time() - enroll_start
     logger.info(f'Duration of process (seconds): {enroll_delta}')
 
-
     # Record data source info for Canvas API
     canvas_data_source = DataSourceStatus(ValidDataSourceName.CANVAS_API)
 
@@ -354,7 +354,6 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
 
     udw_data_source = DataSourceStatus(
         ValidDataSourceName.UNIZIN_DATA_WAREHOUSE, udw_update_datetime)
-
 
     # Produce output
     num_term_records = len(term_df)
@@ -389,7 +388,6 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
         logger.info(f"Writing {num_canvas_usage_records} canvas course usage records to CSV")
         canvas_course_usage_df.to_csv(os.path.join('data', 'canvas_course_usage.csv'), index=False)
         logger.info('Wrote data to data/canvas_course_usage.csv')
-
 
     # Empty records from Canvas data tables in database
     logger.info('Emptying Canvas data tables in DB')
