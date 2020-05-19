@@ -73,7 +73,7 @@ class ZoomPlacements:
             return pattern.group(1)
         return None
 
-    def get_zoom_details(self, url: str, data: Dict[str, str], course_id: int):
+    def get_zoom_details(self, url: str, data: Dict[str, str], lti_placement_id: int):
         # Start up the zoom session
         # Initiate the LTI launch to Zoom in a session
         r = self.zoom_session.post(url=url, data=data)
@@ -100,7 +100,7 @@ class ZoomPlacements:
                 if zoom_json:
                     for meeting in zoom_json["list"]:
                         self.zoom_courses_meetings.append({
-                            'course_id': course_id,
+                            'lti_placement_id': lti_placement_id,
                             'meeting_id': meeting['meetingId'],
                             'host_id': meeting['hostId'],
                             'start_time': meeting['startTime'],
@@ -111,7 +111,8 @@ class ZoomPlacements:
             logger.warn("Required script extraction not found, no details logged")
             logger.debug(r.text)
 
-    def get_zoom_course(self, course: canvasapi.course.Course) -> None:
+    def get_zoom_course(self, course: canvasapi.course.Course, course_count: int) -> None:
+        logger.info(f"Fetching course #{course_count} for {course}")
         # Get tabs and look for defined tool(s) that aren't hidden
         tabs = course.get_tabs()
         for tab in tabs:
@@ -130,7 +131,8 @@ class ZoomPlacements:
                     logger.info("Could not find a form to launch this zoom page, skipping")
                     break
 
-                self.zoom_courses.append({'id': course.id,
+                self.zoom_courses.append({'id': course_count,
+                                          'course_id': course.id,
                                           'account_id': course.account_id,
                                           'course_name': course.name,
                                           'placement_type_id':  PlacementType.ZOOM
@@ -140,7 +142,7 @@ class ZoomPlacements:
                 formdata = dict((field.get('name'), field.get('value')) for field in fields)
                 # Get the URL to post back to
                 posturl = form.get('action')
-                self.get_zoom_details(posturl, formdata, course.id)
+                self.get_zoom_details(posturl, formdata, course_count)
         return None
 
     def zoom_course_report(
@@ -176,13 +178,13 @@ class ZoomPlacements:
                 add_course_ids.remove(course.id)
             # TODO: In the future get the total count from the Paginated object
             # Needs API support https://github.com/ucfopen/canvasapi/issues/114
-            logger.info(f"Fetching course #{course_count} for {course}")
-            self.get_zoom_course(course)
+            self.get_zoom_course(course, course_count)
 
         # If there are course_ids passed in, also process those
         if add_course_ids:
             for course_id in add_course_ids:
-                self.get_zoom_course(self.canvas.get_course(course_id))
+                course_count += 1
+                self.get_zoom_course(self.canvas.get_course(course_id), course_count)
         return None
 
 
@@ -201,7 +203,7 @@ def main() -> Sequence[DataSourceStatus]:
     )
 
     zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
-    zoom_courses_df = zoom_courses_df.set_index(["id", "placement_type_id"])
+    zoom_courses_df = zoom_courses_df.set_index("id")
 
     zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
     zoom_courses_meetings_df.index.name = "id"
