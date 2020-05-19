@@ -289,7 +289,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
 
         newly_published_date_size = len(published_course_date)
         logger.info(f"Size Published dates fetched from API: {newly_published_date_size}")
-        logger.info(f"Database should have {published_date_in_db[0] + newly_published_date_size} published dates ")
+        logger.info(f"Database should have {published_date_in_db[0] + newly_published_date_size} published dates")
         if len(published_course_date) > 0:
             course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
             course_published_date_df['published_at'] = pd.to_datetime(course_published_date_df['published_at'],
