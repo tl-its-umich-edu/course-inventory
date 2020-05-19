@@ -228,21 +228,13 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
     return udw_section_df
 
 
-def get_course_info_from_DB(db_creator_obj: DBCreator) -> pd.DataFrame:
+def get_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
     logger.info("getting the course info from Database")
     course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
                             where workflow_state = 'available' ;''',
-                            db_creator_obj.engine)
+                                    db_creator_obj.engine)
     logger.info(course_from_db_df.head())
     return course_from_db_df
-
-
-def get_course_from_db_without_pub_date(df) -> List[int]:
-    course_without_pub_date_df = df[df['published_at'].isnull()]
-    course_id_with_no_pub = course_without_pub_date_df['canvas_id'].tolist()
-    logger.info(f"Courses list from Database with out published date{len(course_id_with_no_pub)}: {course_id_with_no_pub}")
-    return course_id_with_no_pub
-
 
 # Entry point for run_jobs.py
 
@@ -265,7 +257,7 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info(f"Size of courses data from API routine: {course_copy_df.shape}")
     logger.info(f"""Size of Published courses from API:
                 {course_copy_df[(course_copy_df['workflow_state'] == 'available')].shape}""")
-    course_from_db_df = get_course_info_from_DB(db_creator_obj)
+    course_from_db_df = get_course_info_from_db(db_creator_obj)
     logger.info(f"Size of published courses from DB with: {course_from_db_df.shape}")
     published_date_in_db = course_from_db_df[(course_from_db_df['published_at'].notnull())].shape
     logger.info(f"Size of published courses from DB with published date: {published_date_in_db}")
