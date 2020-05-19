@@ -307,7 +307,8 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
         WHERE key='canvasdatadate';
     ''', udw_conn)
     udw_update_datetime_str = udw_meta_df['value'].iloc[0]
-    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')
+    udw_update_datetime = pd.to_datetime(udw_update_datetime_str, format='%Y-%m-%d %H:%M:%S.%f%z')\
+        .to_pydatetime(warn=False)
     logger.info(f'Found canvasdatadate in UDW of {udw_update_datetime}')
 
     udw_data_source = DataSourceStatus(

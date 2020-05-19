@@ -109,8 +109,10 @@ class DataSourceStatus:
         '''
         if (data_updated_at is None):
             self._data_updated_at = datetime.fromtimestamp(time.time(), pytz.UTC)
+        elif (type(data_updated_at) is not datetime):
+            raise TypeError('data_updated_at must be of type datetime')
         elif (data_updated_at.tzinfo is not pytz.UTC):
-            raise ValueError('_data_updated_at must have UTC time zone')
+            raise ValueError('data_updated_at must have UTC time zone')
         else:
             self._data_updated_at = data_updated_at
         return self
