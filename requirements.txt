@@ -6,6 +6,7 @@ jsonschema==3.2.0
 KalturaApiClient==15.20.0
 mysqlclient==1.4.6
 pandas==1.0.3
+ptvsd==4.3.2
 psycopg2-binary==2.8.5
 requests==2.22.0
 requests-futures==1.0.0
