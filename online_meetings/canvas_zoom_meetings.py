@@ -202,15 +202,17 @@ def main() -> Sequence[DataSourceStatus]:
         CANVAS_ENV.get("ADD_COURSE_IDS", [])
     )
 
-    zoom_courses_df = pd.DataFrame(zoom_placements.zoom_courses)
-    zoom_courses_df = zoom_courses_df.set_index("id")
+    lti_placement_df = pd.DataFrame(zoom_placements.zoom_courses)
+    lti_placement_df = lti_placement_df.set_index("id")
 
-    zoom_courses_meetings_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
-    zoom_courses_meetings_df.index.name = "id"
+    lti_zoom_meeting_df = pd.DataFrame(zoom_placements.zoom_courses_meetings)
+    lti_zoom_meeting_df.index.name = "id"
 
     if ENV.get('CREATE_CSVS', False):
-        zoom_courses_df.to_csv(os.path.join(DATA_DIR, "zoom_courses.csv"))
-        zoom_courses_meetings_df.to_csv(os.path.join(DATA_DIR, "zoom_courses_meetings.csv"))
+        logger.info(f'Writing {len(lti_placement_df)} lti_placement records to CSV')
+        lti_placement_df.to_csv(os.path.join(DATA_DIR, "lti_placement.csv"))
+        logger.info(f'Writing {len(lti_zoom_meeting_df)} lti_zoom_meeting records to CSV')
+        lti_zoom_meeting_df.to_csv(os.path.join(DATA_DIR, "lti_zoom_meeting.csv"))
 
     # For now until this process is improved just remove all the previous records
     logger.info('Emptying Canvas LTI data tables in DB')
@@ -218,8 +220,13 @@ def main() -> Sequence[DataSourceStatus]:
         ['lti_placement', 'lti_zoom_meeting']
     )
 
-    zoom_courses_df.to_sql("lti_placement", db_creator.engine, if_exists="append", index=True)
-    zoom_courses_meetings_df.to_sql("lti_zoom_meeting", db_creator.engine, if_exists="append", index=True)
+    logger.info(f'Inserting {len(lti_placement_df)} lti_placement records to DB')
+    lti_placement_df.to_sql("lti_placement", db_creator.engine, if_exists="append", index=True)
+    logger.info(f'Inserted data into lti_placement table in {db_creator.db_name}')
+
+    logger.info(f'Inserting {len(lti_zoom_meeting_df)} lti_zoom_meeting records to DB')
+    lti_zoom_meeting_df.to_sql("lti_zoom_meeting", db_creator.engine, if_exists="append", index=True)
+    logger.info(f'Inserted data into lti_zoom_meeting table in {db_creator.db_name}')
 
     return [DataSourceStatus(ValidDataSourceName.CANVAS_ZOOM_MEETINGS)]
 
