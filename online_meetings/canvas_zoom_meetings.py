@@ -135,7 +135,7 @@ class ZoomPlacements:
                                           'course_id': course.id,
                                           'account_id': course.account_id,
                                           'course_name': course.name,
-                                          'placement_type_id':  PlacementType.ZOOM
+                                          'placement_type_id': PlacementType.ZOOM
                                           })
 
                 fields = form.findAll('input')
