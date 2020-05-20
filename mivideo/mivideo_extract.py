@@ -130,15 +130,13 @@ class MiVideoExtract:
 
         tableName: str = 'mivideo_media_started_hourly'
 
-        localLogger = logging.getLogger(f'{logger.name}.mediaStartedHourly')
-
-        localLogger.info('Starting procedure...')
+        logger.info('Starting procedure...')
 
         lastTime: datetime = self._readTableLastTime(
             tableName, 'event_time_utc_latest', self.defaultLastTimestamp
         )
 
-        localLogger.debug('Running query...')
+        logger.debug('Running query...')
 
         dfCourseEvents: pd.DataFrame = udpDb.query(
             queries.COURSE_EVENTS, job_config=bigquery.QueryJobConfig(
@@ -148,21 +146,21 @@ class MiVideoExtract:
             )
         ).to_dataframe()
 
-        localLogger.debug('Completed query.')
+        logger.debug('Completed query.')
 
         if (not dfCourseEvents.empty):
-            localLogger.info(
+            logger.info(
                 f'Number of rows returned: ({dfCourseEvents.shape[SHAPE_ROWS]})')
 
-            localLogger.debug('Saving to table...')
+            logger.debug('Saving to table...')
 
             dfCourseEvents.to_sql(tableName, self.appDb.engine, if_exists='append', index=False)
 
-            localLogger.debug('Saved.')
+            logger.debug('Saved.')
         else:
-            localLogger.info('No rows returned.')
+            logger.info('No rows returned.')
 
-        localLogger.info('Procedure complete.')
+        logger.info('Procedure complete.')
 
         return DataSourceStatus(ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS)
 
@@ -202,8 +200,7 @@ class MiVideoExtract:
         KALTURA_MAX_MATCHES_ERROR: str = 'QUERY_EXCEEDED_MAX_MATCHES_ALLOWED'
         tableName: str = 'mivideo_media_created'
 
-        localLogger = logging.getLogger(f'{logger.name}.mediaCreation')
-        localLogger.info('Starting procedure...')
+        logger.info('Starting procedure...')
 
         kClient: KalturaRequestConfiguration = KalturaClient(KalturaConfiguration())
         kClient.setKs(  # pylint: disable=no-member
@@ -240,7 +237,7 @@ class MiVideoExtract:
                 if (KALTURA_MAX_MATCHES_ERROR in kException.args):
                     # set new filter timestamp, reset pager to page 1, then continue
                     kFilter.createdAtGreaterThanOrEqual = lastCreatedAtTimestamp
-                    localLogger.debug(
+                    logger.debug(
                         f'New filter timestamp: ({kFilter.createdAtGreaterThanOrEqual})')
 
                     # to avoid dupes, also filter out the last ID returned by previous query
@@ -249,11 +246,11 @@ class MiVideoExtract:
                     kPager.pageIndex = 1
                     continue
 
-                localLogger.info(f'Other Kaltura API error: "{kException}"')
+                logger.info(f'Other Kaltura API error: "{kException}"')
                 break
 
             numberResults = len(results)
-            localLogger.debug(
+            logger.debug(
                 f'Query page ({queryPageNumber}); number of results: ({numberResults})')
 
             if (numberResults > 0):
@@ -279,9 +276,9 @@ class MiVideoExtract:
             kPager.pageIndex += 1
             queryPageNumber += 1
 
-        localLogger.info(f'Total number of results: ({totalNumberResults})')
+        logger.info(f'Total number of results: ({totalNumberResults})')
 
-        localLogger.info('Procedure complete.')
+        logger.info('Procedure complete.')
 
         return DataSourceStatus(ValidDataSourceName.KALTURA_API)
 
