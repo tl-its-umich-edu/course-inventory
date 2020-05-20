@@ -217,7 +217,7 @@ To completely reset the database, delete the `.data` directory.
 
 5. Repeat the previous two steps (3 and 4) as necessary.
 
-6. To start up the job with VSCode Debug use this command
+6. To start up the job with VSCode Debug use this command and attach with VSCode.
 
    ```sh
    docker-compose -f docker-compose.yaml -f docker-compose-ptvsd.yaml up job
