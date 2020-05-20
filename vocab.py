@@ -10,6 +10,9 @@ import pytz
 
 
 # Enum(s)
+class PlacementType(IntEnum):
+    ZOOM = 0
+
 
 class ValidJobName(Enum):
     """
@@ -130,7 +133,3 @@ class DataSourceStatus:
             'data_source_name': self._data_source_name,
             'data_updated_at': self._data_updated_at
         }
-
-
-class PlacementType(IntEnum):
-    ZOOM = 0

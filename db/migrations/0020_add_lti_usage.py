@@ -12,7 +12,7 @@ steps = [
             account_id INTEGER NOT NULL,
             course_name VARCHAR(200),
             placement_type_id INTEGER NOT NULL,
-            PRIMARY KEY (id, placement_type_id)
+            PRIMARY KEY (id)
         ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
     '''),
     step('''
