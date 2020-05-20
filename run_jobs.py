@@ -1,7 +1,7 @@
 # standard libraries
 import logging, os, sys, time
 from importlib import import_module
-from typing import Dict, Sequence, Union
+from typing import Sequence, Union
 
 # third-party libraries
 import pandas as pd
@@ -10,8 +10,7 @@ import sqlalchemy
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-from vocab import ValidJobName, ValidDataSourceName
-
+from vocab import DataSourceStatus, ValidJobName
 
 # Initialize settings and global variables
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class Job:
         self.method_name: str = job_name.value.split('.')[-1]
         self.started_at: Union[float, None] = None
         self.finished_at: Union[float, None] = None
-        self.data_sources: Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]] = []
+        self.data_sources: Sequence[DataSourceStatus] = []
 
     def create_metadata(self) -> None:
         started_at_dt = pd.to_datetime(self.started_at, unit='s')
@@ -47,16 +46,14 @@ class Job:
         if len(self.data_sources) == 0:
             logger.warning('No valid data sources were identified')
         else:
-            db_ready_data_sources = []
-            for data_source in self.data_sources:
-                db_ready_data_source = data_source.copy()
-                db_ready_data_source['data_source_name'] = db_ready_data_source['data_source_name'].name
-                db_ready_data_sources.append(db_ready_data_source)
-                
-            data_source_status_df = pd.DataFrame(db_ready_data_sources)
-            data_source_status_df = data_source_status_df.assign(**{'job_run_id': job_run_id})
-            data_source_status_df.to_sql('data_source_status', db_creator_obj.engine, if_exists='append', index=False)
-            logger.info(f'Inserted {len(data_source_status_df)} data_source_status records')
+            data_source_status_df = (
+                pd.DataFrame.from_records(
+                    data_source.copy() for data_source in self.data_sources)
+                    .assign(**{'job_run_id': job_run_id}))
+
+            data_source_status_df.to_sql(
+                'data_source_status', db_creator_obj.engine, if_exists='append', index=False)
+            logger.info(f'Inserted ({len(data_source_status_df)}) data_source_status records')
 
     def run(self) -> None:
         leaf_module = import_module(self.import_path)
@@ -64,23 +61,13 @@ class Job:
 
         # Until we have a decorator for this
         self.started_at = time.time()
-        data_sources = start_method()
+        self.data_sources = start_method()
         self.finished_at = time.time()
 
         delta = self.finished_at - self.started_at
         str_time = time.strftime('%H:%M:%S', time.gmtime(delta))
         logger.info(f'Duration of job run: {str_time}')
 
-        valid_data_sources = []
-        for data_source in data_sources:
-            data_source_name_mem = data_source['data_source_name']
-            if isinstance(data_source_name_mem, ValidDataSourceName):
-                valid_data_sources.append(data_source)
-            else:
-                logger.error(f'Received an invalid data source name: {data_source_name_mem}')
-                logger.error(f'No data_source_status record will be inserted.')
-
-        self.data_sources = valid_data_sources
         self.create_metadata()
 
 

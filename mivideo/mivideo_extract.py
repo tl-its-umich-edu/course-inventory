@@ -4,7 +4,6 @@ Module for setting up and running the MiVideo data extract.
 '''
 import logging
 import os
-import time
 from datetime import datetime
 from typing import Dict, Iterable, Sequence, Union
 
@@ -25,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import mivideo.queries as queries
 from db.db_creator import DBCreator
 from environ import CONFIG_DIR, ENV
-from vocab import ValidDataSourceName
+from vocab import DataSourceStatus, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
@@ -120,11 +119,11 @@ class MiVideoExtract:
 
         return lastTime
 
-    def mediaStartedHourly(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
+    def mediaStartedHourly(self) -> DataSourceStatus:
         """
         Update data from Kaltura Caliper events stored in UDP.
 
-        :return: a dictionary with ValidDataSourceName and last run timestamp
+        :return: DataSourceStatus
         """
 
         udpDb: bigquery.Client = self._udpConnect()
@@ -165,10 +164,7 @@ class MiVideoExtract:
 
         localLogger.info('Procedure complete.')
 
-        return {
-            'data_source_name': ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS,
-            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-        }
+        return DataSourceStatus(ValidDataSourceName.UNIZIN_DATA_PLATFORM_EVENTS)
 
     @staticmethod
     def _queryRunner(
@@ -194,11 +190,11 @@ class MiVideoExtract:
 
         dbConn.execute(sql, list(data))
 
-    def mediaCreation(self) -> Dict[str, Union[ValidDataSourceName, pd.Timestamp]]:
+    def mediaCreation(self) -> DataSourceStatus:
         """
         Update data with Kaltura media metadata from Kaltura API.
 
-        :return: a dictionary with ValidDataSourceName and last run timestamp
+        :return: DataSourceStatus
         """
 
         self._kalturaInit()
@@ -287,10 +283,7 @@ class MiVideoExtract:
 
         localLogger.info('Procedure complete.')
 
-        return {
-            'data_source_name': ValidDataSourceName.KALTURA_API,
-            'data_updated_at': pd.to_datetime(time.time(), unit='s', utc=True)
-        }
+        return DataSourceStatus(ValidDataSourceName.KALTURA_API)
 
     @staticmethod
     def _makeCourseData(resultDictionaries: Sequence[Dict], categoryFilter: str) -> pd.DataFrame:
@@ -329,11 +322,11 @@ class MiVideoExtract:
 
         return creationData
 
-    def run(self) -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+    def run(self) -> Sequence[DataSourceStatus]:
         '''
         The main controller that runs each method required to update the data.
 
-        :return: List of dictionaries (keys 'data_source_name' and 'data_updated_at')
+        :return: List of DataSourceStatus
         '''
         return [
             self.mediaStartedHourly(),
@@ -341,11 +334,11 @@ class MiVideoExtract:
         ]
 
 
-def main() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+def main() -> Sequence[DataSourceStatus]:
     '''
     This method is invoked when its module is executed as a standalone program.
 
-    :return: Sequence of result dictionaries, with ValidDataSourceName and last run timestamp
+    :return: List of DataSourceStatus
     '''
     return MiVideoExtract().run()
 
