@@ -4,6 +4,7 @@ from json.decoder import JSONDecodeError
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 from typing import Any, Dict
+import pandas as pd
 
 
 logger = logging.getLogger(__name__)
@@ -11,10 +12,19 @@ logger = logging.getLogger(__name__)
 
 class FetchPublishedDate:
 
-    def __init__(self, canvas_url, canvas_token, num_workers, canvas_ids, retry_attempts):
+    def __init__(
+            self,
+            canvas_url: str,
+            canvas_token: str,
+            num_workers: int,
+            course_data_from_api,
+            course_data_from_db,
+            retry_attempts: int
+    ):
         self.canvas_url = canvas_url
         self.canvas_token = canvas_token
-        self.canvas_ids = canvas_ids
+        self.course_data_from_api = course_data_from_api
+        self.course_data_from_db = course_data_from_db
         self.retry_attempts = retry_attempts
         self.num_workers = num_workers
         self.published_course_date = {}
@@ -100,7 +110,7 @@ class FetchPublishedDate:
                     logger.info(f"Going to remove {course_id} from retry list {self.published_date_retry_bucket}")
                     self.published_date_retry_bucket.pop(course_id)
                     logger.info(f"Removed {course_id} removed from retry list {self.published_date_retry_bucket}")
-            break
+                break
         if not published_date_found:
             self.get_next_page_url(response)
 
@@ -125,8 +135,22 @@ class FetchPublishedDate:
             }
         logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
 
+    def filter_courses_to_fetch_published_date(self):
+        pd.set_option('display.max_column', None)
+        logger.info(f"Size of courses data from API routine: {self.course_data_from_api.shape}")
+        state_available_courses_from_api = self.course_data_from_api[
+            (self.course_data_from_api['workflow_state'] == 'available')].shape
+        logger.info(f"""Size of Published courses from API: {state_available_courses_from_api}""")
+        logger.info(f"Size of published courses from DB with: {self.course_data_from_db.shape}")
+        published_date_in_db = self.course_data_from_db[(self.course_data_from_db['published_at'].notnull())].shape
+        logger.info(f"Size of published courses from DB with published date: {published_date_in_db}")
+        course_with_pub_date_added_from_df = pd.merge(self.course_data_from_api, self.course_data_from_db,
+                                                      on='canvas_id', how='left')
+        logger.info(f"Size of course data after merging with DB data: {course_with_pub_date_added_from_df.shape}")
+        return course_with_pub_date_added_from_df
+
     def get_published_course_date(self, course_ids, retry_list=None):
-        logger.info("Starting of get_published_course_date call")
+        logger.info("Starting of get_published_course_date from API call")
 
         with FuturesSession(max_workers=self.num_workers) as future_session:
             headers = {'Content-type': 'application/json', 'Authorization': 'Bearer ' + self.canvas_token}
@@ -150,4 +174,45 @@ class FetchPublishedDate:
                         {self.published_date_retry_bucket}""")
             self.get_published_course_date(course_ids, self.published_date_retry_bucket)
 
-        return self.published_course_date
+    def get_published_date(self):
+        pd.set_option('display.max_column', None)
+        logger.info("Getting into fetching published date routine")
+        courses_with_pub_date_col_df = self.filter_courses_to_fetch_published_date()
+        is_published_date_all_empty = courses_with_pub_date_col_df['published_at'].isnull().all()
+        published_date_in_db = courses_with_pub_date_col_df[
+            (courses_with_pub_date_col_df['published_at'].notnull())].shape
+        course_avail_with_no_pub_date_df = courses_with_pub_date_col_df.loc[
+            (courses_with_pub_date_col_df['workflow_state'] == 'available') &
+            (courses_with_pub_date_col_df['published_at'].isnull())].copy(deep=True)
+        course_avail_with_no_pub_date_list = course_avail_with_no_pub_date_df['canvas_id'].to_list()
+        logger.info(f"Published dates going to be fetched are: {len(course_avail_with_no_pub_date_list)}")
+        if len(course_avail_with_no_pub_date_list) == 0:
+            courses_with_pub_date_col_df = courses_with_pub_date_col_df[['canvas_id', 'published_at']]
+            logger.info("No more published date to fetch than what is stored in DB")
+            logger.info(f"Database should have {published_date_in_db[0]} published dates")
+            return courses_with_pub_date_col_df
+
+        self.get_published_course_date(course_avail_with_no_pub_date_list)
+
+        if len(self.published_course_date) > 0:
+            course_published_date_df = pd.DataFrame(self.published_course_date.items(),
+                                                    columns=['canvas_id', 'published_at'])
+            logger.info("newly fetched published data")
+            course_published_date_df['published_at'] = pd.to_datetime(course_published_date_df['published_at'],
+                                                                      format='%Y-%m-%dT%H:%M:%SZ',
+                                                                      errors='coerce')
+            courses_with_pub_date_col_df = pd.merge(courses_with_pub_date_col_df, course_published_date_df,
+                                                    on='canvas_id', how='left')
+            if is_published_date_all_empty:
+                courses_with_pub_date_col_df['published_at'] = courses_with_pub_date_col_df['published_at_y']
+            else:
+                courses_with_pub_date_col_df['published_at'] = courses_with_pub_date_col_df['published_at_x'].fillna(
+                    courses_with_pub_date_col_df['published_at_y'])
+
+            courses_with_pub_date_col_df = courses_with_pub_date_col_df.drop(['published_at_x', 'published_at_y'],
+                                                                             axis=1)
+        logger.info(f"Size of **Newly Published dates fetched from API: {len(self.published_course_date)}")
+        logger.info(
+            f"Database should have {published_date_in_db[0] + len(self.published_course_date)} published dates")
+        courses_with_pub_date_col_df = courses_with_pub_date_col_df[['canvas_id', 'published_at']]
+        return courses_with_pub_date_col_df
