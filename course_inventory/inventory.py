@@ -173,10 +173,14 @@ def gather_course_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.
     num_course_dicts_with_students = len(course_dicts_with_students)
 
     logger.info(f'Course records with students: {num_course_dicts_with_students}')
-    logger.info(f'Dropped {num_course_dicts - num_course_dicts_with_students} records')
+    logger.info(f'Dropped {num_course_dicts - num_course_dicts_with_students} course record(s) with no students')
 
     course_df = pd.DataFrame(course_dicts_with_students)
     course_df = course_df.drop(['total_students'], axis='columns')
+    orig_course_count = len(course_df)
+    course_df = course_df.drop_duplicates(subset=['canvas_id'], keep='last')
+    logger.info(f'Dropped {orig_course_count - len(course_df)} duplicate course record(s)')
+
     logger.debug(course_df.head())
     return course_df
 
