@@ -140,7 +140,7 @@ class FetchPublishedDate:
         logger.info(f"Size of courses data from API routine: {self.course_data_from_api.shape}")
         state_available_courses_from_api = self.course_data_from_api[
             (self.course_data_from_api['workflow_state'] == 'available')].shape
-        logger.info(f"""Size of Published courses from API: {state_available_courses_from_api}""")
+        logger.info(f"Size of published courses from API: {state_available_courses_from_api}")
         logger.info(f"Size of published courses from DB with: {self.course_data_from_db.shape}")
         published_date_in_db = self.course_data_from_db[(self.course_data_from_db['published_at'].notnull())].shape
         logger.info(f"Size of published courses from DB with published date: {published_date_in_db}")
