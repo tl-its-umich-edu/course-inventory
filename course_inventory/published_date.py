@@ -213,6 +213,6 @@ class FetchPublishedDate:
                                                                              axis=1)
         logger.info(f"Size of newly published dates fetched from API: {len(self.published_course_date)}")
         logger.info(
-            f"Database should have {published_date_in_db[0] + len(self.published_course_date)} published dates")
+            f"There are now {published_date_in_db[0] + len(self.published_course_date)} published dates")
         courses_with_pub_date_col_df = courses_with_pub_date_col_df[['canvas_id', 'published_at']]
         return courses_with_pub_date_col_df
