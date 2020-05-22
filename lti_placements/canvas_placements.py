@@ -31,15 +31,19 @@ class CanvasLtiPlacementProcessor:
     # Stores a list of all courses/meetings for zoom to be written out
     zoom_courses_meetings: List[Dict] = []
 
+    # Indexes to keep track of how many courses and tab's we've went through
+    course_count = 0
+    placement_count = 0
+
     def __init__(self, canvas_url: str, canvas_token: str):
         self.canvas = canvasapi.Canvas(canvas_url, canvas_token)
         self.zoom_placements = ZoomPlacements(self.canvas)
 
     def generate_lti_course_report(self,
-                                   canvas_account_id: int = 1,
-                                   enrollment_term_ids: Union[Sequence[int], None] = None,
-                                   published: bool = True,
-                                   add_course_ids: Union[List[int], None] = None) -> None:
+                                   canvas_account_id: int,
+                                   enrollment_term_ids: Union[Sequence[int], None],
+                                   add_course_ids: Union[List[int], None] = None,
+                                   published: bool = True):
     
         account = self.canvas.get_account(canvas_account_id)
         # Canvas has a limit of 100 per page on this API
@@ -59,31 +63,31 @@ class CanvasLtiPlacementProcessor:
                 )
                 courses += courses_list
 
-        course_count = 0
         for course in courses:
-            course_count += 1
             if add_course_ids and course.id in add_course_ids:
                 add_course_ids.remove(course.id)
             # TODO: In the future get the total count from the Paginated object
             # Needs API support https://github.com/ucfopen/canvasapi/issues/114
-            self.get_lti_tab(course, course_count)
+            self.get_lti_tab(course)
 
         # If there are course_ids passed in, also process those
         if add_course_ids:
             for course_id in add_course_ids:
-                course_count += 1
-                self.get_lti_tab(self.canvas.get_course(course_id), course_count)
+                self.get_lti_tab(self.canvas.get_course(course_id))
         return None
 
-    def get_lti_tab(self, course: canvasapi.course.Course, course_count: int) -> None:
-        logger.info(f"Fetching course #{course_count} for {course}")
+    def get_lti_tab(self, course: canvasapi.course.Course) -> None:
+        # This is a new course we're looking through
+        self.course_count += 1
+        logger.info(f"Fetching course #{self.course_count} for {course}")
         # Get tabs and look for defined tool(s) that aren't hidden
         tabs = course.get_tabs()
         for tab in tabs:
             # Hidden only included if true
             if (tab.label.upper() in SUPPORTED_PLACEMENTS and not hasattr(tab, "hidden")):
+                self.placement_count += 1
                 # This this course as a supported course
-                self.lti_placements.append({'id': course_count,
+                self.lti_placements.append({'id': self.placement_count,
                                             'course_id': course.id,
                                             'account_id': course.account_id,
                                             'course_name': course.name,
@@ -93,10 +97,10 @@ class CanvasLtiPlacementProcessor:
                 # TODO: Find a better way of running this just for zoom
                 if (tab.label.upper() == "ZOOM"):
                     self.zoom_courses_meetings.extend(
-                        self.zoom_placements.get_zoom_details(tab, course_count))
+                        self.zoom_placements.get_zoom_details(tab, self.placement_count))
         return None
 
-    def output_report(self):
+    def output_report(self) -> None:
         db_creator: DBCreator = DBCreator(ENV['INVENTORY_DB'])
 
         lti_placement_df = pd.DataFrame(self.lti_placements)
@@ -243,8 +247,12 @@ def main() -> Sequence[DataSourceStatus]:
 
     canvas_env = ENV.get('CANVAS', {})
     lti_processor = CanvasLtiPlacementProcessor(canvas_env.get("CANVAS_URL"), canvas_env.get("CANVAS_TOKEN"))
-    lti_processor.generate_lti_course_report(True)
-    lti_processor.output_report()
+    lti_processor.generate_lti_course_report(canvas_env.get("CANVAS_ACCOUNT_ID", 1), canvas_env.get(
+        "CANVAS_TERM_IDS", []), canvas_env.get("ADD_COURSE_IDS", []), True)
+    try:
+        lti_processor.output_report()
+    except KeyError:
+        logger.exception("There was a problem writing the data, no courses may have tools!")
 
     return [DataSourceStatus(ValidDataSourceName.CANVAS_ZOOM_MEETINGS)]
 

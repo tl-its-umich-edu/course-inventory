@@ -9,9 +9,6 @@ from typing import Dict, Union
 import pytz
 
 
-
-
-
 # Enum(s)
 class ValidJobName(Enum):
     """
@@ -21,7 +18,7 @@ class ValidJobName(Enum):
 
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
     MIVIDEO = 'mivideo.mivideo_extract.main'
-    CANVAS_ZOOM_MEETINGS = 'lti_placements.canvas_zoom_meetings.main'
+    CANVAS_ZOOM_MEETINGS = 'lti_placements.canvas_placements.main'
 
 
 class ValidDataSourceName(Enum):
