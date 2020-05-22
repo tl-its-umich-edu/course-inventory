@@ -128,7 +128,7 @@ class FetchPublishedDate:
                 logger.info(f"Retry more for {course_id}  ")
                 self.published_date_retry_bucket[course_id]['count'] += 1
         else:
-            logger.info(f"Putting course {course_id} to retry list")
+            logger.info(f"Adding course {course_id} to retry bucket")
             self.published_date_retry_bucket[course_id] = {
                 'url': url,
                 'count': 1,
