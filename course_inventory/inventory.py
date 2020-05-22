@@ -235,6 +235,7 @@ def get_pub_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
                                     db_creator_obj.engine)
     return course_from_db_df
 
+
 # Entry point for run_jobs.py
 
 
