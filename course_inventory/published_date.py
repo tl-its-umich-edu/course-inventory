@@ -79,9 +79,8 @@ class FetchPublishedDate:
         status = response.result().status_code
         published_date_found = False
         if status != 200:
-            logger.info(
-                f"""Response unsuccessful for {course_id} status: {status} and time taken:{response.result().elapsed}  
-                        due to {response.result().text}""")
+            logger.warning(f"Request was unsuccessful for {course_id}")
+            logger.warning(f"Response status: {status}; time taken: {response.result().elapsed}; response text: {response.result().text}")
             self.retry_logic_with_error(course_id, url)
             return
 
