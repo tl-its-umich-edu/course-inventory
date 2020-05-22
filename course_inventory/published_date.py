@@ -17,8 +17,8 @@ class FetchPublishedDate:
             canvas_url: str,
             canvas_token: str,
             num_workers: int,
-            course_data_from_api,
-            course_data_from_db,
+            course_data_from_api: pd.DataFrame,
+            course_data_from_db: pd.DataFrame,
             retry_attempts: int
     ):
         self.canvas_url = canvas_url
@@ -31,7 +31,7 @@ class FetchPublishedDate:
         # { course_id: {'url': 'https://instructure.com','count': 0} }
         self.published_date_retry_bucket: Dict[int, Dict[str, Any]] = {}
 
-    def get_next_page_url(self, response):
+    def get_next_page_url(self, response) -> None:
         """
         get the next page url from the Http response headers
         :param response:
@@ -64,7 +64,7 @@ class FetchPublishedDate:
                 # This is the case when canvas sends no Date for a course
                 logger.info(f"Course {course_id} don't have published date")
 
-    def published_date_resp_parsing(self, response):
+    def published_date_resp_parsing(self, response) -> None:
         if response is None:
             logger.info(f"Published course date response is None ")
             return
@@ -116,7 +116,7 @@ class FetchPublishedDate:
 
         return
 
-    def retry_logic_with_error(self, course_id, url):
+    def retry_logic_with_error(self, course_id, url) -> None:
         if course_id in self.published_date_retry_bucket:
             retry_count = self.published_date_retry_bucket[course_id]['count']
             if retry_count > self.retry_attempts - 1:
@@ -135,7 +135,7 @@ class FetchPublishedDate:
             }
         logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
 
-    def filter_courses_to_fetch_published_date(self):
+    def filter_courses_to_fetch_published_date(self) -> pd.DataFrame:
         pd.set_option('display.max_column', None)
         logger.info(f"Size of courses data from API routine: {self.course_data_from_api.shape}")
         state_available_courses_from_api = self.course_data_from_api[
@@ -149,7 +149,7 @@ class FetchPublishedDate:
         logger.info(f"Size of course data after merging with DB data: {course_with_pub_date_added_from_df.shape}")
         return course_with_pub_date_added_from_df
 
-    def get_published_course_date(self, course_ids, retry_list=None):
+    def get_published_course_date(self, course_ids, retry_list=None) -> None:
         logger.info("Starting of get_published_course_date from API call")
 
         with FuturesSession(max_workers=self.num_workers) as future_session:
@@ -174,7 +174,7 @@ class FetchPublishedDate:
                         {self.published_date_retry_bucket}""")
             self.get_published_course_date(course_ids, self.published_date_retry_bucket)
 
-    def get_published_date(self):
+    def get_published_date(self) -> pd.DataFrame:
         pd.set_option('display.max_column', None)
         logger.info("Getting into fetching published date routine")
         courses_with_pub_date_col_df = self.filter_courses_to_fetch_published_date()
