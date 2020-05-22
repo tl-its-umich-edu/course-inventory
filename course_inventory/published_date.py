@@ -21,13 +21,13 @@ class FetchPublishedDate:
             course_data_from_db: pd.DataFrame,
             retry_attempts: int
     ):
-        self.canvas_url = canvas_url
-        self.canvas_token = canvas_token
-        self.course_data_from_api = course_data_from_api
-        self.course_data_from_db = course_data_from_db
-        self.retry_attempts = retry_attempts
-        self.num_workers = num_workers
-        self.published_course_date = {}
+        self.canvas_url: str = canvas_url
+        self.canvas_token: str = canvas_token
+        self.course_data_from_api: pd.DataFrame = course_data_from_api
+        self.course_data_from_db: pd.DataFrame = course_data_from_db
+        self.retry_attempts: int = retry_attempts
+        self.num_workers: int = num_workers
+        self.published_course_date: Dict[int, str] = {}
         # { course_id: {'url': 'https://instructure.com','count': 0} }
         self.published_date_retry_bucket: Dict[int, Dict[str, Any]] = {}
 
@@ -70,22 +70,23 @@ class FetchPublishedDate:
             return
 
         logger.info(f"published courses date collected so far : {len(self.published_course_date)}")
-        url = response.result().url
+        response_result = response.result()
+        url = response_result.url
         course_id = int(url.split('?')[0].split('/')[-1])
 
         logger.info(f"Parsing the response for Course: {course_id}")
-        logger.info(f"Pagination info {course_id} {response.result().links}")
-        logger.info(f"Time taken to get the response for {course_id} : {response.result().elapsed}")
-        status = response.result().status_code
+        logger.debug(f"Pagination info {course_id} {response_result.links}")
+        logger.info(f"Time taken to get the response for {course_id} : {response_result.elapsed}")
+        status = response_result.status_code
         published_date_found = False
         if status != 200:
             logger.warning(f"Request was unsuccessful for {course_id}")
-            logger.warning(f"Response status: {status}; time taken: {response.result().elapsed}; response text: {response.result().text}")
+            logger.warning(f"Response status: {status}; time taken: {response_result.elapsed}; response text: {response_result.text}")
             self.retry_logic_with_error(course_id, url)
             return
 
         try:
-            audit_events = json.loads(response.result().text)
+            audit_events = json.loads(response_result.text)
         except JSONDecodeError as e:
             logger.error(f"Error in parsing the response {e.msg}")
             self.retry_logic_with_error(course_id, url)
@@ -106,9 +107,9 @@ class FetchPublishedDate:
                 self.published_course_date.update({course_id: event['created_at']})
                 logger.info(f"Published Date {event['created_at']} for course {course_id}")
                 if course_id in self.published_date_retry_bucket:
-                    logger.info(f"Going to remove {course_id} from retry list {self.published_date_retry_bucket}")
+                    logger.info(f"Going to remove {course_id} from retry list {len(self.published_date_retry_bucket)}")
                     self.published_date_retry_bucket.pop(course_id)
-                    logger.info(f"Removed {course_id} removed from retry list {self.published_date_retry_bucket}")
+                    logger.info(f"Removed {course_id} removed from retry list {len(self.published_date_retry_bucket)}")
                 break
         if not published_date_found:
             self.get_next_page_url(response)
@@ -118,7 +119,7 @@ class FetchPublishedDate:
     def retry_logic_with_error(self, course_id, url) -> None:
         if course_id in self.published_date_retry_bucket:
             retry_count = self.published_date_retry_bucket[course_id]['count']
-            if retry_count > self.retry_attempts - 1:
+            if retry_count >= self.retry_attempts:
                 # Don't want to retry more
                 logger.info(f"Reached max retry attempts for {course_id} with count {retry_count}, Removing... ")
                 self.published_date_retry_bucket.pop(course_id)
@@ -135,11 +136,10 @@ class FetchPublishedDate:
         logger.info(f"Retry list size {len(self.published_date_retry_bucket)} for published_at date")
 
     def filter_courses_to_fetch_published_date(self) -> pd.DataFrame:
-        pd.set_option('display.max_column', None)
         logger.info(f"Size of courses data from API routine: {self.course_data_from_api.shape}")
-        state_available_courses_from_api = self.course_data_from_api[
+        available_courses_from_api = self.course_data_from_api[
             (self.course_data_from_api['workflow_state'] == 'available')].shape
-        logger.info(f"Size of published courses from API: {state_available_courses_from_api}")
+        logger.info(f"Size of published courses from API: {available_courses_from_api}")
         logger.info(f"Size of published courses from DB with: {self.course_data_from_db.shape}")
         published_date_in_db = self.course_data_from_db[(self.course_data_from_db['published_at'].notnull())].shape
         logger.info(f"Size of published courses from DB with published date: {published_date_in_db}")
@@ -148,7 +148,7 @@ class FetchPublishedDate:
         logger.info(f"Size of course data after merging with DB data: {course_with_pub_date_added_from_df.shape}")
         return course_with_pub_date_added_from_df
 
-    def get_published_course_date(self, course_ids, retry_list=None) -> None:
+    def get_published_course_date(self, course_ids, retry_list: Dict[int, str] = None) -> None:
         logger.info("Starting of get_published_course_date from API call")
 
         with FuturesSession(max_workers=self.num_workers) as future_session:
@@ -174,7 +174,6 @@ class FetchPublishedDate:
             self.get_published_course_date(course_ids, self.published_date_retry_bucket)
 
     def get_published_date(self) -> pd.DataFrame:
-        pd.set_option('display.max_column', None)
         logger.info("Getting into fetching published date routine")
         courses_with_pub_date_col_df = self.filter_courses_to_fetch_published_date()
         is_published_date_all_empty = courses_with_pub_date_col_df['published_at'].isnull().all()

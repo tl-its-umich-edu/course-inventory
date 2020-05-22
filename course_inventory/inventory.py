@@ -228,18 +228,17 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
     return udw_section_df
 
 
-def get_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
+def get_pub_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
     logger.info(f"Getting the course info from {db_creator_obj.db_name} database")
     course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
                             where workflow_state = 'available' ;''',
                                     db_creator_obj.engine)
-    logger.info(course_from_db_df.head())
     return course_from_db_df
 
 # Entry point for run_jobs.py
 
 
-def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.Timestamp]]]:
+def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info("* run_course_inventory")
     # Initialize DBCreator object
     db_creator_obj = DBCreator(INVENTORY_DB)
@@ -255,7 +254,7 @@ def run_course_inventory() -> Sequence[Dict[str, Union[ValidDataSourceName, pd.T
     logger.info(f"Size of courses with available workflow state: {course_available_df.shape}")
 
     course_copy_df = course_df.copy(deep=True)
-    course_from_db_df = get_course_info_from_db(db_creator_obj)
+    course_from_db_df = get_pub_course_info_from_db(db_creator_obj)
 
     fetch_publish_date = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS,
                                             course_copy_df, course_from_db_df, MAX_REQ_ATTEMPTS)
