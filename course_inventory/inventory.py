@@ -229,7 +229,7 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 
 def get_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
-    logger.info("getting the course info from Database")
+    logger.info(f"Getting the course info from {db_creator_obj.db_name} database")
     course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
                             where workflow_state = 'available' ;''',
                                     db_creator_obj.engine)
