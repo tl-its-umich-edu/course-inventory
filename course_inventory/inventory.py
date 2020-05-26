@@ -16,7 +16,7 @@ from course_inventory.canvas_course_usage import CanvasCourseUsage
 from course_inventory.gql_queries import queries as QUERIES
 from course_inventory.published_date import FetchPublishedDate
 from db.db_creator import DBCreator
-from environ import ENV
+from environ import DATA_DIR, ENV
 from vocab import DataSourceStatus, ValidDataSourceName
 
 # Initialize settings and globals
@@ -319,27 +319,27 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
     if CREATE_CSVS:
         # Generate CSV output
         logger.info(f'Writing {num_term_records} term records to CSV')
-        term_df.to_csv(os.path.join('data', 'term.csv'), index=False)
+        term_df.to_csv(os.path.join(DATA_DIR, 'term.csv'), index=False)
         logger.info('Wrote data to data/term.csv')
 
         logger.info(f'Writing {num_account_records} account records to CSV')
-        account_df.to_csv(os.path.join('data', 'account.csv'), index=False)
+        account_df.to_csv(os.path.join(DATA_DIR, 'account.csv'), index=False)
         logger.info('Wrote data to data/account.csv')
 
         logger.info(f'Writing {num_course_records} course records to CSV')
-        course_df.to_csv(os.path.join('data', 'course.csv'), index=False)
+        course_df.to_csv(os.path.join(DATA_DIR, 'course.csv'), index=False)
         logger.info('Wrote data to data/course.csv')
 
         logger.info(f'Writing {num_section_records} course_section records to CSV')
-        section_df.to_csv(os.path.join('data', 'course_section.csv'), index=False)
+        section_df.to_csv(os.path.join(DATA_DIR, 'course_section.csv'), index=False)
         logger.info('Wrote data to data/course_section.csv')
 
         logger.info(f'Writing {num_enrollment_records} enrollment records to CSV')
-        enrollment_df.to_csv(os.path.join('data', 'enrollment.csv'), index=False)
+        enrollment_df.to_csv(os.path.join(DATA_DIR, 'enrollment.csv'), index=False)
         logger.info('Wrote data to data/enrollment.csv')
 
         logger.info(f"Writing {num_canvas_usage_records} canvas course usage records to CSV")
-        canvas_course_usage_df.to_csv(os.path.join('data', 'canvas_course_usage.csv'), index=False)
+        canvas_course_usage_df.to_csv(os.path.join(DATA_DIR, 'canvas_course_usage.csv'), index=False)
         logger.info('Wrote data to data/canvas_course_usage.csv')
 
     # Initialize DBCreator object
