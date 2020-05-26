@@ -1,5 +1,5 @@
 # standard libraries
-import json, logging, os, time
+import json, logging, os, sys, time
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Sequence, Union
 
@@ -70,7 +70,8 @@ def make_request_using_api_utils(url: str, params: Union[Dict[str, Any], None] =
                 logger.info('Beginning next attempt')
 
     logger.error('The maximum number of request attempts was reached')
-    return response
+    logger.error('Data could not be gathered; the program will exit')
+    sys.exit(1)
 
 
 def gather_term_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.DataFrame:
