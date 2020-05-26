@@ -1,5 +1,5 @@
 # config
-env.json
+env.*
 venv
 
 # data
@@ -8,6 +8,6 @@ venv
 
 # etc
 .DS_Store
-*.pyc
 .vscode
+*.pyc
 __pycache__
