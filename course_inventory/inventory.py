@@ -70,7 +70,8 @@ def make_request_using_api_utils(url: str, params: Union[Dict[str, Any], None] =
                 logger.info('Beginning next attempt')
 
     logger.error('The maximum number of request attempts was reached')
-    logger.error('Data could not be gathered; the program will exit')
+    logger.error(f'Data could not be gathered from the URL with the ending "{url}"')
+    logger.error('The program will exit')
     sys.exit(1)
 
 
