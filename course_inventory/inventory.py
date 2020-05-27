@@ -228,10 +228,21 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
     return udw_section_df
 
 
+def get_pub_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
+    logger.info(f"Getting the course info from {db_creator_obj.db_name} database")
+    course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
+                            where workflow_state = 'available' ;''',
+                                    db_creator_obj.engine)
+    return course_from_db_df
+
+
 # Entry point for run_jobs.py
+
 
 def run_course_inventory() -> Sequence[DataSourceStatus]:
     logger.info("* run_course_inventory")
+    # Initialize DBCreator object
+    db_creator_obj = DBCreator(INVENTORY_DB)
 
     logger.info('Making requests against the Canvas API')
 
@@ -240,27 +251,27 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
 
     # Gather course data
     course_df = gather_course_data_from_api(ACCOUNT_ID, TERM_IDS)
+    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy(deep=True)
+    logger.info(f"Size of courses with available workflow state: {course_available_df.shape}")
 
-    logger.info("*** Fetching the published date ***")
-    course_available_df = course_df.loc[course_df.workflow_state == 'available'].copy()
-    course_available_ids = course_available_df['canvas_id'].to_list()
-    published_dates = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS, course_available_ids)
-    published_course_date = published_dates.get_published_course_date(course_available_ids)
-    course_published_date_df = pd.DataFrame(published_course_date.items(), columns=['canvas_id', 'published_at'])
-    course_df = pd.merge(course_df, course_published_date_df, on='canvas_id', how='left')
+    course_copy_df = course_df.copy(deep=True)
+    course_from_db_df = get_pub_course_info_from_db(db_creator_obj)
 
-    logger.info("*** Checking for courses available and no published date ***")
-    logger.info(course_df[(course_df['workflow_state'] == 'available') & (course_df['published_at'].isnull())])
-    
+    fetch_publish_date = FetchPublishedDate(CANVAS_URL, CANVAS_TOKEN, NUM_ASYNC_WORKERS,
+                                            course_copy_df, course_from_db_df, MAX_REQ_ATTEMPTS)
+    pub_dates_df = fetch_publish_date.get_published_date()
+    course_size_before_merge = course_df.shape[0]
+    course_df = pd.merge(course_df, pub_dates_df, on='canvas_id', how='left')
+    course_size_after_merge = course_df.shape[0]
+    logger.info(
+        f"Course info loss due to published date fetch/merge: {course_size_before_merge - course_size_after_merge}")
+
     course_df['created_at'] = pd.to_datetime(course_df['created_at'],
                                              format=CANVAS_DATETIME_FORMAT,
                                              errors='coerce')
-    course_df['published_at'] = pd.to_datetime(course_df['published_at'],
-                                               format=CANVAS_DATETIME_FORMAT,
-                                               errors='coerce')
 
     logger.info("*** Fetching the canvas course usage data ***")
-    canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_ids)
+    canvas_course_usage = CanvasCourseUsage(CANVAS_URL, CANVAS_TOKEN, MAX_REQ_ATTEMPTS, course_available_df['canvas_id'].tolist())
     canvas_course_usage_df = canvas_course_usage.get_canvas_course_views_participation_data()
 
     # Gather account data
@@ -341,9 +352,6 @@ def run_course_inventory() -> Sequence[DataSourceStatus]:
         logger.info(f"Writing {num_canvas_usage_records} canvas course usage records to CSV")
         canvas_course_usage_df.to_csv(os.path.join(DATA_DIR, 'canvas_course_usage.csv'), index=False)
         logger.info('Wrote data to data/canvas_course_usage.csv')
-
-    # Initialize DBCreator object
-    db_creator_obj = DBCreator(INVENTORY_DB)
 
     # Empty records from Canvas data tables in database
     logger.info('Emptying Canvas data tables in DB')
