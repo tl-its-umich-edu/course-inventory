@@ -235,7 +235,7 @@ class ZoomPlacements():
                         })
 
         else:
-            logger.warn("Required script extraction not found, no details logged")
+            logger.error("Required script extraction not found, no details logged. You should check to see if this user can access Zoom.")
             logger.debug(r.text)
         return zoom_courses_meetings
 
