@@ -1,4 +1,4 @@
-# Script to get all sites where Zoom is visible and retrieve the meetings to generate a report
+# Script to get all sites External Tool (LTI) Placements in Canvas and generate a report
 
 import json
 import logging
@@ -32,8 +32,8 @@ class CanvasLtiPlacementProcessor:
     zoom_courses_meetings: List[Dict] = []
 
     # Indexes to keep track of how many courses and tabs we've processed
-    course_count = 0
-    placement_count = 0
+    course_count: int = 0
+    placement_count: int = 0
 
     def __init__(self, canvas_url: str, canvas_token: str):
         self.canvas = canvasapi.Canvas(canvas_url, canvas_token)
@@ -86,7 +86,6 @@ class CanvasLtiPlacementProcessor:
             # Hidden only included if true
             if (tab.label.upper() in SUPPORTED_PLACEMENTS and not hasattr(tab, "hidden")):
                 self.placement_count += 1
-                # This this course as a supported course
                 self.lti_placements.append({'id': self.placement_count,
                                             'course_id': course.id,
                                             'account_id': course.account_id,
@@ -235,7 +234,7 @@ class ZoomPlacements():
                         })
 
         else:
-            logger.error("Required script extraction not found, no details logged. You should check to see if this user can access Zoom.")
+            logger.error("Required token not found, no details logged. Check to see if this user can access Zoom.")
             logger.debug(r.text)
         return zoom_courses_meetings
 
