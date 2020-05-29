@@ -6,10 +6,12 @@ from datetime import datetime
 from enum import auto, Enum, IntEnum
 from typing import Dict, Union
 
+# third-party libraries
 import pytz
 
 
 # Enum(s)
+
 class PlacementType(IntEnum):
     ZOOM = 0
 
@@ -45,6 +47,22 @@ class ValidDataSourceName(Enum):
         '''
         return str(self.name)
 
+
+# Exception(s)
+
+class Error(Exception):
+    '''Base class for exceptions for the project'''
+    pass
+
+
+class JobError(Error):
+    '''Exception raised for errors that should prompt a job cancellation'''
+
+    def __init__(self, message: str) -> None:
+        self.message: str = message
+
+
+# Class(es)
 
 class DataSourceStatus:
     '''
