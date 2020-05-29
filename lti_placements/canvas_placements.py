@@ -250,7 +250,7 @@ def main() -> Sequence[DataSourceStatus]:
         "CANVAS_TERM_IDS", []), canvas_env.get("ADD_COURSE_IDS", []), True)
     lti_processor.output_report()
 
-    return [DataSourceStatus(ValidDataSourceName.CANVAS_ZOOM_MEETINGS)]
+    return [DataSourceStatus(ValidDataSourceName.CANVAS_LTI)]
 
 
 if '__main__' == __name__:
