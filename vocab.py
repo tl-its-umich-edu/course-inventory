@@ -52,7 +52,6 @@ class ValidDataSourceName(Enum):
 
 class Error(Exception):
     '''Base class for exceptions for the project'''
-    pass
 
 
 class JobError(Error):
