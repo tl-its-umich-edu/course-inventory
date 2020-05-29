@@ -68,15 +68,15 @@ class CanvasLtiPlacementProcessor:
                 add_course_ids.remove(course.id)
             # TODO: In the future get the total count from the Paginated object
             # Needs API support https://github.com/ucfopen/canvasapi/issues/114
-            self.get_lti_tab(course)
+            self.get_lti_tabs(course)
 
         # If there are course_ids passed in, also process those
         if add_course_ids:
             for course_id in add_course_ids:
-                self.get_lti_tab(self.canvas.get_course(course_id))
+                self.get_lti_tabs(self.canvas.get_course(course_id))
         return None
 
-    def get_lti_tab(self, course: canvasapi.course.Course) -> None:
+    def get_lti_tabs(self, course: canvasapi.course.Course) -> None:
         # This is a new course we're looking through
         self.course_count += 1
         logger.info(f"Fetching course #{self.course_count} for {course}")
@@ -248,10 +248,7 @@ def main() -> Sequence[DataSourceStatus]:
     lti_processor = CanvasLtiPlacementProcessor(canvas_env.get("CANVAS_URL"), canvas_env.get("CANVAS_TOKEN"))
     lti_processor.generate_lti_course_report(canvas_env.get("CANVAS_ACCOUNT_ID", 1), canvas_env.get(
         "CANVAS_TERM_IDS", []), canvas_env.get("ADD_COURSE_IDS", []), True)
-    try:
-        lti_processor.output_report()
-    except KeyError:
-        logger.exception("There was a problem writing the data, no courses may have tools!")
+    lti_processor.output_report()
 
     return [DataSourceStatus(ValidDataSourceName.CANVAS_ZOOM_MEETINGS)]
 
