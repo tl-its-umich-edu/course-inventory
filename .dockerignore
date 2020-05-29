@@ -1,13 +1,13 @@
 # config
-env.json
+**/env.*
 venv
+.vscode
 
 # data
-*.csv
+**/*.csv
 .data
 
 # etc
 .DS_Store
-*.pyc
-.vscode
-__pycache__
+**/*.pyc
+**/__pycache__
