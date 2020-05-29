@@ -31,7 +31,7 @@ class CanvasLtiPlacementProcessor:
     # Stores a list of all courses/meetings for zoom to be written out
     zoom_courses_meetings: List[Dict] = []
 
-    # Indexes to keep track of how many courses and tab's we've went through
+    # Indexes to keep track of how many courses and tabs we've processed
     course_count = 0
     placement_count = 0
 
