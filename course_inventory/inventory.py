@@ -1,5 +1,5 @@
 # standard libraries
-import json, logging, os, sys, time
+import json, logging, os, time
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Sequence, Union
 

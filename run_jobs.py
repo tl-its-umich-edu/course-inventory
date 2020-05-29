@@ -72,7 +72,7 @@ class Job:
             self.create_metadata()
         except JobError as je:
             logger.error(f'JobError: {je}')
-            logger.info(f'An error occurred that prevented the {self.name} job from finishing')
+            logger.info(f'An error prevented the {self.name} job from finishing')
             logger.info('The program will continue running other jobs')
 
 
