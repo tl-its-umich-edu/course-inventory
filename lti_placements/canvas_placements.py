@@ -5,7 +5,7 @@ import logging
 import math
 import os
 import re
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Union, Any
 
 import canvasapi
 import pandas as pd
@@ -18,12 +18,6 @@ from vocab import DataSourceStatus, ValidDataSourceName
 
 logger = logging.getLogger(__name__)
 
-# This should be uppercase lablels from the canvas tabs call
-# All of these will be included in the report
-# GET /api/v1/courses/:course_id/tabs
-# TODO: Make this configurable?
-SUPPORTED_PLACEMENTS = {"ZOOM": 0, "BLUEJEANS": 1}
-
 
 class CanvasLtiPlacementProcessor:
     # Stores a list of all LTI placements to be written out
@@ -35,14 +29,20 @@ class CanvasLtiPlacementProcessor:
     course_count: int = 0
     placement_count: int = 0
 
-    def __init__(self, canvas_url: str, canvas_token: str):
+    def __init__(self,
+                 canvas_url: str,
+                 canvas_token: str,
+                 supported_lti_tools: Union[Dict[int, Dict[str, Any]], None]):
         self.canvas = canvasapi.Canvas(canvas_url, canvas_token)
         self.zoom_placements = ZoomPlacements(self.canvas)
+        if not supported_lti_tools:
+            supported_lti_tools = {}
+        self.supported_lti_tools = supported_lti_tools
 
     def generate_lti_course_report(self,
                                    canvas_account_id: int,
                                    enrollment_term_ids: Union[Sequence[int], None],
-                                   add_course_ids: Union[List[int], None] = None,
+                                   add_course_ids: Union[List[int], None],
                                    published: bool = True):
     
         account = self.canvas.get_account(canvas_account_id)
@@ -83,14 +83,15 @@ class CanvasLtiPlacementProcessor:
         # Get tabs and look for defined tool(s) that aren't hidden
         tabs = course.get_tabs()
         for tab in tabs:
+            supported_tool = self.supported_lti_tools.get(tab.id, None)
             # Hidden only included if true
-            if (tab.label.upper() in SUPPORTED_PLACEMENTS and not hasattr(tab, "hidden")):
+            if (supported_tool and not hasattr(tab, "hidden")):
                 self.placement_count += 1
                 self.lti_placements.append({'id': self.placement_count,
                                             'course_id': course.id,
                                             'account_id': course.account_id,
                                             'course_name': course.name,
-                                            'placement_type_id': SUPPORTED_PLACEMENTS.get(tab.label.upper())
+                                            'placement_type_id': supported_tool.get("id", -1)
                                             })
 
                 # TODO: Find a better way of running this just for zoom
@@ -245,9 +246,16 @@ def main() -> Sequence[DataSourceStatus]:
     '''
 
     canvas_env = ENV.get('CANVAS', {})
-    lti_processor = CanvasLtiPlacementProcessor(canvas_env.get("CANVAS_URL"), canvas_env.get("CANVAS_TOKEN"))
-    lti_processor.generate_lti_course_report(canvas_env.get("CANVAS_ACCOUNT_ID", 1), canvas_env.get(
-        "CANVAS_TERM_IDS", []), canvas_env.get("ADD_COURSE_IDS", []), True)
+    lti_processor = CanvasLtiPlacementProcessor(
+        canvas_env.get("CANVAS_URL"),
+        canvas_env.get("CANVAS_TOKEN"),
+        canvas_env.get("SUPPORTED_LTI_TOOLS", {}))
+
+    lti_processor.generate_lti_course_report(
+        canvas_env.get("CANVAS_ACCOUNT_ID", 1),
+        canvas_env.get("CANVAS_TERM_IDS", []),
+        canvas_env.get("ADD_COURSE_IDS", []),
+        True)
     lti_processor.output_report()
 
     return [DataSourceStatus(ValidDataSourceName.CANVAS_LTI)]
