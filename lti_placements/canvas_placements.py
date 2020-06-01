@@ -32,7 +32,7 @@ class CanvasLtiPlacementProcessor:
     def __init__(self,
                  canvas_url: str,
                  canvas_token: str,
-                 supported_lti_tools: Union[Dict[int, Dict[str, Any]], None]):
+                 supported_lti_tools: Union[Dict[str, Dict[str, Union[str, int]]], None]):
         self.canvas = canvasapi.Canvas(canvas_url, canvas_token)
         self.zoom_placements = ZoomPlacements(self.canvas)
         if not supported_lti_tools:
