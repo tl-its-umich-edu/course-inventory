@@ -24,7 +24,7 @@
             "type": "array",
             "items": {
                 "type": "string",
-                "enum": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"]
+                "enum": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_LTI"]
             }
         },
         "CREATE_CSVS": {"type": "boolean"},

@@ -3,7 +3,7 @@
   
     # Global
     "LOG_LEVEL": "INFO",
-    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"],
+    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_LTI"],
     "CREATE_CSVS": false,
 
     # API request behavior

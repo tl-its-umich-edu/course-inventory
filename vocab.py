@@ -3,17 +3,13 @@ from __future__ import annotations
 # standard libraries
 import time
 from datetime import datetime
-from enum import auto, Enum, IntEnum
+from enum import auto, Enum
 from typing import Dict, Union
 
 import pytz
 
 
 # Enum(s)
-class PlacementType(IntEnum):
-    ZOOM = 0
-
-
 class ValidJobName(Enum):
     """
     Each job name should be defined in ValidJobName.
@@ -22,7 +18,7 @@ class ValidJobName(Enum):
 
     COURSE_INVENTORY = 'course_inventory.inventory.run_course_inventory'
     MIVIDEO = 'mivideo.mivideo_extract.main'
-    CANVAS_ZOOM_MEETINGS = 'online_meetings.canvas_zoom_meetings.main'
+    CANVAS_LTI = 'lti_placements.canvas_placements.main'
 
 
 class ValidDataSourceName(Enum):
@@ -32,7 +28,7 @@ class ValidDataSourceName(Enum):
     """
 
     CANVAS_API = auto()
-    CANVAS_ZOOM_MEETINGS = auto()
+    CANVAS_LTI = auto()
     KALTURA_API = auto()
     UNIZIN_DATA_PLATFORM_EVENTS = auto()
     UNIZIN_DATA_WAREHOUSE = auto()
