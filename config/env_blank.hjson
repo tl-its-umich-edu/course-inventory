@@ -28,7 +28,7 @@
         "CANVAS_TOKEN": "",
         # For processing canvas_placements
         # ID in each object can be duplicated if the same tool is duplicated
-        "SUPPORTED_LTI_TOOLS" : {
+        "SUPPORTED_LTI_TOOLS": {
             12345: {"name": "Zoom", "id": 0},
         }
     },
