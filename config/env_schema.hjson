@@ -63,7 +63,7 @@
                         "name": {"type": "string"}
                         "id": {"type": "integer"}
                     }
-        }
+                }
             },
             "required": [
                 "CANVAS_ACCOUNT_ID",
