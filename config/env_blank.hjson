@@ -29,7 +29,7 @@
         # For processing canvas_placements
         # ID in each object can be duplicated if the same tool is duplicated
         "SUPPORTED_LTI_TOOLS" : {
-            "context_external_tool_12345": {"name": "Zoom", "id": 0},
+            12345: {"name": "Zoom", "id": 0},
         }
     },
 

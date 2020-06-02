@@ -83,7 +83,10 @@ class CanvasLtiPlacementProcessor:
         # Get tabs and look for defined tool(s) that aren't hidden
         tabs = course.get_tabs()
         for tab in tabs:
-            supported_tool = self.supported_lti_tools.get(tab.id, None)
+            # The format in canvas of ids is like
+            # context_external_tool_12345. But we need the numeric part
+            tab_id = tab.id.split('_')[-1]
+            supported_tool = self.supported_lti_tools.get(tab_id, None)
             # Hidden only included if true
             if (supported_tool and not hasattr(tab, "hidden")):
                 self.placement_count += 1
