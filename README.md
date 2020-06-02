@@ -93,7 +93,7 @@ a more lenient and customizable variant of JSON. Complete the following items in
     `MIVIDEO` | `default_last_timestamp` | The MiVideo procedures use the last timestamp found in its tables in this application's DB to query for data newer than that time.  If that timestamp isn't found (e.g., the first time the application runs) the value of this property will be used.  This must be a valid ISO 8601 timestamp in the UTC time zone.  The recommended value is `2020-03-01T00:00:00+00:00`.
     `MIVIDEO` | `kaltura_partner_id` | This is an integer that represents the Kaltura account number.  UMich ITS TL users can find this value in the usual security files folder.
     `MIVIDEO` | `kaltura_user_secret` | This is a string that represents an administrator's key for the Kaltura account.  UMich ITS TL users can find this value in the usual security files folder.
-    `MIVIDEO` | `kaltura_categories_full_name_in' | Filter for the Kaltura API to return media that have at least one category that begins with the string value of this key.  The default value is "`Canvas_UMich`".
+    `MIVIDEO` | `kaltura_categories_full_name_in` | Filter for the Kaltura API to return media that have at least one category that begins with the string value of this key.  The default value is "`Canvas_UMich`".
     `UDW` |   | An object containing the necessary credential information for connecting to the Unizin Data Warehouse, where data will be pulled from.
     `INVENTORY_DB` |   | An object containing the necessary credential information for connecting to a MySQL database, where output data will be inserted.
 
