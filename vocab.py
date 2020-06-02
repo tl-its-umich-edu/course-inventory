@@ -6,10 +6,12 @@ from datetime import datetime
 from enum import auto, Enum
 from typing import Dict, Union
 
+# third-party libraries
 import pytz
 
 
 # Enum(s)
+
 class ValidJobName(Enum):
     """
     Each job name should be defined in ValidJobName.
@@ -41,6 +43,21 @@ class ValidDataSourceName(Enum):
         '''
         return str(self.name)
 
+
+# Exception(s)
+
+class CourseInventoryBaseError(Exception):
+    '''Base class for exceptions for the project'''
+
+
+class JobError(CourseInventoryBaseError):
+    '''Exception raised for errors that should prompt a job cancellation'''
+
+    def __init__(self, message: str) -> None:
+        self.message: str = message
+
+
+# Class(es)
 
 class DataSourceStatus:
     '''
