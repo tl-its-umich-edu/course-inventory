@@ -50,11 +50,11 @@ class ValidDataSourceName(Enum):
 
 # Exception(s)
 
-class Error(Exception):
+class CourseInventoryBaseError(Exception):
     '''Base class for exceptions for the project'''
 
 
-class JobError(Error):
+class JobError(CourseInventoryBaseError):
     '''Exception raised for errors that should prompt a job cancellation'''
 
     def __init__(self, message: str) -> None:
