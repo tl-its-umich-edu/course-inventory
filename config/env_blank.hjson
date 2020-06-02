@@ -3,7 +3,7 @@
   
     # Global
     "LOG_LEVEL": "INFO",
-    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_ZOOM_MEETINGS"],
+    "JOB_NAMES": ["COURSE_INVENTORY", "MIVIDEO", "CANVAS_LTI"],
     "CREATE_CSVS": false,
 
     # API request behavior
@@ -25,7 +25,12 @@
         "API_CLIENT_SECRET": "",
         # Canvas API
         "CANVAS_URL": "",
-        "CANVAS_TOKEN": ""
+        "CANVAS_TOKEN": "",
+        # For processing canvas_placements
+        # ID in each object can be duplicated if the same tool is duplicated
+        "SUPPORTED_LTI_TOOLS": {
+            12345: {"name": "Zoom", "id": 0},
+        }
     },
 
     "MIVIDEO": {
