@@ -1,5 +1,5 @@
 # standard libraries
-import json, logging, os, sys, time
+import json, logging, os, time
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Sequence, Union
 
@@ -17,7 +17,7 @@ from course_inventory.gql_queries import queries as QUERIES
 from course_inventory.published_date import FetchPublishedDate
 from db.db_creator import DBCreator
 from environ import DATA_DIR, ENV
-from vocab import DataSourceStatus, ValidDataSourceName
+from vocab import DataSourceStatus, JobError, ValidDataSourceName
 
 # Initialize settings and globals
 
@@ -70,9 +70,8 @@ def make_request_using_api_utils(url: str, params: Union[Dict[str, Any], None] =
                 logger.info('Beginning next attempt')
 
     logger.error('The maximum number of request attempts was reached')
-    logger.error(f'Data could not be gathered from the URL with the ending "{url}"')
-    logger.error('The program will exit')
-    sys.exit(1)
+    logger.error('The job will be cancelled')
+    raise JobError(f'Data could not be gathered from the URL with the ending "{url}"')
 
 
 def gather_term_data_from_api(account_id: int, term_ids: Sequence[int]) -> pd.DataFrame:
@@ -232,7 +231,7 @@ def pull_sis_section_data_from_udw(section_ids: Sequence[int], conn: connection)
 
 def get_pub_course_info_from_db(db_creator_obj: DBCreator) -> pd.DataFrame:
     logger.info(f"Getting the course info from {db_creator_obj.db_name} database")
-    course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course 
+    course_from_db_df = pd.read_sql(f'''select canvas_id, published_at from course
                             where workflow_state = 'available' ;''',
                                     db_creator_obj.engine)
     return course_from_db_df

@@ -10,7 +10,7 @@ import sqlalchemy
 # local libraries
 from db.db_creator import DBCreator
 from environ import ENV
-from vocab import DataSourceStatus, ValidJobName
+from vocab import DataSourceStatus, JobError, ValidJobName
 
 # Initialize settings and global variables
 logger = logging.getLogger(__name__)
@@ -61,14 +61,19 @@ class Job:
 
         # Until we have a decorator for this
         self.started_at = time.time()
-        self.data_sources = start_method()
-        self.finished_at = time.time()
+        try:
+            self.data_sources = start_method()
+            self.finished_at = time.time()
 
-        delta = self.finished_at - self.started_at
-        str_time = time.strftime('%H:%M:%S', time.gmtime(delta))
-        logger.info(f'Duration of job run: {str_time}')
+            delta = self.finished_at - self.started_at
+            str_time = time.strftime('%H:%M:%S', time.gmtime(delta))
+            logger.info(f'Duration of job run: {str_time}')
 
-        self.create_metadata()
+            self.create_metadata()
+        except JobError as je:
+            logger.error(f'JobError: {je}')
+            logger.error(f'An error prevented the {self.name} job from finishing')
+            logger.info('The program will continue running other jobs')
 
 
 class JobManager:
