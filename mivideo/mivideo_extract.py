@@ -295,7 +295,7 @@ class MiVideoExtract:
             c.endswith('>InContext') for c in courseData['course_id']]
 
         courseData['course_id'] = courseData['course_id'].str.replace(
-            r'^' + categoryFilter + r'.*>([0-9]+).*$',
+            r'^' + categoryFilter + r'.*>([0-9]+)(>InContext)?$',
             lambda m: m.groups()[0], regex=True
         )
 
