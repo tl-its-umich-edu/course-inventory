@@ -284,6 +284,22 @@ class MiVideoExtract:
 
     @staticmethod
     def _makeCourseData(resultDictionaries: Sequence[Dict], categoryFilter: str) -> pd.DataFrame:
+        """
+        Turn Kaltura API media query results into DataFrame of media ID and Canvas course ID.
+
+        MiVideo media in Kaltura that are published to Canvas have categories added to them with
+        a very specific, case-sensitive format::
+
+            Canvas_UMich>site>channels>𝒏𝒏𝒏𝒏𝒏𝒏>InContext
+
+        Where `𝒏𝒏𝒏𝒏𝒏𝒏` is the ID of a course site in Canvas, which are integers, often of 6-digits.
+
+        We want only those IDs that are integers, not hexadecimal or other strings.
+
+        :param resultDictionaries: a sequence of KalturaMediaEntry objects converted to dictionaries
+        :param categoryFilter: the base Kaltura category, usually `Canvas_UMich`
+        :return:
+        """
         courseData: pd.DataFrame = pd.DataFrame.from_records(
             resultDictionaries, columns=('id', 'categories',)
         ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
