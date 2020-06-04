@@ -302,26 +302,35 @@ class MiVideoExtract:
         """
         courseData: pd.DataFrame = pd.DataFrame.from_records(
             resultDictionaries, columns=('id', 'categories',)
-        ).rename(columns={'id': 'media_id', 'categories': 'course_id', })
+        ).rename(columns={'id': 'media_id', })
 
-        courseData = courseData.assign(
-            course_id=courseData['course_id'].str.split(',')).explode('course_id')
-
-        courseData['in_context'] = [
-            c.endswith('>InContext') for c in courseData['course_id']]
-
-        courseData['course_id'] = courseData['course_id'].str.replace(
-            r'^' + categoryFilter + r'.*>([0-9]+)(>InContext)?$',
-            lambda m: m.groups()[0], regex=True
+        # categories start to become course IDs
+        courseData = (
+            courseData
+                .assign(course_id=courseData['categories'].str.split(','))
+                .explode('course_id')
+                .drop('categories', axis=1)  # 1: columns
         )
 
-        # find and drop non-decimal course IDs
-        # (e.g., like category "Canvas_UMich>site>channels>Shared Repository")
-        badCourseIds = courseData[courseData['course_id'].str.contains('[^0-9]', regex=True)]
-        if (not badCourseIds.empty):
-            logger.debug(f'Non-numeric course IDs to be removed:\n{badCourseIds}')
+        courseData['in_context'] = courseData['course_id'].str.endswith('>InContext')
 
-        courseData = courseData[courseData['course_id'].str.isdecimal()].drop_duplicates()
+        # remove original category prefix and suffix from each course ID
+        # would like to avoid regex, but at least this is SIMPLE regex
+        courseData['course_id'] = (
+            courseData['course_id'].str
+                .replace('^Canvas_UMich>site>channels>', '', regex=True)
+                .replace('>InContext$', '', regex=True)
+        )
+
+        # find and drop invalid, non-decimal course IDs
+        # (e.g., "Shared Repository", "5430bafe907cca901a0f11646470dd64244ebd5f", etc.)
+        validCourseIdIndex = courseData['course_id'].str.isdecimal()
+
+        if (not validCourseIdIndex.all()):  # not all all index items are True
+            logger.debug('Non-numeric course IDs to be removed:\n'
+                         f'{courseData[~validCourseIdIndex]}')
+
+        courseData = courseData[validCourseIdIndex].drop_duplicates()
 
         return courseData
 
