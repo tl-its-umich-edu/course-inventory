@@ -261,8 +261,7 @@ class MiVideoExtract:
                 creationData.to_sql(
                     tableName, self.appDb.engine, if_exists='append', index=False)
 
-                courseData: pd.DataFrame = self._makeCourseData(
-                    resultDictionaries, kFilter.categoriesFullNameIn)
+                courseData: pd.DataFrame = self._makeCourseData(resultDictionaries)
 
                 courseData.to_sql('mivideo_media_courses', self.appDb.engine, if_exists='append',
                                   index=False, method=self._queryRunner)
@@ -283,7 +282,7 @@ class MiVideoExtract:
         return DataSourceStatus(ValidDataSourceName.KALTURA_API)
 
     @staticmethod
-    def _makeCourseData(resultDictionaries: Sequence[Dict], categoryFilter: str) -> pd.DataFrame:
+    def _makeCourseData(resultDictionaries: Sequence[Dict]) -> pd.DataFrame:
         """
         Turn Kaltura API media query results into DataFrame of media ID and Canvas course ID.
 
@@ -297,7 +296,6 @@ class MiVideoExtract:
         We want only those IDs that are integers, not hexadecimal or other strings.
 
         :param resultDictionaries: a sequence of KalturaMediaEntry objects converted to dictionaries
-        :param categoryFilter: the base Kaltura category, usually `Canvas_UMich`
         :return:
         """
         courseData: pd.DataFrame = pd.DataFrame.from_records(
@@ -307,29 +305,31 @@ class MiVideoExtract:
         # split category CSVs to multiple new rows
         courseData = (
             courseData
-                .assign(categories=courseData['categories'].str.split(','))
+                .assign(categories=courseData['categories'].map(lambda c: c.split(',')))
                 .explode('categories')
         )
 
-        courseData['in_context'] = courseData['categories'].str.endswith('>InContext')
+        # remove rows whose category isn't in "Canvas_UMich>site>channels>" hierarchy
+        courseData = courseData[courseData['categories']
+            .map(lambda c: c.startswith('Canvas_UMich>site>channels>'))]
 
-        # remove category prefix and suffix to get course IDs
-        # (prefer to avoid regex, but at least this doesn't use globbing)
-        courseData['course_id'] = (
-            courseData['categories'].str
-                .replace('^Canvas_UMich>site>channels>', '', regex=True)
-                .replace('>InContext$', '', regex=True)
-        )
+        courseData['in_context'] = courseData['categories'] \
+            .map(lambda c: c.endswith('>InContext'))
+
+        # get course ID from '>'-delimited category hierarchy string
+        columnIndex = 3
+        courseData['course_id'] = \
+            courseData['categories'].map(lambda c: (c + '>' * columnIndex).split('>')[columnIndex])
 
         # categories have been processed, drop unneeded column
         courseData = courseData.drop('categories', axis=1)  # 1: columns
 
         # find and drop invalid, non-decimal course IDs
         # (e.g., "Shared Repository", "5430bafe907cca901a0f11646470dd64244ebd5f", etc.)
-        validCourseIdIndex = courseData['course_id'].str.isdecimal()
+        validCourseIdIndex = courseData['course_id'].map(str.isdecimal)
 
         if (not validCourseIdIndex.all()):  # not all all index items are True
-            logger.debug('Non-numeric course IDs to be removed:\n'
+            logger.debug('Non-decimal course IDs to be removed:\n'
                          f'{courseData[~validCourseIdIndex]}')
 
         courseData = courseData[validCourseIdIndex].drop_duplicates()
