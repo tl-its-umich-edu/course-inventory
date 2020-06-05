@@ -304,23 +304,25 @@ class MiVideoExtract:
             resultDictionaries, columns=('id', 'categories',)
         ).rename(columns={'id': 'media_id', })
 
-        # categories start to become course IDs
+        # split category CSVs to multiple new rows
         courseData = (
             courseData
-                .assign(course_id=courseData['categories'].str.split(','))
-                .explode('course_id')
-                .drop('categories', axis=1)  # 1: columns
+                .assign(categories=courseData['categories'].str.split(','))
+                .explode('categories')
         )
 
-        courseData['in_context'] = courseData['course_id'].str.endswith('>InContext')
+        courseData['in_context'] = courseData['categories'].str.endswith('>InContext')
 
-        # remove original category prefix and suffix from each course ID
-        # would like to avoid regex, but at least this is SIMPLE regex
+        # remove category prefix and suffix to get course IDs
+        # (prefer to avoid regex, but at least this doesn't use globbing)
         courseData['course_id'] = (
-            courseData['course_id'].str
+            courseData['categories'].str
                 .replace('^Canvas_UMich>site>channels>', '', regex=True)
                 .replace('>InContext$', '', regex=True)
         )
+
+        # categories have been processed, drop unneeded column
+        courseData = courseData.drop('categories', axis=1)  # 1: columns
 
         # find and drop invalid, non-decimal course IDs
         # (e.g., "Shared Repository", "5430bafe907cca901a0f11646470dd64244ebd5f", etc.)
