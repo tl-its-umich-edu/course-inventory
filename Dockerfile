@@ -1,5 +1,5 @@
 # FROM directive instructing base image to build upon
-FROM python:3.7
+FROM python:3.8-slim
 
 RUN apt-get update && apt-get --no-install-recommends install --yes \
     libaio1 libaio-dev xmlsec1 libffi-dev \
