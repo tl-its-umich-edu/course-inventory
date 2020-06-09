@@ -2,9 +2,8 @@
 FROM python:3.8-slim
 
 RUN apt-get update && apt-get --no-install-recommends install --yes \
-    libaio1 libaio-dev xmlsec1 libffi-dev \
-    libldap2-dev libsasl2-dev \
-    build-essential default-libmysqlclient-dev git netcat
+    build-essential default-libmysqlclient-dev git && \
+    apt-get clean -y 
 
 COPY requirements.txt /requirements.txt
 
