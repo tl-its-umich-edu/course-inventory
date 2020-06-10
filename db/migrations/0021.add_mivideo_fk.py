@@ -15,5 +15,4 @@ steps = [
           ON UPDATE CASCADE
           ON DELETE CASCADE;
     '''),
-
 ]
