@@ -329,9 +329,12 @@ class MiVideoExtract:
         validCourseIdIndex = courseData['course_id'].map(str.isdecimal)
 
         if (not validCourseIdIndex.all()):  # not all all index items are True
-            logger.debug('Non-decimal course IDs to be removed:\n'
-                         f'{courseData[~validCourseIdIndex]}')
-            courseData = courseData[validCourseIdIndex].drop_duplicates()
+            invalidCourseIdIndex = ~validCourseIdIndex
+            logger.info(f'Removing ({invalidCourseIdIndex.values.sum()}) non-decimal course IDs...')
+            logger.debug(f'Course IDs to be removed:\n{courseData[invalidCourseIdIndex]}')
+            courseData = courseData[validCourseIdIndex]  # keep the valid ones
+
+        courseData.drop_duplicates(inplace=True)
 
         return courseData
 
