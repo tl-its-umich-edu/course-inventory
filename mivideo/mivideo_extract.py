@@ -334,7 +334,7 @@ class MiVideoExtract:
             logger.debug(f'Course IDs to be removed:\n{courseData[invalidCourseIdIndex]}')
             courseData = courseData[validCourseIdIndex]  # keep the valid ones
 
-        courseData.drop_duplicates(inplace=True)
+        courseData = courseData.drop_duplicates()
 
         return courseData
 
