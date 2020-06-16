@@ -22,7 +22,7 @@ Tableau dashboards and other processes then consume that data to generate report
 The sections below provide instructions for configuring, installing, using, and changing the application. 
 Depending on the environment you plan to run the application in, you may also need to install some or all of the following:
 
-* [Python 3.7](https://docs.python.org/3/)
+* [Python 3](https://docs.python.org/3/)
 * [MySQL](https://dev.mysql.com/doc/)
 * [Docker Desktop](https://www.docker.com/products/docker-desktop)
 * [OpenShift CLI](https://docs.openshift.com/enterprise/3.1/cli_reference/get_started_cli.html)
