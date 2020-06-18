@@ -6,11 +6,11 @@ from yoyo import step
 steps = [
     step('''
         ALTER TABLE course
-        MODIFY
-            name VARCHAR(256) NOT NULL;
+        DROP INDEX name;
     '''),
     step('''
         ALTER TABLE course
-        DROP INDEX name;
+        MODIFY
+            name VARCHAR(256) NOT NULL;
     ''')
 ]
