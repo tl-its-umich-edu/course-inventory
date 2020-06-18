@@ -56,14 +56,7 @@
                 "API_CLIENT_SECRET": {"type": "string"},
                 # Canvas API
                 "CANVAS_URL": {"type": "string"},
-                "CANVAS_TOKEN": {"type": "string"},
-                "SUPPORTED_LTI_TOOLS" : {
-                    type: "object"
-                    "properties": {
-                        "name": {"type": "string"}
-                        "id": {"type": "integer"}
-                    }
-                }
+                "CANVAS_TOKEN": {"type": "string"}
             },
             "required": [
                 "CANVAS_ACCOUNT_ID",

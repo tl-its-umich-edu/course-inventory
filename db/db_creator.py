@@ -101,3 +101,14 @@ class DBCreator:
         '''
         self.drop_records().migrate()
         return self
+
+    def get_pk_values(self, table_name: str, primary_key: str) -> List[Union[int, None]]:
+        '''
+        Retrieves primary key values from the table. Only works with one primary key.
+        '''
+        pk_values = []
+        conn = self.engine.connect()
+        rs = conn.execute(f"SELECT {primary_key} FROM {table_name}")
+        for row in rs:
+            pk_values.append(row[0])
+        return pk_values

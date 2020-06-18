@@ -31,13 +31,11 @@ class CanvasLtiPlacementProcessor:
 
     def __init__(self,
                  canvas_url: str,
-                 canvas_token: str,
-                 supported_lti_tools: Union[Dict[str, Dict[str, Union[str, int]]], None]):
+                 canvas_token: str):
         self.canvas = canvasapi.Canvas(canvas_url, canvas_token)
         self.zoom_placements = ZoomPlacements(self.canvas)
-        if not supported_lti_tools:
-            supported_lti_tools = {}
-        self.supported_lti_tools = supported_lti_tools
+        self.db_creator: DBCreator = DBCreator(ENV['INVENTORY_DB'])
+        self.supported_tools = self.get_supported_lti_tools()
 
     def generate_lti_course_report(self,
                                    canvas_account_id: int,
@@ -76,6 +74,9 @@ class CanvasLtiPlacementProcessor:
                 self.get_lti_tabs(self.canvas.get_course(course_id))
         return None
 
+    def get_supported_lti_tools(self) -> List[Union[int, None]]:
+        return self.db_creator.get_pk_values('lti_type', 'canvas_id')
+
     def get_lti_tabs(self, course: canvasapi.course.Course) -> None:
         # This is a new course we're looking through
         self.course_count += 1
@@ -86,15 +87,20 @@ class CanvasLtiPlacementProcessor:
             # The format in canvas of ids is like
             # context_external_tool_12345. But we need the numeric part
             tab_id = tab.id.split('_')[-1]
-            supported_tool = self.supported_lti_tools.get(tab_id, None)
+            # We want the integer value if it exists, otherwise just skip
+            if tab_id.isdigit():
+                tab_id = int(tab_id)
+            else:
+                continue
+
             # Hidden only included if true
-            if (supported_tool and not hasattr(tab, "hidden")):
+            if (tab_id in self.supported_tools and not hasattr(tab, "hidden")):
                 self.placement_count += 1
                 self.lti_placements.append({'id': self.placement_count,
                                             'course_id': course.id,
                                             'account_id': course.account_id,
                                             'course_name': course.name,
-                                            'placement_type_id': supported_tool.get("id", -1)
+                                            'placement_type_id': tab_id
                                             })
 
                 # TODO: Find a better way of running this just for zoom
@@ -104,7 +110,6 @@ class CanvasLtiPlacementProcessor:
         return None
 
     def output_report(self) -> None:
-        db_creator: DBCreator = DBCreator(ENV['INVENTORY_DB'])
 
         lti_placement_df = pd.DataFrame(self.lti_placements)
         lti_placement_df = lti_placement_df.set_index("id")
@@ -120,17 +125,17 @@ class CanvasLtiPlacementProcessor:
 
         # For now until this process is improved just remove all the previous records
         logger.info('Emptying Canvas LTI data tables in DB')
-        db_creator.drop_records(
+        self.db_creator.drop_records(
             ['lti_placement', 'lti_zoom_meeting']
         )
 
         logger.info(f'Inserting {len(lti_placement_df)} lti_placement records to DB')
-        lti_placement_df.to_sql("lti_placement", db_creator.engine, if_exists="append", index=True)
-        logger.info(f'Inserted data into lti_placement table in {db_creator.db_name}')
+        lti_placement_df.to_sql("lti_placement", self.db_creator.engine, if_exists="append", index=True)
+        logger.info(f'Inserted data into lti_placement table in {self.db_creator.db_name}')
 
         logger.info(f'Inserting {len(lti_zoom_meeting_df)} lti_zoom_meeting records to DB')
-        lti_zoom_meeting_df.to_sql("lti_zoom_meeting", db_creator.engine, if_exists="append", index=True)
-        logger.info(f'Inserted data into lti_zoom_meeting table in {db_creator.db_name}')
+        lti_zoom_meeting_df.to_sql("lti_zoom_meeting", self.db_creator.engine, if_exists="append", index=True)
+        logger.info(f'Inserted data into lti_zoom_meeting table in {self.db_creator.db_name}')
 
 
 class ZoomPlacements():
@@ -248,11 +253,11 @@ def main() -> Sequence[DataSourceStatus]:
     This method is invoked when its module is executed as a standalone program.
     '''
 
+    # Get ids for tools in lti_type table as supported tools
     canvas_env = ENV.get('CANVAS', {})
     lti_processor = CanvasLtiPlacementProcessor(
         canvas_env.get("CANVAS_URL"),
-        canvas_env.get("CANVAS_TOKEN"),
-        canvas_env.get("SUPPORTED_LTI_TOOLS", {}))
+        canvas_env.get("CANVAS_TOKEN"))
 
     lti_processor.generate_lti_course_report(
         canvas_env.get("CANVAS_ACCOUNT_ID", 1),
