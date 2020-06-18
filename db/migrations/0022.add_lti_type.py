@@ -16,9 +16,9 @@ steps = [
         ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
     '''),
     step('''
-        ALTER TABLE lti_placement MODIFY placement_type_id INTEGER NULL,
+        ALTER TABLE lti_placement
         ADD FOREIGN KEY (placement_type_id) REFERENCES lti_type(canvas_id) 
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE RESTRICT ON UPDATE CASCADE
     '''),
     step('''
         INSERT INTO lti_type (canvas_id, des, rpt_group_nm)
